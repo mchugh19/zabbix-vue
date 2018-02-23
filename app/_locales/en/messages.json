@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Zabbix Watcher",
+    "description": "Monitor Zabbix problems from your browser"
+  },
+  "appDescription": {
+    "message": "Zabbix Watcher",
+    "description": "Monitor Zabbix problems from your browser"
+  }
+}

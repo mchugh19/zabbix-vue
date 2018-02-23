@@ -1,0 +1,107 @@
+body {
+	font-size: 10pt;
+	padding: 0;
+	margin: 0;
+}
+
+body.popup {
+	padding: 10px;
+	min-width: 770px;
+	min-height: 150px;
+}
+
+body.firefox {
+	width: 750px;
+}
+
+.link {
+	color: #00E;
+	cursor: pointer;
+}
+.link:hover {
+	text-decoration: underline;
+}
+
+hr {
+	border: 0;
+	color: #AAAAAA;
+	background-color: #888888;
+	height: 1px;
+}
+
+.hidden {
+	display: none;
+}
+
+/*** OVERVIEW ***/
+
+.overview {
+	border: 1px solid #666666;
+	width: 750px;
+	border-collapse: collapse;
+	margin-bottom: 5px;
+}
+.overview .header {
+	background-color: #DDDDDD;
+}
+
+.overview th,
+.overview td {
+	border: 1px solid #666666;
+	white-space: nowrap;
+}
+
+#filter {
+    min-height: 24px;
+	font-size: 16px;
+	border: 1px solid #aaa;
+	border-radius: 4px;
+	position: relative;
+	top: 2px;
+	line-height: 1.4;
+}
+
+.disaster	{ background-color: #FF3838; color: #222222;}
+.high		{ background-color: #FF9999; color: #222222;}
+.average	{ background-color: #FFB689 ; color: #222222;}
+.warning	{ background-color: #FFF6A5; color: #222222;}
+.information	{ background-color: #D6F6FF; color: #222222;}
+.unknown_trigger{ background-color: #DBDBDB; color: #222222;}
+.normal,
+.notclassified		{ background-color: #DBDBDB; color: #222222;}
+
+
+/* Toggle arrow and link row functionality */
+i {
+	display: inline-block;
+	font-style: normal;
+	position: relative;
+}
+i.arrow {
+	width: 0.4em;
+	height: 0.4em;
+	border-right: 0.2em solid black;
+	border-top: 0.2em solid black;
+	transform: rotate(45deg);
+	transition: .3s;
+	margin-right: .4em;
+	margin-left: .2em;
+}
+.toggle-down {
+	transform: rotate(135deg) !important;
+	transition: .3s;
+}
+a.zablink {
+	margin-left: 5px;
+	text-decoration: none;
+	padding: 1px 5px;
+	font-size: 12px;
+	background-color: #e7e7e7;
+	color: black;
+	border-radius: 4px;
+	border: 0px;
+}
+a.zablink:hover {
+	background-color: #666666;
+	cursor: pointer;
+}
