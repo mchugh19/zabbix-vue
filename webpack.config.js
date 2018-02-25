@@ -15,5 +15,12 @@ module.exports = {
             test: /\.vue$/,
             loader: 'vue-loader'
         }]
+    },
+    node: {
+        console: true,
+        fs: 'empty',
+        net: 'empty',
+        tls: 'empty',
+        child_process: 'empty'
     }
 }

@@ -1,11 +1,7 @@
 <template>
-    <div>
+    <div class="popup">
         <div id="menu">
             <!-- <input type="search" id="filter" placeholder="Filter Results"> -->
-            Selected hostgroups {{ selectedHostGroups }}<br><br>
-            <select id="groupid" @change="refreshTable" v-model='selectedHostGroups' multiple>
-                <option v-for="hostgroup in hostGroups" v-bind:key="hostgroup.name" v-bind:value="hostgroup.groupid">{{ hostgroup.name }}</option>
-            </select>
         </div>
         <div id="triggerTable">
             <table>
@@ -30,15 +26,7 @@
 
 <script>
 var browser = browser || chrome;
-var Zhostgroups = [];
 var triggerTable = [];
-var savedGroups = [];
-
-function getHostGroups() {
-    browser.runtime.sendMessage({method: 'getHostGroups'}, function(response) {
-        Zhostgroups.push.apply(Zhostgroups, response);
-    })
-}
 
 function requestTableRefresh(groupids) {
     browser.runtime.sendMessage({
@@ -54,11 +42,11 @@ function requestTableRefresh(groupids) {
                 var system = activeTriggers[i]['hosts'][0]['host'];
                 var description = activeTriggers[i]['description']
                 var priority = Number(activeTriggers[i]['priority'])
-                var lastchange = Number(activeTriggers[i]['lastchange'])
+                var age = Number(activeTriggers[i]['lastchange'])
                 newTable.push({'system': system,
                         'description': description,
                         'priority': priority,
-                        'lastchange': lastchange})
+                        'age': age})
             }
             triggerTable.push.apply(triggerTable, newTable);
             console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
@@ -67,15 +55,12 @@ function requestTableRefresh(groupids) {
 
 
 document.addEventListener('DOMContentLoaded', function () {
-    getHostGroups();
     requestTableRefresh();
 });
 
 export default {
     data () {
         return {
-            'selectedHostGroups': savedGroups,
-            'hostGroups': Zhostgroups,
             'triggerTableData': triggerTable
         }
     },
@@ -139,9 +124,6 @@ export default {
         }
     },
     methods: {
-        refreshTable: function () {
-            requestTableRefresh(this.selectedHostGroups);
-        },
         updateTriggerData: function(newTriggers) {
             this.triggers = newTriggers;
         }

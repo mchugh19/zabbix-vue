@@ -189,29 +189,22 @@ var triggerOutput = {
 	"id": 2
 }
 
-var hostgroups = {
-    'jsonrpc': '2.0',
-    'result': [
-        {
-            'groupid': '2',
-            'name': 'Linux servers',
-            'internal': '0'
-        },
-        {
-            'groupid': '4',
-            'name': 'Zabbix servers',
-            'internal': '0'
-        }
-    ],
-    'id': 1
-}
-
 
 var zabbixChecker = {
     checkServers: function() {
-        var settings = JSON.parse(localStorage.getItem('ZabbixServers')) || {};
-        var interval = settings['global']['interval'] || 60;
-        var hostGroups = settings['global']['hostGroups'] || [];
+		var settings = JSON.parse(localStorage.getItem('ZabbixServers')) || null;
+		var interval;
+		var hostGroups;
+		try {
+			interval = settings['global']['interval'];
+		} catch (err) {
+			interval = 60;
+		}
+        try {
+			hostGroups = settings['global']['hostGroups']
+		} catch (err) {
+			hostGroups = [];
+		}
         //console.log('Got: ' + JSON.stringify(settings));
 
         if (!settings || 0 === settings.length) {
@@ -229,11 +222,6 @@ var zabbixChecker = {
         //console.log('Got triggers: ' + JSON.stringify(triggerOutput));
         var results = triggerOutput['result'];
         callback(results);
-    },
-    getHostGroups: function() {
-        var localhostgroups = hostgroups['result'];
-        console.log('Sending hostgroups: ' + JSON.stringify(localhostgroups));
-        return localhostgroups;
     }
 };
 
@@ -246,9 +234,6 @@ document.addEventListener('DOMContentLoaded', function () {
 function handleMessage(request, sender, sendResponse) {
     switch (request.method)
 	{
-	case 'getHostGroups':
-		sendResponse(zabbixChecker.getHostGroups());
-		break;
     case 'refreshTriggers':
         console.log('getTriggers request for groups: ' + JSON.stringify(request.data));
 
@@ -256,7 +241,6 @@ function handleMessage(request, sender, sendResponse) {
             //console.log('ActiveTriggers should be set: ' + JSON.stringify(activeTriggers));
             sendResponse(triggerReturn);
         });
-
 		break;
 	}
 }

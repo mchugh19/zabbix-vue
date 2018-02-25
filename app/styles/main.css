@@ -4,16 +4,13 @@ body {
 	margin: 0;
 }
 
-body.popup {
+div.popup {
 	padding: 10px;
 	min-width: 770px;
 	min-height: 150px;
 }
 
-body.firefox {
-	width: 750px;
-}
-
+/*
 .link {
 	color: #00E;
 	cursor: pointer;
@@ -32,6 +29,7 @@ hr {
 .hidden {
 	display: none;
 }
+*/
 
 /*** OVERVIEW ***/
 

@@ -2,17 +2,21 @@
     <div>
         <div id="app">
             <h1>Zabbix Servers</h1>
-            <div class='serverList' v-for="(server, key, index) in zabbixs.servers">
+            <span class="errors" v-if="errors['items'][0]">
+                {{ errors['items'][0]['msg'] }}
+            </span>
+            <div class='serverList' v-for="(server, index) in zabbixs.servers">
                 <span>Zabbix Server: {{server.alias}}</span><br>
-                <span v-if="errors['items'][0]">
-                    {{ errors['items'][0]['msg'] }}
-                </span>
                 Alias: <input id="zabbixAlias" type="text" name='alias' v-model="server.alias" v-validate="'required'"><br>
                 URL: <input id="zabbixBase" name='url' type="text" v-model="server.url" v-validate="'required|url:true'"><br>
                 Zabbix User: <input id="zabbixUser" type="text" name='username' v-model="server.user" v-validate="'required'"><br>
                 Zabbix Password: <input id="zabbixPass" name='password' type="password" v-model="server.pass" v-validate="'required'"><br>
                 Hide Ack Events: <input id="hideAck" type="checkbox" v-model="server.hide"><br>
-                <input id='removeZabbix' type='button' value='X' @click='removeServer(index)'>
+                <select id="groupid" v-model='server.hostGroups' multiple>
+                    <option v-for="hostgroup in server.hostGroupsList" v-bind:key="hostgroup.name" v-bind:value="hostgroup.groupid">{{ hostgroup.name }}</option>
+                </select>
+                <input id='refreshGroups' type='button' value='Refresh Group List' @click='refreshGroups(server.url, server.user, server.pass, index)'>
+                <input id='removeZabbix' type='button' value='X' v-if="zabbixs.servers.length > 1" @click='removeServer(index)'>
             </div>
             <div name='globalSettings'>
             Update Interval: <input id="checkInterval" name='interval' type="number" size="2" min="10" max="500" v-model="zabbixs.global.interval" v-validate="'min_value:10|required'"><br>
@@ -24,20 +28,24 @@
 </template>
 
 <script>
+const Zabbix = require('zabbix-promise');
+var browser = browser || chrome;
+
 var zabbix_data = JSON.parse(localStorage.getItem('ZabbixServers')) || {
     'global': {
-        'interval': 60,
-        'hostGroups': []
+        'interval': 60
     },
     'servers': [{
         'alias': 'New Server',
         'url': '',
         'user': '',
         'pass': '',
-        'hide': false
+        'hide': false,
+        'hostGroups': [],
+        'hostGroupsList': []
+
     }]
 };
-//console.log('Got zabbix_data: ' + JSON.stringify(zabbix_data));
 
 export default {
     data () {
@@ -47,20 +55,60 @@ export default {
     },
     methods: {
         addServer: function () {
-            this.zabbixs.push();
+            this.zabbixs.servers.push({
+                'alias': 'New Server',
+                'url': '',
+                'user': '',
+                'pass': '',
+                'hide': false,
+                'hostGroups': [],
+                'hostGroupsList': []
+            });
         },
         removeServer: function (index) {
+            //console.log('Removing index: ' + JSON.stringify(index));
             this.zabbixs.servers.splice(index, 1);
         },
-        save_data : function(){
+        save_data : function() {
             this.$validator.validateAll().then(res=>{
                 if(res) {
+                    let savedServerSettings = this.zabbixs['servers'];
+                    // Do not save results of hostGroup lookups
+                    for (var i = 0; i < savedServerSettings.length; i++) {
+                        savedServerSettings[i].hostGroupsList = [];
+                    }
+                    this.zabbixs['servers'] = savedServerSettings;
                     localStorage.setItem('ZabbixServers', JSON.stringify(this.zabbixs) );
                     window.close();
                 } else {
                     console.log("submit problem");
                 }
             })
+        },
+        refreshGroups: function (server, user, pass, index) {
+            /*
+            * Connect to Zabbix server using provided credentials
+            * Perform hostgroup.get lookup and popuplate the hostgroup list
+            */
+
+            // Clear old errors
+            delete this.errors['items'][0];
+
+            const zabbix = new Zabbix(
+                server + '/api_jsonrpc.php',
+                user,
+                pass
+            );
+            zabbix.login()
+                .then(() => zabbix.request('hostgroup.get', {
+                    'output': [
+                        'groupid',
+                        'name'
+                    ]
+                })).then((value) => this.zabbixs['servers'][index].hostGroupsList = value)
+                .then(() => zabbix.logout())
+                .catch((reason) =>
+                this.errors['items'].splice(0, 0, {'msg': "Server connection error"}));
         }
     }
 }
