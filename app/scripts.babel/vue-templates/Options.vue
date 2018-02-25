@@ -70,13 +70,20 @@ export default {
             this.zabbixs.servers.splice(index, 1);
         },
         save_data : function() {
+            /*
+            * Save data to localstorage and close options window
+            */
+
+            // Only save if validation successful
             this.$validator.validateAll().then(res=>{
                 if(res) {
-                    let savedServerSettings = this.zabbixs['servers'];
+
                     // Do not save results of hostGroup lookups
+                    let savedServerSettings = this.zabbixs['servers'];
                     for (var i = 0; i < savedServerSettings.length; i++) {
                         savedServerSettings[i].hostGroupsList = [];
                     }
+
                     this.zabbixs['servers'] = savedServerSettings;
                     localStorage.setItem('ZabbixServers', JSON.stringify(this.zabbixs) );
                     window.close();
@@ -92,23 +99,25 @@ export default {
             */
 
             // Clear old errors
-            delete this.errors['items'][0];
+            this.errors.items = [];
 
             const zabbix = new Zabbix(
                 server + '/api_jsonrpc.php',
                 user,
                 pass
             );
-            zabbix.login()
-                .then(() => zabbix.request('hostgroup.get', {
-                    'output': [
-                        'groupid',
-                        'name'
-                    ]
-                })).then((value) => this.zabbixs['servers'][index].hostGroupsList = value)
-                .then(() => zabbix.logout())
-                .catch((reason) =>
-                this.errors['items'].splice(0, 0, {'msg': "Server connection error"}));
+            this.$validator.validateAll().then(
+                zabbix.login()
+                    .then(() => zabbix.request('hostgroup.get', {
+                        'output': [
+                            'groupid',
+                            'name'
+                        ]
+                    })).then((value) => this.zabbixs['servers'][index].hostGroupsList = value)
+                    .then(() => zabbix.logout())
+                    .catch((reason) =>
+                    this.errors['items'].splice(0, 0, {'msg': "Server connection error"}))
+            );
         }
     }
 }
