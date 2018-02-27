@@ -87,6 +87,7 @@ export default {
                     this.zabbixs['servers'] = savedServerSettings;
                     localStorage.setItem('ZabbixServers', JSON.stringify(this.zabbixs) );
                     window.close();
+                    browser.runtime.sendMessage({method: 'reinitalize'});
                 } else {
                     console.log("submit problem");
                 }

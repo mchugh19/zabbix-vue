@@ -136,10 +136,19 @@ gulp.task('package', function () {
       .pipe(gulp.dest('package'));
 });
 
+// Task to copy fonts to dist.
+gulp.task('compile-fonts', function() {
+  return gulp.src([
+    'fonts/*',
+    'node_modules/material-design-icons-iconfont/dist/fonts/MaterialIcons-Regular.*'
+  ])
+  .pipe(gulp.dest('dist/fonts/'));
+});
+
 gulp.task('build', (cb) => {
   runSequence(
     'lint', 'babel', 'chromeManifest',
-    ['html', 'images', 'extras'],
+    ['html', 'images', 'compile-fonts','extras'],
     'size', cb);
 });
 

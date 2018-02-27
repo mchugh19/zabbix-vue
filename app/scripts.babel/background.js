@@ -1,247 +1,141 @@
 'use strict';
 
-var triggerOutput = {
-	"jsonrpc": "2.0",
-	"result": [{
-		"triggerid": "15475",
-		"expression": "{17012}=1",
-		"description": "Zabbix agent on master is unreachable for 5 minutes",
-		"url": "",
-		"status": "0",
-		"value": "1",
-		"priority": "3",
-		"lastchange": "1516088190",
-		"comments": "",
-		"error": "",
-		"templateid": "10047",
-		"type": "0",
-		"state": "0",
-		"flags": "0",
-		"recovery_mode": "0",
-		"recovery_expression": "",
-		"correlation_mode": "0",
-		"correlation_tag": "",
-		"manual_close": "0",
-		"hosts": [{
-			"hostid": "10258",
-			"proxy_hostid": "0",
-			"host": "master",
-			"status": "0",
-			"disable_until": "1519365996",
-			"error": "Get value from agent failed: cannot connect to [[10.0.2.15]:10050]: [111] Connection refused",
-			"available": "2",
-			"errors_from": "1516087871",
-			"lastaccess": "0",
-			"ipmi_authtype": "-1",
-			"ipmi_privilege": "2",
-			"ipmi_username": "",
-			"ipmi_password": "",
-			"ipmi_disable_until": "0",
-			"ipmi_available": "0",
-			"snmp_disable_until": "0",
-			"snmp_available": "0",
-			"maintenanceid": "0",
-			"maintenance_status": "0",
-			"maintenance_type": "0",
-			"maintenance_from": "0",
-			"ipmi_errors_from": "0",
-			"snmp_errors_from": "0",
-			"ipmi_error": "",
-			"snmp_error": "",
-			"jmx_disable_until": "0",
-			"jmx_available": "0",
-			"jmx_errors_from": "0",
-			"jmx_error": "",
-			"name": "master",
-			"flags": "0",
-			"templateid": "0",
-			"description": "",
-			"tls_connect": "1",
-			"tls_accept": "1",
-			"tls_issuer": "",
-			"tls_subject": "",
-			"tls_psk_identity": "",
-			"tls_psk": ""
-		}]
-	}, {
-		"triggerid": "13491",
-		"expression": "{12900}=1",
-		"description": "Zabbix agent on Zabbix server is unreachable for 5 minutes",
-		"url": "",
-		"status": "0",
-		"value": "1",
-		"priority": "3",
-		"lastchange": "1517766180",
-		"comments": "",
-		"error": "",
-		"templateid": "10047",
-		"type": "0",
-		"state": "0",
-		"flags": "0",
-		"recovery_mode": "0",
-		"recovery_expression": "",
-		"correlation_mode": "0",
-		"correlation_tag": "",
-		"manual_close": "0",
-		"hosts": [{
-			"hostid": "10084",
-			"proxy_hostid": "0",
-			"host": "Zabbix server",
-			"status": "0",
-			"disable_until": "1519365996",
-			"error": "Get value from agent failed: cannot connect to [[127.0.0.1]:10050]: [111] Connection refused",
-			"available": "2",
-			"errors_from": "1517765870",
-			"lastaccess": "0",
-			"ipmi_authtype": "-1",
-			"ipmi_privilege": "2",
-			"ipmi_username": "",
-			"ipmi_password": "",
-			"ipmi_disable_until": "0",
-			"ipmi_available": "0",
-			"snmp_disable_until": "0",
-			"snmp_available": "0",
-			"maintenanceid": "0",
-			"maintenance_status": "0",
-			"maintenance_type": "0",
-			"maintenance_from": "0",
-			"ipmi_errors_from": "0",
-			"snmp_errors_from": "0",
-			"ipmi_error": "",
-			"snmp_error": "",
-			"jmx_disable_until": "0",
-			"jmx_available": "0",
-			"jmx_errors_from": "0",
-			"jmx_error": "",
-			"name": "Zabbix server",
-			"flags": "0",
-			"templateid": "0",
-			"description": "",
-			"tls_connect": "1",
-			"tls_accept": "1",
-			"tls_issuer": "",
-			"tls_subject": "",
-			"tls_psk_identity": "",
-			"tls_psk": ""
-		}]
-	}, {
-		"triggerid": "13500",
-		"expression": "{12909}<50",
-		"description": "Lack of free swap space on Zabbix server",
-		"url": "",
-		"status": "0",
-		"value": "1",
-		"priority": "2",
-		"lastchange": "1515922290",
-		"comments": "It probably means that the systems requires more physical memory.",
-		"error": "",
-		"templateid": "10012",
-		"type": "0",
-		"state": "0",
-		"flags": "0",
-		"recovery_mode": "0",
-		"recovery_expression": "",
-		"correlation_mode": "0",
-		"correlation_tag": "",
-		"manual_close": "0",
-		"hosts": [{
-			"hostid": "10084",
-			"proxy_hostid": "0",
-			"host": "Zabbix server",
-			"status": "0",
-			"disable_until": "1519365996",
-			"error": "Get value from agent failed: cannot connect to [[127.0.0.1]:10050]: [111] Connection refused",
-			"available": "2",
-			"errors_from": "1517765870",
-			"lastaccess": "0",
-			"ipmi_authtype": "-1",
-			"ipmi_privilege": "2",
-			"ipmi_username": "",
-			"ipmi_password": "",
-			"ipmi_disable_until": "0",
-			"ipmi_available": "0",
-			"snmp_disable_until": "0",
-			"snmp_available": "0",
-			"maintenanceid": "0",
-			"maintenance_status": "0",
-			"maintenance_type": "0",
-			"maintenance_from": "0",
-			"ipmi_errors_from": "0",
-			"snmp_errors_from": "0",
-			"ipmi_error": "",
-			"snmp_error": "",
-			"jmx_disable_until": "0",
-			"jmx_available": "0",
-			"jmx_errors_from": "0",
-			"jmx_error": "",
-			"name": "Zabbix server",
-			"flags": "0",
-			"templateid": "0",
-			"description": "",
-			"tls_connect": "1",
-			"tls_accept": "1",
-			"tls_issuer": "",
-			"tls_subject": "",
-			"tls_psk_identity": "",
-			"tls_psk": ""
-		}]
-	}],
-	"id": 2
+const Zabbix = require('zabbix-promise');
+var settings = null;
+var interval;
+var triggerResults = {};
+
+
+function initalize() {
+	settings = JSON.parse(localStorage.getItem('ZabbixServers')) || null;
+	try {
+		interval = settings['global']['interval'];
+	} catch (err) {
+		interval = 60;
+	}
+	console.log('Got settings: ' + JSON.stringify(settings));
 }
 
+function getServerTriggers(server, user, pass, groups, callback) {
+	let zResults = {};
+	let requestObject = {
+		'output': 'extend',
+		'expandDescription': 1,
+		'selectHosts': 'extend',
+		'filter': {
+			'value': 1,
+			'status': 0
+		},
+		'sortfield': 'priority',
+		'sortorder': 'DESC'
+	}
 
-var zabbixChecker = {
-    checkServers: function() {
-		var settings = JSON.parse(localStorage.getItem('ZabbixServers')) || null;
-		var interval;
-		var hostGroups;
-		try {
-			interval = settings['global']['interval'];
-		} catch (err) {
-			interval = 60;
-		}
-        try {
-			hostGroups = settings['global']['hostGroups']
-		} catch (err) {
-			hostGroups = [];
-		}
-        //console.log('Got: ' + JSON.stringify(settings));
+	const zabbix = new Zabbix(
+		server + '/api_jsonrpc.php',
+		user,
+		pass
+	);
+	if (groups.length > 0) {
+		requestObject.groupids = groups
+	}
 
-        if (!settings || 0 === settings.length) {
-            console.log('No servers defined.');
-        } else {
-            for (var i = 0; i < settings['servers'].length; i++) {
-                console.log('Found server: ' + settings['servers'][i].alias);
-            }
-            interval = settings.global.interval;
-        }
-        setTimeout(function(){ zabbixChecker.checkServers(); },1000*interval);
-    },
-    getTriggers: function(groups, callback) {
-        console.log('Lookup trigger for hostgroups: ' + JSON.stringify(groups));
-        //console.log('Got triggers: ' + JSON.stringify(triggerOutput));
-        var results = triggerOutput['result'];
-        callback(results);
-    }
-};
+	zabbix.login()
+	.then(() => zabbix.request('trigger.get', requestObject))
+	.then((value) => {
+		callback(value)
+	}).finally(() => zabbix.logout())
+}
+
+function getTriggers(){
+	//console.log('getTriggers running with settings: ' + JSON.stringify(settings));
+	if (!settings || 0 === settings.length) {
+		triggerResults = {};
+		console.log('No servers defined.');
+	} else {
+		for (var i = 0; i < settings['servers'].length; i++) {
+			let server = settings['servers'][i].alias;
+			let serverURL = settings['servers'][i].url;
+			let user = settings['servers'][i].user
+			let pass = settings['servers'][i].pass
+			let groups = settings['servers'][i].hostGroups;
+			console.log('Found server: ' + server);
+			getServerTriggers(serverURL, user, pass, groups, function(results) {
+				triggerResults[server] = results;
+			})
+		}
+		console.log('Got trigger result: ' + JSON.stringify(triggerResults));
+	}
+}
+
+function scheduleCheckServers() {
+	console.log('Running scheduleCheckServers as scheduled');
+	getTriggers(function() {});
+
+	setTimeout(function(){ scheduleCheckServers(); },1000*interval);
+}
+
+function getActiveTriggersTable(callback) {
+	let popupHeaders = [
+		{'text': 'System','value': 'system'},
+		{'text': 'Description','value': 'description'},
+		{'text': 'Priority','value': 'priority'},
+		{'text': 'Age','value': 'age'}
+	]
+
+	//console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
+	if (Object.keys(triggerResults).length === 0 && triggerResults.constructor === Object) {
+		console.log('No current triggers or servers');
+	} else {
+		let bigTable = {};
+		bigTable['servers'] = []
+		bigTable['headers'] = popupHeaders
+		let servers = Object.keys(triggerResults)
+		for (var i = 0; i < servers.length; i++) {
+			let serverObject = {};
+			let triggerTable = [];
+			let server = servers[i];
+			console.log('Generating trigger table for server: ' + JSON.stringify(server));
+			for (var t = 0; t < triggerResults[server].length; t++) {
+				let system = triggerResults[server][t]['hosts'][0]['host']
+				var description = triggerResults[server][t]['description']
+				var priority = Number(triggerResults[server][t]['priority'])
+				var age = Number(triggerResults[server][t]['lastchange'])
+				var triggerid = triggerResults[server][t]['triggerid']
+				triggerTable.push({'system': system,
+								'description': description,
+								'priority': priority,
+								'age': age,
+								'triggerid': triggerid})
+			}
+			console.log('TriggerTable: ' + JSON.stringify(triggerTable));
+			serverObject[server] = triggerTable;
+			// Add search string for server
+			serverObject[server]['search'] = '';
+			console.log('serverObject is: ' + JSON.stringify(serverObject));
+			bigTable['servers'].push(serverObject);
+		}
+		console.log('Complete table: ' + JSON.stringify(bigTable));
+		callback(bigTable);
+	}
+	callback(null);
+}
 
 // Run our script as soon as the document's DOM is ready.
 document.addEventListener('DOMContentLoaded', function () {
-    zabbixChecker.checkServers();
+	initalize();
+    scheduleCheckServers();
 });
 
 // Activate messaging to popup.js
 function handleMessage(request, sender, sendResponse) {
-    switch (request.method)
-	{
+    switch (request.method) {
     case 'refreshTriggers':
-        console.log('getTriggers request for groups: ' + JSON.stringify(request.data));
-
-        zabbixChecker.getTriggers(request.data, function(triggerReturn) {
-            //console.log('ActiveTriggers should be set: ' + JSON.stringify(activeTriggers));
-            sendResponse(triggerReturn);
+		getActiveTriggersTable(function(results) {
+            sendResponse(results);
         });
 		break;
+	case 'reinitalize':
+		initalize();
 	}
 }
 var browser = browser || chrome;

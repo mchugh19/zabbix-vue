@@ -3,52 +3,67 @@
         <div id="menu">
             <!-- <input type="search" id="filter" placeholder="Filter Results"> -->
         </div>
-        <div id="triggerTable">
-            <table>
-                <thead>
-                    <tr>
-                        <td v-for="item, key in triggerTableData[0]">
-                            {{ key | capitalize }}
-                        </td>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="triggerItem in triggerTableData" >
-                        <td v-for="item in triggerItem" :class="triggerItem['priority'] | priority_class">
-                            {{ item | priority_name_filter | date_filter }}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div id="triggerTable" v-for="servers in triggerTableData.data.servers">
+            <div class="server-display">
+                <div v-for="(triggerList, server, index) in servers">
+                    <template>
+                        <v-card>
+                            <v-card-title>
+                                <h3>{{server}}</h3>
+                                <v-spacer></v-spacer>
+                                <v-text-field
+                                append-icon="search"
+                                label="Search"
+                                single-line
+                                hide-details
+                                v-model="server.search"
+                                ></v-text-field>
+                            </v-card-title>
+                            <v-data-table
+                                :items="triggerList"
+                                :headers="triggerTableData.data.headers"
+                                :search="search"
+                                hide-actions
+                                item-key="triggerid"
+                                class="server-display"
+                            >
+                                <template slot="items" slot-scope="props">
+                                    <tr @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
+                                        <td>{{props.item.system}}</td>
+                                        <td class="text-xs-right">{{props.item.description}}</td>
+                                        <td class="text-xs-right">{{props.item.priority}}</td>
+                                        <td class="text-xs-right">{{props.item.age | date_filter}}</td>
+                                    </tr>
+                                </template>
+                                <template slot="expand" slot-scope="props">
+                                    <v-card flat>
+                                        <v-card-text>STUFF</v-card-text>
+                                    </v-card>
+                                </template>
+                                <v-alert slot="no-results" :value="true" color="error" icon="warning">
+                                    Your search for "{{ search }}" found no results.
+                                </v-alert>
+                            </v-data-table>
+                        </v-card>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 </template>
 
 <script>
 var browser = browser || chrome;
-var triggerTable = [];
+var triggerTable = {};
+triggerTable['data'] = {};
 
 function requestTableRefresh(groupids) {
     browser.runtime.sendMessage({
-        method: 'refreshTriggers',
-        data: groupids}, function(response) {
-            //console.log('Requested trigger refresh for ' + JSON.stringify(groupids));
-            //console.log('got response: ' + JSON.stringify(response));
-            var activeTriggers = response;
-            var newTable = [];
-            triggerTable.splice(0, triggerTable.length)
-
-            for(var i = 0; i < activeTriggers.length; i++) {
-                var system = activeTriggers[i]['hosts'][0]['host'];
-                var description = activeTriggers[i]['description']
-                var priority = Number(activeTriggers[i]['priority'])
-                var age = Number(activeTriggers[i]['lastchange'])
-                newTable.push({'system': system,
-                        'description': description,
-                        'priority': priority,
-                        'age': age})
+        method: 'refreshTriggers'}, function(response) {
+            console.log('Popup got response: ' + JSON.stringify(response));
+            if (response) {
+                triggerTable.data = response;
             }
-            triggerTable.push.apply(triggerTable, newTable);
             console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
     })
 }
@@ -65,11 +80,6 @@ export default {
         }
     },
     filters: {
-        capitalize: function (value) {
-            if (!value) return '';
-            value = value.toString();
-            return value.charAt(0).toUpperCase() + value.slice(1);
-        },
         priority_class: function(value) {
             var PRIORITIES = {
                 0: 'notclassified',
@@ -130,3 +140,4 @@ export default {
     }
 }
 </script>
+<style src="vuetify/dist/vuetify.min.css"></style>
