@@ -21,8 +21,13 @@ function getServerTriggers(server, user, pass, groups, callback) {
 	let requestObject = {
 		'output': 'extend',
 		'expandDescription': 1,
+		'skipDependent': 1,
 		'selectHosts': 'extend',
+		// new stuff
+		'monitored': 1,
+		//'active': 1,
 		'filter': {
+			// Value: 0 = OK | 1 = PROBLEM | 2 = UNKNOWN
 			'value': 1,
 			'status': 0
 		},
@@ -47,23 +52,35 @@ function getServerTriggers(server, user, pass, groups, callback) {
 }
 
 function getTriggers(){
+	var triggerCount = 0;
 	//console.log('getTriggers running with settings: ' + JSON.stringify(settings));
 	if (!settings || 0 === settings.length) {
 		triggerResults = {};
 		console.log('No servers defined.');
 	} else {
-		for (var i = 0; i < settings['servers'].length; i++) {
-			let server = settings['servers'][i].alias;
-			let serverURL = settings['servers'][i].url;
-			let user = settings['servers'][i].user
-			let pass = settings['servers'][i].pass
-			let groups = settings['servers'][i].hostGroups;
-			console.log('Found server: ' + server);
-			getServerTriggers(serverURL, user, pass, groups, function(results) {
-				triggerResults[server] = results;
-			})
+		var i = 0;
+		function nextCheck() {
+			if (i < settings['servers'].length){
+				let server = settings['servers'][i].alias;
+				let serverURL = settings['servers'][i].url;
+				let user = settings['servers'][i].user
+				let pass = settings['servers'][i].pass
+				let groups = settings['servers'][i].hostGroups;
+				console.log('Found server: ' + server);
+				getServerTriggers(serverURL, user, pass, groups, function(results) {
+					triggerResults[server] = results;
+					triggerCount += triggerResults[server].length;
+					//console.log('async triggerCount is now ' + triggerCount.toString())
+					nextCheck();
+				})
+			} else {
+				// all server checks now complete
+				browser.browserAction.setBadgeText({text: triggerCount.toString()});
+			}
+			// Increment at the end to emulate a for loop
+			i++;
 		}
-		console.log('Got trigger result: ' + JSON.stringify(triggerResults));
+		nextCheck();
 	}
 }
 
@@ -89,6 +106,7 @@ function getActiveTriggersTable(callback) {
 		let bigTable = {};
 		bigTable['servers'] = []
 		bigTable['headers'] = popupHeaders
+		bigTable['loaded'] = false
 		let servers = Object.keys(triggerResults)
 		for (var i = 0; i < servers.length; i++) {
 			let serverObject = {};
@@ -97,21 +115,33 @@ function getActiveTriggersTable(callback) {
 			console.log('Generating trigger table for server: ' + JSON.stringify(server));
 			for (var t = 0; t < triggerResults[server].length; t++) {
 				let system = triggerResults[server][t]['hosts'][0]['host']
-				var description = triggerResults[server][t]['description']
-				var priority = Number(triggerResults[server][t]['priority'])
-				var age = Number(triggerResults[server][t]['lastchange'])
-				var triggerid = triggerResults[server][t]['triggerid']
+				let description = triggerResults[server][t]['description']
+				let priority = triggerResults[server][t]['priority']
+				let age = triggerResults[server][t]['lastchange']
+				let triggerid = triggerResults[server][t]['triggerid']
+				let hostid = triggerResults[server][t]['hosts'][0]['hostid']
 				triggerTable.push({'system': system,
 								'description': description,
 								'priority': priority,
 								'age': age,
-								'triggerid': triggerid})
+								'triggerid': triggerid,
+								'hostid': hostid})
 			}
-			console.log('TriggerTable: ' + JSON.stringify(triggerTable));
-			serverObject[server] = triggerTable;
+			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));
+			serverObject['triggers'] = triggerTable;
+			serverObject['server'] = server
 			// Add search string for server
-			serverObject[server]['search'] = '';
-			console.log('serverObject is: ' + JSON.stringify(serverObject));
+			serverObject['search'] = '';
+			serverObject['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1}
+			// Lookup zabbix url from settings
+			let url = ''
+			for (var x = 0; x < settings['servers'].length; x++) {
+				if (settings['servers'][i]['alias'] === server) {
+					url = settings['servers'][i]['url'];
+				}
+			}
+			serverObject['url'] = url
+			//console.log('serverObject is: ' + JSON.stringify(serverObject));
 			bigTable['servers'].push(serverObject);
 		}
 		console.log('Complete table: ' + JSON.stringify(bigTable));

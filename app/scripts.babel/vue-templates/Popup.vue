@@ -1,53 +1,54 @@
 <template>
     <div class="popup">
-        <div id="menu">
-            <!-- <input type="search" id="filter" placeholder="Filter Results"> -->
-        </div>
-        <div id="triggerTable" v-for="servers in triggerTableData.data.servers">
-            <div class="server-display">
-                <div v-for="(triggerList, server, index) in servers">
-                    <template>
-                        <v-card>
-                            <v-card-title>
-                                <h3>{{server}}</h3>
-                                <v-spacer></v-spacer>
-                                <v-text-field
-                                append-icon="search"
-                                label="Search"
-                                single-line
-                                hide-details
-                                v-model="server.search"
-                                ></v-text-field>
-                            </v-card-title>
-                            <v-data-table
-                                :items="triggerList"
-                                :headers="triggerTableData.data.headers"
-                                :search="search"
-                                hide-actions
-                                item-key="triggerid"
-                                class="server-display"
-                            >
-                                <template slot="items" slot-scope="props">
-                                    <tr @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
-                                        <td>{{props.item.system}}</td>
-                                        <td class="text-xs-right">{{props.item.description}}</td>
-                                        <td class="text-xs-right">{{props.item.priority}}</td>
-                                        <td class="text-xs-right">{{props.item.age | date_filter}}</td>
-                                    </tr>
-                                </template>
-                                <template slot="expand" slot-scope="props">
-                                    <v-card flat>
-                                        <v-card-text>STUFF</v-card-text>
-                                    </v-card>
-                                </template>
-                                <v-alert slot="no-results" :value="true" color="error" icon="warning">
-                                    Your search for "{{ search }}" found no results.
-                                </v-alert>
-                            </v-data-table>
-                        </v-card>
-                    </template>
-                </div>
-            </div>
+        <div id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
+            <template>
+                <v-card>
+                    <v-card-title>
+                        <h3>{{serverObj.server}}</h3>
+                        <v-spacer></v-spacer>
+                        <v-text-field
+                        append-icon="search"
+                        label="Filter"
+                        single-line
+                        hide-details
+                        v-model="serverObj.search"
+                        ></v-text-field>
+                    </v-card-title>
+                    <v-data-table
+                        :items="serverObj.triggers"
+                        :headers="triggerTableData.data.headers"
+                        :loading="triggerTableData.data.loaded"
+                        v-bind:search="serverObj.search"
+                        v-bind:pagination.sync="serverObj.pagination"
+                        hide-actions
+                        item-key="triggerid"
+                        class="server-display"
+                    >
+                        <v-progress-linear slot="progress" color="blue" indeterminate></v-progress-linear>
+                        <template slot="items" slot-scope="props">
+                            <tr class="show-overflow" @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
+                                <td class="show-overflow">{{props.item.system}}</td>
+                                <td class="text-xs-left show-overflow">{{props.item.description}}</td>
+                                <td class="text-xs-left show-overflow">{{props.item.priority | priority_name_filter}}</td>
+                                <td class="text-xs-left show-overflow">{{props.item.age | date_filter}}</td>
+                            </tr>
+                        </template>
+                        <template slot="expand" slot-scope="props">
+                            <v-layout row justify-left>
+                                <v-btn color="teal lighten-3" @click="hostDetails(serverObj.url, props.item.hostid)">Host Details</v-btn>
+                                <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">Latest Data</v-btn>
+                                <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">Host Graphs</v-btn>
+                                <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">Problem Details</v-btn>
+                                <v-btn color="teal lighten-3" @click="eventDetails">Event Details</v-btn>
+                                <v-btn color="teal lighten-3" @click.native.stop="ackEvent = true">Ack Event</v-btn>
+                            </v-layout>
+                        </template>
+                        <v-alert slot="no-results" :value="true" color="red" icon="warning">
+                            Your search for "{{ serverObj.search }}" found no results.
+                        </v-alert>
+                    </v-data-table>
+                </v-card>
+            </template>
         </div>
     </div>
 </template>
@@ -56,6 +57,7 @@
 var browser = browser || chrome;
 var triggerTable = {};
 triggerTable['data'] = {};
+triggerTable['data']['loaded'] = true;
 
 function requestTableRefresh(groupids) {
     browser.runtime.sendMessage({
@@ -93,51 +95,85 @@ export default {
             return PRIORITIES[value];
         },
         priority_name_filter: function(value) {
-            if (typeof value == "number" && value < 10) {
-                var PRIORITY_NAMES = {
-                    0: 'Not Classified',
-                    1: 'Information',
-                    2: 'Warning',
-                    3: 'Average',
-                    4: 'High',
-                    5: 'Disaster',
-                    9: 'Normal'
-                }
-                return PRIORITY_NAMES[value];
-            } else {
-                return value;
+            var PRIORITY_NAMES = {
+                0: 'Not Classified',
+                1: 'Information',
+                2: 'Warning',
+                3: 'Average',
+                4: 'High',
+                5: 'Disaster',
+                9: 'Normal'
             }
+            return PRIORITY_NAMES[value];
         },
         date_filter: function(value) {
-            if (typeof value == "number" && value > 10000) {
-                var curtime = new Date().getTime();
-                var diff = curtime - (value * 1000);
+            var curtime = new Date().getTime();
+            var diff = curtime - (value * 1000);
 
-                var seconds = parseInt(diff / 1000);
-                var minutes = parseInt(seconds / 60);
-                var hours = parseInt(minutes / 60);
-                var days = parseInt(hours / 24);
+            var seconds = parseInt(diff / 1000);
+            var minutes = parseInt(seconds / 60);
+            var hours = parseInt(minutes / 60);
+            var days = parseInt(hours / 24);
 
-                var result = '';
-                if (days > 0) {
-                    result += days + 'd, ';
-                }
-                if (hours > 0) {
-                    result += (hours % 24) + 'h, ';
-                }
-                result += (minutes % 60) + 'm';
-
-                return result;
-            } else {
-                return value;
+            var result = '';
+            if (days > 0) {
+                result += days + 'd, ';
             }
+            if (hours > 0) {
+                result += (hours % 24) + 'h, ';
+            }
+            result += (minutes % 60) + 'm';
+
+            return result;
         }
     },
     methods: {
         updateTriggerData: function(newTriggers) {
             this.triggers = newTriggers;
+        },
+        hostDetails: function(url, hostid) {
+            window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank")
+        },
+        latestData: function(url, hostid) {
+            window.open(url + "/latest.php?fullscreen=0&filter_set=1&show_without_data=1&hostids%5B%5D=" + hostid, "_blank")
+        },
+        hostGraphs: function(url, hostid) {
+            window.open(url + "/charts.php?fullscreen=0&groupid=0&graphid=0&hostid=" + hostid, "_blank")
+        },
+        problemDetails: function(url, triggerid) {
+            window.open(url + "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" + triggerid, "_blank")
         }
     }
 }
 </script>
 <style src="vuetify/dist/vuetify.min.css"></style>
+<style>
+/* Override vuetify defaults for greater table density*/
+table.table thead tr {
+    height: unset;
+}
+table.table tbody th,
+table.table tbody td {
+    height: unset;
+}
+table.table tbody td:first-child,
+table.table tbody td:not(:first-child),
+table.table tbody th:first-child,
+table.table tbody th:not(:first-child),
+table.table thead td:first-child,
+table.table thead td:not(:first-child),
+table.table thead th:first-child,
+table.table thead th:not(:first-child) {
+    padding: 0 5px;
+}
+.btn {
+	height: 20px;
+	margin: 2px 2px;
+}
+.btn__content {
+	padding: 0 10px;
+}
+.card__title {
+    padding: unset;
+}
+</style>
