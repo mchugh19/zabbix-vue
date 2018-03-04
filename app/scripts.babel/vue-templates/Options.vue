@@ -16,6 +16,9 @@
                     <option v-for="hostgroup in server.hostGroupsList" v-bind:key="hostgroup.name" v-bind:value="hostgroup.groupid">{{ hostgroup.name }}</option>
                 </select>
                 <input id='refreshGroups' type='button' value='Refresh Group List' @click='refreshGroups(server.url, server.user, server.pass, index)'>
+                <select id="severity" v-model='server.minSeverity'>
+                    <option v-for="priority in severitySelector" v-bind:key="priority.name" v-bind:value="priority.priority">{{ priority.name }}</option>
+                </select>
                 <input id='removeZabbix' type='button' value='X' v-if="zabbixs.servers.length > 1" @click='removeServer(index)'>
             </div>
             <div name='globalSettings'>
@@ -29,28 +32,47 @@
 
 <script>
 const Zabbix = require('zabbix-promise');
+require('crypt.io');
+global.sjcl = require('sjcl');
 var browser = browser || chrome;
+var severitySelect = [
+    {'name': 'not classified', 'priority': 0},
+    {'name': 'information', 'priority': 1},
+    {'name': 'warning', 'priority': 2},
+    {'name': 'average', 'priority': 3},
+    {'name': 'high', 'priority': 4},
+    {'name': 'disaster', 'priority': 5}
+]
 
-var zabbix_data = JSON.parse(localStorage.getItem('ZabbixServers')) || {
-    'global': {
-        'interval': 60
-    },
-    'servers': [{
-        'alias': 'New Server',
-        'url': '',
-        'user': '',
-        'pass': '',
-        'hide': false,
-        'hostGroups': [],
-        'hostGroupsList': []
+var zabbix_data;
+cryptio.get('ZabbixServers', function(err, results) {
+    if (err) {
+        zabbix_data = {
+            'global': {
+                'interval': 60
+            },
+            'servers': [{
+                'alias': 'New Server',
+                'url': '',
+                'user': '',
+                'pass': '',
+                'hide': false,
+                'hostGroups': [],
+                'hostGroupsList': [],
+                'minSeverity': 0
 
-    }]
-};
+            }]
+        }
+    };
+    zabbix_data = results;
+    console.log('zabbix_data is now: ' + JSON.stringify(zabbix_data));
+})
 
 export default {
     data () {
         return {
-            'zabbixs': zabbix_data
+            'zabbixs': zabbix_data,
+            'severitySelector': severitySelect
         }
     },
     methods: {
@@ -62,7 +84,8 @@ export default {
                 'pass': '',
                 'hide': false,
                 'hostGroups': [],
-                'hostGroupsList': []
+                'hostGroupsList': [],
+                'minSeverity': 0
             });
         },
         removeServer: function (index) {
@@ -71,7 +94,8 @@ export default {
         },
         save_data : function() {
             /*
-            * Save data to localstorage and close options window
+            * Save data to localstorage encrypted and close options window
+            * Message background.js to reload the new settings
             */
 
             // Only save if validation successful
@@ -83,9 +107,13 @@ export default {
                     for (var i = 0; i < savedServerSettings.length; i++) {
                         savedServerSettings[i].hostGroupsList = [];
                     }
-
                     this.zabbixs['servers'] = savedServerSettings;
-                    localStorage.setItem('ZabbixServers', JSON.stringify(this.zabbixs) );
+
+                    var ZabbixServers = this.zabbixs;
+                    cryptio.set('ZabbixServers', ZabbixServers, function(err, results) {
+                        if (err) throw err;
+                        console.log(results);
+                    });
                     window.close();
                     browser.runtime.sendMessage({method: 'reinitalize'});
                 } else {

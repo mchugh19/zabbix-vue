@@ -23,6 +23,7 @@
     "gulp-load-plugins": "^1.2.0",
     "gulp-size": "^2.1.0",
     "gulp-sourcemaps": "^1.6.0",
+    "gulp-svg2png": "^2.0.2",
     "gulp-uglify": "^1.5.3",
     "gulp-useref": "^3.0.8",
     "gulp-zip": "^3.2.0",
@@ -51,6 +52,8 @@
   "dependencies": {
     "babel-loader": "^7.1.2",
     "babel-preset-env": "^1.6.1",
+    "crypt.io": "^1.0.8",
+    "sjcl": "^1.0.7",
     "vee-validate": "^2.0.4",
     "vue": "^2.5.13",
     "vue-loader": "^14.1.1",

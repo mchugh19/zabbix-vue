@@ -1,5 +1,8 @@
 <template>
     <div class="popup">
+        <span v-if="triggerTableData.data.error" class='serverError'>
+            <i class="material-icons">warning</i> Check server configuration in extension options
+        </span>
         <div id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
             <template>
                 <v-card>
@@ -24,7 +27,6 @@
                         item-key="triggerid"
                         class="server-display"
                     >
-                        <v-progress-linear slot="progress" color="blue" indeterminate></v-progress-linear>
                         <template slot="items" slot-scope="props">
                             <tr class="show-overflow" @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
                                 <td class="show-overflow">{{props.item.system}}</td>
@@ -43,6 +45,11 @@
                                 <v-btn color="teal lighten-3" @click.native.stop="ackEvent = true">Ack Event</v-btn>
                             </v-layout>
                         </template>
+                        <template slot="no-data">
+                            <v-alert :value="true" color="green lighten-1" icon="done">
+                                No problems
+                            </v-alert>
+                        </template>
                         <v-alert slot="no-results" :value="true" color="red" icon="warning">
                             Your search for "{{ serverObj.search }}" found no results.
                         </v-alert>
@@ -58,15 +65,21 @@ var browser = browser || chrome;
 var triggerTable = {};
 triggerTable['data'] = {};
 triggerTable['data']['loaded'] = true;
+//triggerTable['data']['error'] = true;
 
 function requestTableRefresh(groupids) {
     browser.runtime.sendMessage({
         method: 'refreshTriggers'}, function(response) {
-            console.log('Popup got response: ' + JSON.stringify(response));
+            //console.log('Popup got response: ' + JSON.stringify(response));
             if (response) {
-                triggerTable.data = response;
+                if (Object.keys(response).length === 0 && response.constructor === Object) {
+                    // No servers defined
+                    triggerTable.data.error = true;
+                } else {
+                    triggerTable.data = response;
+                }
             }
-            console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
+            //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
     })
 }
 
@@ -175,5 +188,12 @@ table.table thead th:not(:first-child) {
 }
 .card__title {
     padding: unset;
+}
+.serverError {
+    padding: 20px;
+    background-color: gray;
+    color: white;
+    margin-bottom: 15px;
+    display: block;
 }
 </style>

@@ -22,6 +22,11 @@ module.exports = {
             loader: "file-loader?name=fonts/[name].[ext]"
         }]
     },
+    externals: {
+        //'sjcl': 'sjcl'
+        //'zabbix-promise': 'zabbix-promise',
+        //'crypt.io': 'crypt.io'
+    },
     node: {
         console: true,
         fs: 'empty',

@@ -145,10 +145,17 @@ gulp.task('compile-fonts', function() {
   .pipe(gulp.dest('dist/fonts/'));
 });
 
+var svg2png = require('gulp-svg2png');
+gulp.task('svg2png', function () {
+    gulp.src('app/img_src/*.svg')
+        .pipe(svg2png())
+        .pipe(gulp.dest('dist/images/'));
+});
+
 gulp.task('build', (cb) => {
   runSequence(
-    'lint', 'babel', 'chromeManifest',
-    ['html', 'images', 'compile-fonts','extras'],
+    'lint', 'babel', 'chromeManifest', 'svg2png',
+    ['html', 'compile-fonts','extras'],
     'size', cb);
 });
 

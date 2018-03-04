@@ -2,12 +2,8 @@ body {
 	font-size: 10pt;
 	padding: 0;
 	margin: 0;
-}
-
-div.popup {
-	/*padding: 10px;*/
 	width: 800px;
-	min-height: 150px;
+	min-height: 50px;
 }
 
 .disaster	{ background-color: #FF3838; color: #222222;}
