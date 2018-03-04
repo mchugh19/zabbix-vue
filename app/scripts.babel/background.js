@@ -4,6 +4,7 @@ var browser = browser || chrome;
 const Zabbix = require('zabbix-promise');
 require('crypt.io');
 global.sjcl = require('sjcl');
+
 var settings = null;
 var interval;
 var triggerResults = {};
@@ -11,6 +12,10 @@ var popupTable = {};
 
 
 function initalize() {
+	/*
+	* Set settings from options screen
+	* Called by options so also kickoff an initial Zabbix poll
+	*/
 	cryptio.get('ZabbixServers', function(err, results){
 		if (err) {settings = null};
 		settings = results;
@@ -21,10 +26,25 @@ function initalize() {
 		interval = 60;
 	}
 	//console.log('Got settings: ' + JSON.stringify(settings));
-	getTriggers();
+	getAllTriggers();
 }
 
+
+function scheduleCheckServers() {
+	/*
+	* Loop and schedule updates based on server check interval from options
+	*/
+	console.log('Running scheduleCheckServers as scheduled');
+	getAllTriggers();
+
+	setTimeout(function(){ scheduleCheckServers(); },1000*interval);
+}
+
+
 function getServerTriggers(server, user, pass, groups, hideAck, minPriority, callback) {
+	/*
+	* Return data from zabbix trigger.get call
+	*/
 	delete popupTable['error'];
 	let zResults = {};
 	let requestObject = {
@@ -35,10 +55,9 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 			'host',
 			'hostid'
 		],
-		// new stuff
 		'monitored': 1,
 		'min_severity': minPriority,
-		//'active': 1,
+		'active': 1,
 		'filter': {
 			// Value: 0 = OK | 1 = PROBLEM | 2 = UNKNOWN
 			'value': 1,
@@ -72,21 +91,15 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 	.then(() => zabbix.request('trigger.get', requestObject))
 	.then((value) => {
 		callback(value)
-	}).finally(() => zabbix.logout()).catch(function(res){
+	}).finally(() => zabbix.logout())
+	.catch(function(res){
 		console.log('Error communicating with: ' + server.toString())
 		popupTable['error'] = true;
 	})
 }
 
-Set.prototype.difference = function(setB) {
-    var difference = new Set(this);
-    for (var elem of setB) {
-        difference.delete(elem);
-    }
-    return difference;
-}
 
-function getTriggers(){
+function getAllTriggers(){
 	var triggerCount = 0;
 	if (!settings || 0 === settings.length) {
 		triggerResults = {};
@@ -104,37 +117,22 @@ function getTriggers(){
 				let minPriority = settings['servers'][i].minSeverity;
 				console.log('Found server: ' + server);
 				getServerTriggers(serverURL, user, pass, groups, hideAck, minPriority, function(results) {
-					/*
-					let newResults = [];
-					for (lines of results) {
-						newResults.push
-					}
-					console.log('got new results' + JSON.stringify(results));
-					let notifyTriggers = results.filter((trig) => {
-						return !triggerResults[server].has(trig);
-					})
-					console.log('New triggers: ' + JSON.stringify(notifyTriggers));
-					for (let trg of notifyTriggers) {
-						sendNotify(trg);
-					}
-					*/
-					triggerResults[server] = results;
-					/*
-					let oldTriggersSet = new Set(triggerResults[server]||[]);
-					console.log('oldTriggers: ' + JSON.stringify(oldTriggersSet));
-					triggerResults[server] = results;
-					let newTriggersSet = new Set(triggerResults[server]);
-					console.log('newTriggers: ' + JSON.stringify(newTriggersSet));
-					//let newTriggerDiff = new Set([...newTriggersSet].filter(x => !oldTriggersSet.has(x)));
-					let newTriggerDiff = new Set(
-						[...newTriggersSet].filter(x => !oldTriggersSet.has(x))
-					);
-					console.log('diff found: ' + JSON.stringify([...newTriggerDiff]));
+					// Find values that are in new results but not in previous
+					let oldTriggers = triggerResults[server] || []
+					let triggerDiff = results.filter(function(obj) {
+						return !oldTriggers.some(function(obj2) {
+							return obj.value == obj2.value;
+						});
+					});
 
-					for (let trig of [...newTriggerDiff]) {
+					// Notify popup for new triggers
+					for (let trig of triggerDiff) {
 						sendNotify(trig);
 					}
-					*/
+
+					// Record new trigger list
+					triggerResults[server] = results;
+
 					//console.log('triggerResults for server: ' + JSON.stringify(triggerResults[server]));
 					triggerCount += triggerResults[server].length;
 					nextCheck();
@@ -142,9 +140,11 @@ function getTriggers(){
 			} else {
 				// all server checks now complete
 				if (triggerCount > 0) {
+					// Set bage for the number of active triggers
 					browser.browserAction.setBadgeBackgroundColor({ color: '#888888' });
 					browser.browserAction.setBadgeText({text: triggerCount.toString()});
 				} else {
+					// Clear badge as there are no active triggers
 					browser.browserAction.setBadgeText({text: ''});
 				}
 				setActiveTriggersTable();
@@ -157,26 +157,19 @@ function getTriggers(){
 }
 
 function sendNotify(message) {
-	console.log('notify message for: ' + JSON.stringify(message))
+	/*
+	* Create a browser notification popup
+	*/
 	browser.notifications.create('notification', {
 		type: 'basic',
 		title: message.hosts[0].host,
 		message: message.description,
-		iconUrl: 'images/logo.png',
-		buttons: [{
-			title: 'View in Zabbix'
-		}]
+		iconUrl: 'images/sev_' + message.priority + '.png',
 	}, function() {
 			setTimeout(function() { browser.notifications.clear('notification', function() {}); }, 5000);
 	});
 }
 
-function scheduleCheckServers() {
-	console.log('Running scheduleCheckServers as scheduled');
-	getTriggers();
-
-	setTimeout(function(){ scheduleCheckServers(); },1000*interval);
-}
 
 function setBrowserIcon(severity) {
 	/*
@@ -192,7 +185,11 @@ function setBrowserIcon(severity) {
 	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.png'})
 }
 
+
 function setActiveTriggersTable() {
+	/*
+	* Generate object for display in popup window
+	*/
 	let topSeverity = -1;
 	let popupHeaders = [
 		{'text': 'System','value': 'system'},
@@ -210,6 +207,8 @@ function setActiveTriggersTable() {
 		popupTable['loaded'] = false
 		let servers = Object.keys(triggerResults)
 		for (var i = 0; i < servers.length; i++) {
+			// Iterate over each configured server, generate trigger list
+
 			let serverObject = {};
 			let triggerTable = [];
 			let server = servers[i];
@@ -226,12 +225,14 @@ function setActiveTriggersTable() {
 				let age = triggerResults[server][t]['lastchange']
 				let triggerid = triggerResults[server][t]['triggerid']
 				let hostid = triggerResults[server][t]['hosts'][0]['hostid']
-				triggerTable.push({'system': system,
-								'description': description,
-								'priority': priority,
-								'age': age,
-								'triggerid': triggerid,
-								'hostid': hostid})
+				triggerTable.push({
+					'system': system,
+					'description': description,
+					'priority': priority,
+					'age': age,
+					'triggerid': triggerid,
+					'hostid': hostid
+				})
 			}
 			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));
 			serverObject['triggers'] = triggerTable;
@@ -261,13 +262,60 @@ function getActiveTriggersTable(callback) {
 }
 
 
+function getEventId(url, triggerid, callback) {
+/*
+* Given a Zabbix url and triggerid, return the latest eventid
+*/
+	let user = '';
+	let pass = '';
+
+	// Lookup credentials for url
+	for (var i = 0; i < settings['servers'].length; i++) {
+		if (settings['servers'][i].url === url) {
+			//console.log('found server: ' + JSON.stringify(settings['servers'][i]))
+			user = settings['servers'][i].user;
+			pass = settings['servers'][i].pass;
+			break;
+		} else {
+			console.log('unable to locate zabbix creds');
+		}
+	}
+
+	const zabbix = new Zabbix(
+		url + '/api_jsonrpc.php',
+		user,
+		pass
+	);
+
+	let requestObject = {
+		'output': ['eventid', 'clock'],
+		'objectids': triggerid,
+		'sortfield': ['clock', 'eventid'],
+		'sortorder': 'DESC'
+	}
+
+	zabbix.login()
+	.then(() => zabbix.request('event.get', requestObject))
+	.then((value) => {
+		let eventid = value[0].eventid
+		//console.log('zabbix eventid lookup: ' + JSON.stringify(eventid));
+		callback(eventid)
+	}).finally(() => zabbix.logout())
+	.catch(function(res){
+		console.log('Error communicating with: ' + server.toString())
+	})
+
+}
+
+
 // Run our script as soon as the document's DOM is ready.
 document.addEventListener('DOMContentLoaded', function () {
 	initalize();
     scheduleCheckServers();
 });
 
-// Activate messaging to popup.js
+
+// Activate messaging to popup.js and options.js
 function handleMessage(request, sender, sendResponse) {
     switch (request.method) {
     case 'refreshTriggers':
@@ -276,7 +324,18 @@ function handleMessage(request, sender, sendResponse) {
         });
 		break;
 	case 'reinitalize':
+		// Sent by options to alert to config changes in order to refresh
 		initalize();
+		break;
+	case 'getEventid':
+		getEventId(request.url,
+			request.triggerid,
+			function(results) {
+				sendResponse(results);
+			}
+		)
+		break;
 	}
+	return true;
 }
 browser.runtime.onMessage.addListener(handleMessage);

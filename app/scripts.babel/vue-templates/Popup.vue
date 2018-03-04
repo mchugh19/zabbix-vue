@@ -41,8 +41,8 @@
                                 <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">Latest Data</v-btn>
                                 <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">Host Graphs</v-btn>
                                 <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">Problem Details</v-btn>
-                                <v-btn color="teal lighten-3" @click="eventDetails">Event Details</v-btn>
-                                <v-btn color="teal lighten-3" @click.native.stop="ackEvent = true">Ack Event</v-btn>
+                                <v-btn color="teal lighten-3" @click="eventDetails(serverObj.url, props.item.triggerid)">Event Details</v-btn>
+                                <v-btn color="teal lighten-3" @click="ackEvent(serverObj.url, props.item.triggerid)">Ack Event</v-btn>
                             </v-layout>
                         </template>
                         <template slot="no-data">
@@ -67,10 +67,11 @@ triggerTable['data'] = {};
 triggerTable['data']['loaded'] = true;
 //triggerTable['data']['error'] = true;
 
-function requestTableRefresh(groupids) {
+
+function requestTableRefresh() {
     browser.runtime.sendMessage({
-        method: 'refreshTriggers'}, function(response) {
-            //console.log('Popup got response: ' + JSON.stringify(response));
+        'method': 'refreshTriggers'}, function(response) {
+            //console.log('refreshTriggers Popup got response: ' + JSON.stringify(response));
             if (response) {
                 if (Object.keys(response).length === 0 && response.constructor === Object) {
                     // No servers defined
@@ -80,7 +81,21 @@ function requestTableRefresh(groupids) {
                 }
             }
             //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
-    })
+        }
+    )
+}
+
+function getEventid(url, triggerid, callback) {
+    browser.runtime.sendMessage(
+        {
+            'method': 'getEventid',
+            'url': url,
+            'triggerid': triggerid
+        }, function(response) {
+            console.log('getEventid popup got response: ' + JSON.stringify(response));
+            callback(response);
+        }
+    )
 }
 
 
@@ -155,6 +170,16 @@ export default {
         },
         problemDetails: function(url, triggerid) {
             window.open(url + "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" + triggerid, "_blank")
+        },
+        eventDetails: function(url, triggerid) {
+            getEventid(url, triggerid, function(result){
+                window.open(url + "/tr_events.php?triggerid=" + triggerid + "&eventid=" + result, '_blank');
+            });
+        },
+        ackEvent: function(url, triggerid) {
+            getEventid(url, triggerid, function(result){
+                window.open(url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + result, '_blank');
+            });
         }
     }
 }
