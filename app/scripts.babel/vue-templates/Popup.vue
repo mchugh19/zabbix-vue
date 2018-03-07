@@ -1,5 +1,5 @@
 <template>
-    <div class="popup">
+    <v-app class="popup">
         <span v-if="triggerTableData.data.error" class='serverError'>
             <i class="material-icons">warning</i> Check server configuration in extension options
         </span>
@@ -57,7 +57,7 @@
                 </v-card>
             </template>
         </div>
-    </div>
+    </v-app>
 </template>
 
 <script>
@@ -101,6 +101,18 @@ function getEventid(url, triggerid, callback) {
 
 document.addEventListener('DOMContentLoaded', function () {
     requestTableRefresh();
+
+    // Display modifications to work around chrome issue 428044
+    // (Tiny popup size)
+    setTimeout(() => {
+        setTimeout(() => {
+            //document.body.style.transition = 'opacity ease-out .4s';
+            document.body.style.display = 'block';
+            /*requestAnimationFrame(function() {
+                document.body.style.opacity = 1;
+            });*/
+        });
+  }, 300);
 });
 
 export default {
@@ -220,5 +232,12 @@ table.table thead th:not(:first-child) {
     color: white;
     margin-bottom: 15px;
     display: block;
+}
+/* Display modifications to work around chrome issue 428044
+ * (Tiny popup size)
+ */
+body {
+    /*opacity: 0;*/
+    display: none;
 }
 </style>

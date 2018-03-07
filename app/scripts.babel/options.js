@@ -1,10 +1,11 @@
 'use strict';
 
 import Vue from 'vue';
-import VeeValidate from 'vee-validate';
+import Vuetify from 'vuetify'
 import Options from './vue-templates/Options.vue';
+require('material-design-icons-iconfont/dist/fonts/material-icons.css')
 
-Vue.use(VeeValidate);
+Vue.use(Vuetify)
 
 document.addEventListener('DOMContentLoaded', () => {
     new Vue({

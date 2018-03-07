@@ -6,11 +6,11 @@ body {
 	min-height: 50px;
 }
 
-.disaster	{ background-color: #FF3838; color: #222222;}
-.high		{ background-color: #FF9999; color: #222222;}
-.average	{ background-color: #FFB689 ; color: #222222;}
-.warning	{ background-color: #FFF6A5; color: #222222;}
-.information	{ background-color: #D6F6FF; color: #222222;}
-.unknown_trigger{ background-color: #DBDBDB; color: #222222;}
-.normal,
-.notclassified		{ background-color: #DBDBDB; color: #222222;}
+tr.disaster			{ background-color: #FF3838; color: #222222;}
+tr.high				{ background-color: #FF9999; color: #222222;}
+tr.average			{ background-color: #FFB689; color: #222222;}
+tr.warning			{ background-color: #FFF6A5 !important; color: #222222;}
+tr.information		{ background-color: #D6F6FF; color: #222222;}
+tr.unknown_trigger	{ background-color: #DBDBDB; color: #222222;}
+tr.normal,
+tr.notclassified	{ background-color: #DBDBDB; color: #222222;}
