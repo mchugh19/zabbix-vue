@@ -3,6 +3,11 @@
   "version": "0.0.1",
   "manifest_version": 2,
   "description": "__MSG_appDescription__",
+  "applications": {
+    "gecko": {
+      "id": "addon@example.com"
+    }
+  },
   "icons": {
     "128": "images/logo.png"
   },
@@ -15,8 +20,7 @@
   "permissions": [
     "background",
     "notifications",
-    "storage",
-    "*://*/"
+    "storage"
   ],
   "options_ui": {
     "page": "options.html",
@@ -30,6 +34,5 @@
   },
   "web_accessible_resources": [
     "images/logo.png"
-  ],
-  "content_security_policy":"script-src 'self' http://localhost:8098; object-src 'self'"
+  ]
 }

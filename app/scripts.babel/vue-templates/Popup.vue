@@ -3,60 +3,57 @@
         <span v-if="triggerTableData.data.error" class='serverError'>
             <i class="material-icons">warning</i> Check server configuration in extension options
         </span>
-        <div id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
-            <template>
-                <v-card>
-                    <v-card-title>
-                        <h3>{{serverObj.server}}</h3>
-                        <v-spacer></v-spacer>
-                        <v-text-field
-                        append-icon="search"
-                        label="Filter"
-                        single-line
-                        hide-details
-                        v-model="serverObj.search"
-                        ></v-text-field>
-                    </v-card-title>
-                    <v-data-table
-                        :items="serverObj.triggers"
-                        :headers="triggerTableData.data.headers"
-                        :loading="triggerTableData.data.loaded"
-                        v-bind:search="serverObj.search"
-                        v-bind:pagination.sync="serverObj.pagination"
-                        hide-actions
-                        item-key="triggerid"
-                        class="server-display"
-                    >
-                        <template slot="items" slot-scope="props">
-                            <tr class="show-overflow" @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
-                                <td class="show-overflow">{{props.item.system}}</td>
-                                <td class="text-xs-left show-overflow">{{props.item.description}}</td>
-                                <td class="text-xs-left show-overflow">{{props.item.priority | priority_name_filter}}</td>
-                                <td class="text-xs-left show-overflow">{{props.item.age | date_filter}}</td>
-                            </tr>
-                        </template>
-                        <template slot="expand" slot-scope="props">
-                            <v-layout row justify-left>
-                                <v-btn color="teal lighten-3" @click="hostDetails(serverObj.url, props.item.hostid)">Host Details</v-btn>
-                                <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">Latest Data</v-btn>
-                                <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">Host Graphs</v-btn>
-                                <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">Problem Details</v-btn>
-                                <v-btn color="teal lighten-3" @click="eventDetails(serverObj.url, props.item.triggerid)">Event Details</v-btn>
-                                <v-btn color="teal lighten-3" @click="ackEvent(serverObj.url, props.item.triggerid)">Ack Event</v-btn>
-                            </v-layout>
-                        </template>
-                        <template slot="no-data">
-                            <v-alert :value="true" color="green lighten-1" icon="done">
-                                No problems
-                            </v-alert>
-                        </template>
-                        <v-alert slot="no-results" :value="true" color="red" icon="warning">
-                            Your search for "{{ serverObj.search }}" found no results.
-                        </v-alert>
-                    </v-data-table>
-                </v-card>
-            </template>
-        </div>
+        <v-card class="serverBlock" id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
+            <v-card-title>
+                <h3>{{serverObj.server}}</h3>
+                <v-spacer></v-spacer>
+                <v-text-field
+                append-icon="search"
+                label="Filter"
+                single-line
+                hide-details
+                v-model="serverObj.search"
+                ></v-text-field>
+            </v-card-title>
+            <v-data-table
+                :items="serverObj.triggers"
+                :headers="triggerTableData.data.headers"
+                :loading="triggerTableData.data.loaded"
+                v-bind:search="serverObj.search"
+                v-bind:pagination.sync="serverObj.pagination"
+                hide-actions
+                item-key="triggerid"
+                class="server-display"
+            >
+                <template slot="items" slot-scope="props">
+                    <tr class="show-overflow" @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
+                        <td class="show-overflow">{{props.item.system}}</td>
+                        <td class="text-xs-left show-overflow">{{props.item.description}}
+                            <span style="float:right;"><i v-if="props.item.acknowledged" class="tiny material-icons">flag</i></span></td>
+                        <td class="text-xs-left show-overflow">{{props.item.priority | priority_name_filter}}</td>
+                        <td class="text-xs-left show-overflow">{{props.item.age | date_filter}}</td>
+                    </tr>
+                </template>
+                <template slot="expand" slot-scope="props">
+                    <v-layout row justify-left>
+                        <v-btn color="teal lighten-3" @click="hostDetails(serverObj.url, props.item.hostid)">Host Details</v-btn>
+                        <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">Latest Data</v-btn>
+                        <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">Host Graphs</v-btn>
+                        <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">Problem Details</v-btn>
+                        <v-btn color="teal lighten-3" @click="eventDetails(serverObj.url, props.item.triggerid, props.item.eventid)">Event Details</v-btn>
+                        <v-btn color="teal lighten-3" @click="ackEvent(serverObj.url, props.item.triggerid, props.item.eventid)">Ack Event</v-btn>
+                    </v-layout>
+                </template>
+                <template slot="no-data">
+                    <v-alert :value="true" color="green lighten-1" icon="done">
+                        No problems
+                    </v-alert>
+                </template>
+                <v-alert slot="no-results" :value="true" color="red" icon="warning">
+                    Your search for "{{ serverObj.search }}" found no results.
+                </v-alert>
+            </v-data-table>
+        </v-card>
     </v-app>
 </template>
 
@@ -81,19 +78,6 @@ function requestTableRefresh() {
                 }
             }
             //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
-        }
-    )
-}
-
-function getEventid(url, triggerid, callback) {
-    browser.runtime.sendMessage(
-        {
-            'method': 'getEventid',
-            'url': url,
-            'triggerid': triggerid
-        }, function(response) {
-            console.log('getEventid popup got response: ' + JSON.stringify(response));
-            callback(response);
         }
     )
 }
@@ -160,9 +144,16 @@ export default {
                 result += days + 'd, ';
             }
             if (hours > 0) {
-                result += (hours % 24) + 'h, ';
+                if (days < 1){
+                    result += (hours % 24) + 'h, ';
+                } else {
+                    result += (hours % 24) + 'h';
+                }
             }
-            result += (minutes % 60) + 'm';
+            if (days < 1) {
+                // Only show minutes if under a day
+                result += (minutes % 60) + 'm';
+            }
 
             return result;
         }
@@ -183,15 +174,11 @@ export default {
         problemDetails: function(url, triggerid) {
             window.open(url + "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" + triggerid, "_blank")
         },
-        eventDetails: function(url, triggerid) {
-            getEventid(url, triggerid, function(result){
-                window.open(url + "/tr_events.php?triggerid=" + triggerid + "&eventid=" + result, '_blank');
-            });
+        eventDetails: function(url, triggerid, eventid) {
+            window.open(url + "/tr_events.php?triggerid=" + triggerid + "&eventid=" + eventid, '_blank');
         },
-        ackEvent: function(url, triggerid) {
-            getEventid(url, triggerid, function(result){
-                window.open(url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + result, '_blank');
-            });
+        ackEvent: function(url, triggerid, eventid) {
+            window.open(url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid, '_blank');
         }
     }
 }
@@ -237,7 +224,9 @@ table.table thead th:not(:first-child) {
  * (Tiny popup size)
  */
 body {
-    /*opacity: 0;*/
     display: none;
+}
+i.tiny {
+    font-size: 16px;
 }
 </style>

@@ -34,7 +34,6 @@ function scheduleCheckServers() {
 	/*
 	* Loop and schedule updates based on server check interval from options
 	*/
-	console.log('Running scheduleCheckServers as scheduled');
 	getAllTriggers();
 
 	setTimeout(function(){ scheduleCheckServers(); },1000*interval);
@@ -45,6 +44,7 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 	/*
 	* Return data from zabbix trigger.get call
 	*/
+	//console.log("getServerTriggers for: " + JSON.stringify(server));
 	delete popupTable['error'];
 	let zResults = {};
 	let requestObject = {
@@ -54,6 +54,10 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 		'selectHosts': [
 			'host',
 			'hostid'
+		],
+		'selectLastEvent': [
+			'eventid',
+			'acknowledged'
 		],
 		'monitored': 1,
 		'min_severity': minPriority,
@@ -105,6 +109,7 @@ function getAllTriggers(){
 		triggerResults = {};
 		console.log('No servers defined.');
 	} else {
+		let serversChecked = [];
 		var i = 0;
 		function nextCheck() {
 			if (i < settings['servers'].length){
@@ -115,13 +120,14 @@ function getAllTriggers(){
 				let groups = settings['servers'][i].hostGroups;
 				let hideAck = settings['servers'][i].hide;
 				let minPriority = settings['servers'][i].minSeverity;
+				serversChecked.push(server);
 				console.log('Found server: ' + server);
 				getServerTriggers(serverURL, user, pass, groups, hideAck, minPriority, function(results) {
-					// Find values that are in new results but not in previous
+					// Find triggerid values that are in new results but not in previous
 					let oldTriggers = triggerResults[server] || []
 					let triggerDiff = results.filter(function(obj) {
 						return !oldTriggers.some(function(obj2) {
-							return obj.value == obj2.value;
+							return obj.triggerid == obj2.triggerid;
 						});
 					});
 
@@ -139,6 +145,15 @@ function getAllTriggers(){
 				})
 			} else {
 				// all server checks now complete
+
+				// Remove trigger.get data for old servers
+				for (var trigServer in triggerResults) {
+					if (!serversChecked.includes(trigServer)) {
+						console.log('Removing old results for: ' + trigServer);
+						delete triggerResults[trigServer];
+					}
+				}
+
 				if (triggerCount > 0) {
 					// Set bage for the number of active triggers
 					browser.browserAction.setBadgeBackgroundColor({ color: '#888888' });
@@ -225,13 +240,17 @@ function setActiveTriggersTable() {
 				let age = triggerResults[server][t]['lastchange']
 				let triggerid = triggerResults[server][t]['triggerid']
 				let hostid = triggerResults[server][t]['hosts'][0]['hostid']
+				let eventid = triggerResults[server][t]['lastEvent']['eventid']
+				let acknowledged = Number(triggerResults[server][t]['lastEvent']['acknowledged'])
 				triggerTable.push({
 					'system': system,
 					'description': description,
 					'priority': priority,
 					'age': age,
 					'triggerid': triggerid,
-					'hostid': hostid
+					'hostid': hostid,
+					'eventid': eventid,
+					'acknowledged': acknowledged
 				})
 			}
 			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));
@@ -262,52 +281,6 @@ function getActiveTriggersTable(callback) {
 }
 
 
-function getEventId(url, triggerid, callback) {
-/*
-* Given a Zabbix url and triggerid, return the latest eventid
-*/
-	let user = '';
-	let pass = '';
-
-	// Lookup credentials for url
-	for (var i = 0; i < settings['servers'].length; i++) {
-		if (settings['servers'][i].url === url) {
-			//console.log('found server: ' + JSON.stringify(settings['servers'][i]))
-			user = settings['servers'][i].user;
-			pass = settings['servers'][i].pass;
-			break;
-		} else {
-			console.log('unable to locate zabbix creds');
-		}
-	}
-
-	const zabbix = new Zabbix(
-		url + '/api_jsonrpc.php',
-		user,
-		pass
-	);
-
-	let requestObject = {
-		'output': ['eventid', 'clock'],
-		'objectids': triggerid,
-		'sortfield': ['clock', 'eventid'],
-		'sortorder': 'DESC'
-	}
-
-	zabbix.login()
-	.then(() => zabbix.request('event.get', requestObject))
-	.then((value) => {
-		let eventid = value[0].eventid
-		//console.log('zabbix eventid lookup: ' + JSON.stringify(eventid));
-		callback(eventid)
-	}).finally(() => zabbix.logout())
-	.catch(function(res){
-		console.log('Error communicating with: ' + server.toString())
-	})
-
-}
-
-
 // Run our script as soon as the document's DOM is ready.
 document.addEventListener('DOMContentLoaded', function () {
 	initalize();
@@ -326,14 +299,6 @@ function handleMessage(request, sender, sendResponse) {
 	case 'reinitalize':
 		// Sent by options to alert to config changes in order to refresh
 		initalize();
-		break;
-	case 'getEventid':
-		getEventId(request.url,
-			request.triggerid,
-			function(results) {
-				sendResponse(results);
-			}
-		)
 		break;
 	}
 	return true;
