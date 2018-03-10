@@ -53,7 +53,8 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 		'skipDependent': 1,
 		'selectHosts': [
 			'host',
-			'hostid'
+			'hostid',
+			'maintenance_status'
 		],
 		'selectLastEvent': [
 			'eventid',
@@ -242,6 +243,7 @@ function setActiveTriggersTable() {
 				let hostid = triggerResults[server][t]['hosts'][0]['hostid']
 				let eventid = triggerResults[server][t]['lastEvent']['eventid']
 				let acknowledged = Number(triggerResults[server][t]['lastEvent']['acknowledged'])
+				let maintance = Number(triggerResults[server][t]['hosts'][0]['maintenance_status'])
 				triggerTable.push({
 					'system': system,
 					'description': description,
@@ -250,7 +252,8 @@ function setActiveTriggersTable() {
 					'triggerid': triggerid,
 					'hostid': hostid,
 					'eventid': eventid,
-					'acknowledged': acknowledged
+					'acknowledged': acknowledged,
+					'maintenance_status': maintance
 				})
 			}
 			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));

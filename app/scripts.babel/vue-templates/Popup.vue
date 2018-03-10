@@ -29,7 +29,11 @@
                     <tr class="show-overflow" @click="props.expanded = !props.expanded" :class="props.item.priority | priority_class">
                         <td class="show-overflow">{{props.item.system}}</td>
                         <td class="text-xs-left show-overflow">{{props.item.description}}
-                            <span style="float:right;"><i v-if="props.item.acknowledged" class="tiny material-icons">flag</i></span></td>
+                            <span style="float:right;">
+                                <i v-if="props.item.acknowledged" class="tiny material-icons">flag</i>
+                                <i v-if="props.item.maintenance_status" class="tiny material-icons">build</i>
+                            </span>
+                        </td>
                         <td class="text-xs-left show-overflow">{{props.item.priority | priority_name_filter}}</td>
                         <td class="text-xs-left show-overflow">{{props.item.age | date_filter}}</td>
                     </tr>
