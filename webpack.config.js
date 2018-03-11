@@ -1,3 +1,5 @@
+var webpack = require('webpack')
+
 module.exports = {
     context: __dirname + '/app/scripts.babel/',
     entry: {
@@ -27,5 +29,12 @@ module.exports = {
         net: 'empty',
         tls: 'empty',
         child_process: 'empty'
-    }
+    },
+    plugins: [
+        new webpack.DefinePlugin({
+            'process.env': {
+                NODE_ENV: '"production"'
+            }
+        })
+    ]
 }

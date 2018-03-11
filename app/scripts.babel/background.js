@@ -40,7 +40,7 @@ function scheduleCheckServers() {
 }
 
 
-function getServerTriggers(server, user, pass, groups, hideAck, minPriority, callback) {
+function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance, minPriority, callback) {
 	/*
 	* Return data from zabbix trigger.get call
 	*/
@@ -82,6 +82,9 @@ function getServerTriggers(server, user, pass, groups, hideAck, minPriority, cal
 		// Don't show acknowledged
 		requestObject.withLastEventUnacknowledged = 1;
 	}
+	if (hideMaintenance) {
+		requestObject.maintenance = false;
+	}
 
 	const zabbix = new Zabbix(
 		server + '/api_jsonrpc.php',
@@ -120,10 +123,11 @@ function getAllTriggers(){
 				let pass = settings['servers'][i].pass
 				let groups = settings['servers'][i].hostGroups;
 				let hideAck = settings['servers'][i].hide;
+				let hideMaintenance = settings['servers'][i].maintenance;
 				let minPriority = settings['servers'][i].minSeverity;
 				serversChecked.push(server);
 				console.log('Found server: ' + server);
-				getServerTriggers(serverURL, user, pass, groups, hideAck, minPriority, function(results) {
+				getServerTriggers(serverURL, user, pass, groups, hideAck, hideMaintenance, minPriority, function(results) {
 					// Find triggerid values that are in new results but not in previous
 					let oldTriggers = triggerResults[server] || []
 					let triggerDiff = results.filter(function(obj) {
@@ -243,7 +247,7 @@ function setActiveTriggersTable() {
 				let hostid = triggerResults[server][t]['hosts'][0]['hostid']
 				let eventid = triggerResults[server][t]['lastEvent']['eventid']
 				let acknowledged = Number(triggerResults[server][t]['lastEvent']['acknowledged'])
-				let maintance = Number(triggerResults[server][t]['hosts'][0]['maintenance_status'])
+				let maintenance = Number(triggerResults[server][t]['hosts'][0]['maintenance_status'])
 				triggerTable.push({
 					'system': system,
 					'description': description,
@@ -253,7 +257,7 @@ function setActiveTriggersTable() {
 					'hostid': hostid,
 					'eventid': eventid,
 					'acknowledged': acknowledged,
-					'maintenance_status': maintance
+					'maintenance_status': maintenance
 				})
 			}
 			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));

@@ -47,6 +47,10 @@
                             label="Hide Acknowledged Events"
                             v-model="server.hide"
                             ></v-checkbox>
+                            <v-checkbox
+                            label="Ignore Hosts in Maintenance"
+                            v-model="server.maintenance"
+                            ></v-checkbox>
                             <v-select
                             :items="severitySelector"
                             v-model="server.minSeverity"
@@ -130,6 +134,7 @@ cryptio.get('ZabbixServers', function(err, results) {
                 'user': '',
                 'pass': '',
                 'hide': false,
+                'maintenance': false,
                 'hostGroups': [],
                 'hostGroupsList': [],
                 'minSeverity': 0,
@@ -166,6 +171,7 @@ export default {
                 'user': '',
                 'pass': '',
                 'hide': false,
+                'maintenance': false,
                 'hostGroups': [],
                 'hostGroupsList': [],
                 'minSeverity': 0,
