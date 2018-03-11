@@ -112,13 +112,13 @@ export default {
     filters: {
         priority_class: function(value) {
             var PRIORITIES = {
-                0: 'notclassified',
-                1: 'information',
-                2: 'warning',
-                3: 'average',
-                4: 'high',
-                5: 'disaster',
-                9: 'normal'
+                0: 'Cnotclassified',
+                1: 'Cinformation',
+                2: 'Cwarning',
+                3: 'Caverage',
+                4: 'Chigh',
+                5: 'Cdisaster',
+                9: 'Cnormal'
             }
             return PRIORITIES[value];
         },
