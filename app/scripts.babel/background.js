@@ -42,7 +42,7 @@ function scheduleCheckServers() {
 
 function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance, minPriority, callback) {
 	/*
-	* Return data from zabbix trigger.get call
+	* Return data from zabbix trigger.get call to a specifc server
 	*/
 	//console.log("getServerTriggers for: " + JSON.stringify(server));
 	delete popupTable['error'];
@@ -102,12 +102,24 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 	}).finally(() => zabbix.logout())
 	.catch(function(res){
 		console.log('Error communicating with: ' + server.toString())
+		//Show error on popup
 		popupTable['error'] = true;
+		//Set browser icon to config error state
+		browser.browserAction.setBadgeText({text: ''});
+		browser.browserAction.setIcon({path: 'images/unconfigured.png'})
+
 	})
 }
 
 
 function getAllTriggers(){
+	/*
+	* Loop over each server found in settings
+	*   Get trigger results
+	* 	Get diff of new results from previous and send browser notifications
+	* Update browser badge color and count
+	* Call setActiveTriggersTable function to update popup dataset
+	*/
 	var triggerCount = 0;
 	if (!settings || 0 === settings.length) {
 		triggerResults = {};
@@ -232,6 +244,8 @@ function setActiveTriggersTable() {
 			let serverObject = {};
 			let triggerTable = [];
 			let server = servers[i];
+
+			// Iterate over found triggers and format for popup
 			console.log('Generating trigger table for server: ' + JSON.stringify(server));
 			for (var t = 0; t < triggerResults[server].length; t++) {
 				let system = triggerResults[server][t]['hosts'][0]['host']
@@ -262,6 +276,7 @@ function setActiveTriggersTable() {
 			}
 			//console.log('TriggerTable: ' + JSON.stringify(triggerTable));
 			serverObject['triggers'] = triggerTable;
+
 			serverObject['server'] = server
 			// Add search string for server
 			serverObject['search'] = '';
@@ -297,8 +312,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 // Activate messaging to popup.js and options.js
 function handleMessage(request, sender, sendResponse) {
-    switch (request.method) {
-    case 'refreshTriggers':
+	switch (request.method) {
+	case 'refreshTriggers':
+		// Sent by popup to request data for display
 		getActiveTriggersTable(function(results) {
             sendResponse(results);
         });

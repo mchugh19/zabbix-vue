@@ -66,7 +66,6 @@ var browser = browser || chrome;
 var triggerTable = {};
 triggerTable['data'] = {};
 triggerTable['data']['loaded'] = true;
-//triggerTable['data']['error'] = true;
 
 
 function requestTableRefresh() {
@@ -80,6 +79,8 @@ function requestTableRefresh() {
                 } else {
                     triggerTable.data = response;
                 }
+            } else {
+                triggerTable.data.error = true;
             }
             //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
         }
@@ -93,14 +94,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Display modifications to work around chrome issue 428044
     // (Tiny popup size)
     setTimeout(() => {
-        setTimeout(() => {
-            //document.body.style.transition = 'opacity ease-out .4s';
-            document.body.style.display = 'block';
-            /*requestAnimationFrame(function() {
-                document.body.style.opacity = 1;
-            });*/
-        });
-  }, 300);
+        document.body.style.display = 'block';
+    }, 50);
 });
 
 export default {

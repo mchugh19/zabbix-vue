@@ -59,7 +59,7 @@
                             item-value="priority">
                             </v-select>
 
-                            <div class="grooper">
+                            <div class="grouper">
                             <v-select
                             class="hostGroupSelect"
                             :items="server.hostGroupsList"
@@ -250,7 +250,7 @@ html {
 .serverBlock.card {
     margin-top: 8px;
 }
-.grooper {
+.grouper {
     overflow: hidden;
 }
 #removeServer {
