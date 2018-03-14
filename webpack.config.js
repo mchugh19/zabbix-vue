@@ -1,5 +1,15 @@
 var webpack = require('webpack')
 
+function isExternal(module) {
+    var context = module.context;
+
+    if (typeof context !== 'string') {
+    return false;
+    }
+
+    return context.indexOf('node_modules') !== -1;
+}
+
 module.exports = {
     context: __dirname + '/app/scripts.babel/',
     entry: {
@@ -39,9 +49,18 @@ module.exports = {
             }
         }),
         new webpack.optimize.CommonsChunkPlugin({
-            names: ['zabbox', 'crypto'],
+            names: ['zabbix', 'crypto'],
             filename: '[name].js',
-            minChunks: Infinity
+            minChunks: function(module, count) {
+                return !isExternal(module) && count >= 2;
+            }
+        }),
+        new webpack.optimize.CommonsChunkPlugin({
+            names: ['common'],
+            filename: '[name].js',
+            minChunks: function(module) {
+                return isExternal(module);
+            }
         })
     ]
 }
