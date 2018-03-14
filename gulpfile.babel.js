@@ -74,13 +74,7 @@ gulp.task('html',  () => {
 gulp.task('chromeManifest', () => {
   return gulp.src('app/manifest.json')
     .pipe($.chromeManifest({
-      buildnumber: true,
-      background: {
-        target: 'scripts/background.js',
-        exclude: [
-          'scripts/chromereload.js'
-        ]
-      }
+      buildnumber: false,
   }))
   .pipe($.if('*.css', $.cleanCss({compatibility: '*'})))
   .pipe($.if('*.js', $.sourcemaps.init()))
@@ -100,22 +94,6 @@ gulp.task('babel', () => {
 });
 
 gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
-
-gulp.task('watch', ['lint', 'babel'], () => {
-  $.livereload.listen();
-
-  gulp.watch([
-    'app/*.html',
-    'app/scripts/**/*.js',
-    'app/scripts/**/*.vue',
-    'app/images/**/*',
-    'app/styles/**/*',
-    'app/_locales/**/*.json'
-  ]).on('change', $.livereload.reload);
-
-  gulp.watch(['app/scripts.babel/**/*.js', 'app/scripts.babel/**/*.vue'], ['lint', 'babel']);
-  gulp.watch('bower.json', ['wiredep']);
-});
 
 gulp.task('size', () => {
   return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
@@ -139,8 +117,7 @@ gulp.task('package', function () {
 // Task to copy fonts to dist.
 gulp.task('compile-fonts', function() {
   return gulp.src([
-    'fonts/*',
-    'node_modules/material-design-icons-iconfont/dist/fonts/MaterialIcons-Regular.*'
+    'fonts/*'
   ])
   .pipe(gulp.dest('dist/fonts/'));
 });

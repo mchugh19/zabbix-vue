@@ -3,9 +3,10 @@ var webpack = require('webpack')
 module.exports = {
     context: __dirname + '/app/scripts.babel/',
     entry: {
-        background: './background.js', // remove unused
+        background: './background.js',
         options: './options.js',
         popup: './popup.js',
+        common: ['zabbix-promise', 'sjcl', 'crypt.io']
     },
     output: { filename: '[name].js' },
     module: {
@@ -35,6 +36,11 @@ module.exports = {
             'process.env': {
                 NODE_ENV: '"production"'
             }
+        }),
+        new webpack.optimize.CommonsChunkPlugin({
+            names: ['common'],
+            filename: '[name].js',
+            minChunks: Infinity
         })
     ]
 }

@@ -234,11 +234,14 @@ export default {
 </script>
 <style src="vuetify/dist/vuetify.min.css"></style>
 <style>
-html {
-    width: 400px;
-}
+html,
 #app {
     width: 400px;
+}
+body {
+	font-size: 10pt;
+	padding: 0;
+	margin: 0;
 }
 .serverConfig.card,
 .globalSettings.card {

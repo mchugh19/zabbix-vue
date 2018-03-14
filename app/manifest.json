@@ -9,15 +9,14 @@
   },
   "default_locale": "en",
   "background": {
-    "scripts": [
-      "scripts/background.js"
-    ],
+    "page": "background.html",
     "persistent": false
   },
   "permissions": [
     "background",
     "notifications",
-    "storage"
+    "storage",
+    "*://*/"
   ],
   "options_ui": {
     "page": "options.html",

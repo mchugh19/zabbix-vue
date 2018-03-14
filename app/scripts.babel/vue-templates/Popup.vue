@@ -202,6 +202,15 @@ table.table thead th:first-child,
 table.table thead th:not(:first-child) {
     padding: 0 5px;
 }
+tr.Cdisaster		{ background-color: #FF3838; color: #222222;}
+tr.Chigh			{ background-color: #FF9999; color: #222222;}
+tr.Caverage			{ background-color: #FFB689; color: #222222;}
+tr.Cwarning			{ background-color: #FFF6A5; color: #222222;}
+tr.Cinformation		{ background-color: #D6F6FF; color: #222222;}
+tr.Cunknown_trigger	{ background-color: #DBDBDB; color: #222222;}
+tr.Cnormal,
+tr.Cnotclassified	{ background-color: #DBDBDB; color: #222222;}
+
 .btn {
 	height: 20px;
 	margin: 2px 2px;
