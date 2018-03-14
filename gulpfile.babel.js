@@ -93,7 +93,7 @@ gulp.task('babel', () => {
     .pipe(gulp.dest('app/scripts/'))
 });
 
-gulp.task('clean', del.bind(null, ['.tmp', 'dist']));
+gulp.task('clean', del.bind(null, ['.tmp', 'dist', 'package']));
 
 gulp.task('size', () => {
   return gulp.src('dist/**/*').pipe($.size({title: 'build', gzip: true}));
