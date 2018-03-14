@@ -239,8 +239,6 @@ html,
     width: 400px;
 }
 body {
-	font-size: 10pt;
-	padding: 0;
 	margin: 0;
 }
 .serverConfig.card,

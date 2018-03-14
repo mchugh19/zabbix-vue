@@ -233,6 +233,11 @@ tr.Cnotclassified	{ background-color: #DBDBDB; color: #222222;}
  */
 body {
     display: none;
+    font-size: 10pt;
+    padding: 0;
+    margin: 0;
+    width: 800px;
+    min-height: 50px;
 }
 i.tiny {
     font-size: 16px;

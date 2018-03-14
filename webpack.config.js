@@ -6,7 +6,8 @@ module.exports = {
         background: './background.js',
         options: './options.js',
         popup: './popup.js',
-        common: ['zabbix-promise', 'sjcl', 'crypt.io']
+        zabbix: ['zabbix-promise'],
+        crypto: ['sjcl', 'crypt.io']
     },
     output: { filename: '[name].js' },
     module: {
@@ -38,7 +39,7 @@ module.exports = {
             }
         }),
         new webpack.optimize.CommonsChunkPlugin({
-            names: ['common'],
+            names: ['zabbox', 'crypto'],
             filename: '[name].js',
             minChunks: Infinity
         })
