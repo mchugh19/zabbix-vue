@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // (Tiny popup size)
     setTimeout(() => {
         document.body.style.display = 'block';
-    }, 50);
+    }, 100);
 });
 
 export default {

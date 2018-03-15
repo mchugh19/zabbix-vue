@@ -1,6 +1,10 @@
 # Zabbix Vue
 A browser extension to display problems from a Zabbix monitoring server. The browser icon's color is updated with the severity and number of detected problems.
 
+Firefox: [https://addons.mozilla.org/en-US/firefox/addon/zabbix-vue/](https://addons.mozilla.org/en-US/firefox/addon/zabbix-vue/)
+
+Chrome: [https://chrome.google.com/webstore/detail/goinajfhamfchlmkddedkncmlgfcieac/](https://chrome.google.com/webstore/detail/goinajfhamfchlmkddedkncmlgfcieac/)
+
 
 
 ## Features
@@ -26,5 +30,5 @@ Options screen displays many settings including the ability to only show problem
 
 ## Build
 `npm install`
-
-`gulp build`
+``
+`gulp`
