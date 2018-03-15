@@ -10,7 +10,7 @@
   "default_locale": "en",
   "background": {
     "page": "background.html",
-    "persistent": false
+    "persistent": true
   },
   "permissions": [
     "background",
