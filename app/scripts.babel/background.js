@@ -99,7 +99,8 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 	.then(() => zabbix.request('trigger.get', requestObject))
 	.then((value) => {
 		callback(value)
-	}).finally(() => zabbix.logout())
+		zabbix.logout()
+	})
 	.catch(function(res){
 		console.log('Error communicating with: ' + server.toString())
 		//Show error on popup
@@ -213,7 +214,7 @@ function setBrowserIcon(severity) {
 	* 4 high
 	* 5 disaster
 	*/
-	//console.log('Setting icon for priority: ' + severity.toString());
+	console.log('Setting icon for priority: ' + severity.toString());
 	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.png'})
 }
 

@@ -133,7 +133,7 @@ gulp.task('build', (cb) => {
   runSequence(
     'lint', 'babel', 'chromeManifest', 'svg2png',
     ['html', 'compile-fonts','extras'],
-    'size', cb);
+    'size', 'package', cb);
 });
 
 gulp.task('default', ['clean'], cb => {
