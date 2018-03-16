@@ -8,7 +8,7 @@ Chrome: [https://chrome.google.com/webstore/detail/goinajfhamfchlmkddedkncmlgfci
 
 
 ## Features
-Badge display with popup showing current issues along with maintenance and acknowledgement icons <br>
+Badge display with popup showing current issues along with maintenance and acknowledgement icons<br>
 <img width="803" alt="badge and popup" src="https://user-images.githubusercontent.com/1360357/37271220-d75a6580-25c9-11e8-8dc0-0ffdf4a10a17.png">
 
 Clicking a problem displays a row of actions<br>
@@ -24,11 +24,12 @@ Browser notifications display the system and newly detected problem<br>
 <img width="351" alt="notification" src="https://user-images.githubusercontent.com/1360357/37272605-09fc40e4-25cf-11e8-99d9-5bd970b2e809.png">
 
 
-Options screen displays many settings including the ability to only show problems for certain host groups
+Options screen displays many settings including the ability to only show problems for certain host groups<br>
 <img width="393" alt="options hostgroup" src="https://user-images.githubusercontent.com/1360357/37271231-e011c646-25c9-11e8-9436-9b728afe3438.png">
 
 
 ## Build
 `npm install`
-``
 `gulp`
+
+Then test package/*.zip in Firefox Developer Edition or load the dist/ directory in Chrome.
