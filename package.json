@@ -51,7 +51,6 @@
   },
   "dependencies": {
     "babel-loader": "^7.1.2",
-    "crypt.io": "^1.0.8",
     "vue": "^2.5.13",
     "vue-loader": "^14.1.1",
     "vue-template-compiler": "^2.5.13",

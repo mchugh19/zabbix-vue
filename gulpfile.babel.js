@@ -72,7 +72,7 @@ gulp.task('html', () => {
 });
 
 gulp.task('javascript-lib', ['babel'], () => {
-  return gulp.src('app/scripts.babel/lib/*.js')
+  return gulp.src('app/scripts.babel/lib/sjcl.js')
     //.pipe($.sourcemaps.init())
     .pipe($.if('*.js', $.uglify()))
     //.pipe($.sourcemaps.write('maps'))

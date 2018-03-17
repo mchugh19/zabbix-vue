@@ -1,6 +1,9 @@
 'use strict';
 
 var browser = browser || chrome;
+import Zabbix from './lib/zabbix-promise.js';
+import './lib/crypt.io.js';
+
 var settings = null;
 var interval;
 var triggerResults = {};
