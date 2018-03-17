@@ -46,6 +46,7 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 	*/
 	//console.log("getServerTriggers for: " + JSON.stringify(server));
 	delete popupTable['error'];
+	delete popupTable['errorMessage'];
 	let zResults = {};
 	let requestObject = {
 		'output': 'extend',
@@ -102,12 +103,15 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 		zabbix.logout()
 	})
 	.catch(function(res){
-		console.log('Error communicating with: ' + server.toString())
+		let errorMessage = 'Error communicating with: ' + server.toString()
+		console.log(errorMessage)
 		//Show error on popup
+		popupTable['servers'] = []
 		popupTable['error'] = true;
+		popupTable['errorMessage'] = errorMessage;
 		//Set browser icon to config error state
 		browser.browserAction.setBadgeText({text: ''});
-		browser.browserAction.setIcon({path: 'images/unconfigured.png'})
+		browser.browserAction.setIcon({path: 'images/unconfigured.svg'})
 
 	})
 }
@@ -197,7 +201,7 @@ function sendNotify(message) {
 		type: 'basic',
 		title: message.hosts[0].host,
 		message: message.description,
-		iconUrl: 'images/sev_' + message.priority + '.png',
+		iconUrl: 'images/sev_' + message.priority + '.svg',
 	}, function() {
 			setTimeout(function() { browser.notifications.clear('notification', function() {}); }, 5000);
 	});
@@ -215,7 +219,7 @@ function setBrowserIcon(severity) {
 	* 5 disaster
 	*/
 	console.log('Setting icon for priority: ' + severity.toString());
-	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.png'})
+	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.svg'})
 }
 
 

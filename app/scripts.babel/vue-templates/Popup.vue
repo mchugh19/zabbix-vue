@@ -1,7 +1,7 @@
 <template>
     <v-app class="popup">
         <span v-if="triggerTableData.data.error" class='serverError'>
-            <i class="material-icons">warning</i> Check server configuration in extension options
+            <i class="material-icons">warning</i> Check server configuration in extension options: {{triggerTableData.data.errorMessage}}
         </span>
         <v-card class="serverBlock" id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
             <v-card-title>
@@ -76,11 +76,13 @@ function requestTableRefresh() {
                 if (Object.keys(response).length === 0 && response.constructor === Object) {
                     // No servers defined
                     triggerTable.data.error = true;
+                    triggerTable.data.errorMessage = 'No servers defined';
                 } else {
                     triggerTable.data = response;
                 }
             } else {
                 triggerTable.data.error = true;
+                triggerTable.data.errorMessage = 'Plugin Error';
             }
             //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
         }
@@ -237,7 +239,6 @@ body {
     padding: 0;
     margin: 0;
     width: 800px;
-    min-height: 50px;
 }
 i.tiny {
     font-size: 16px;

@@ -124,14 +124,21 @@ gulp.task('compile-fonts', function() {
 
 var svg2png = require('gulp-svg2png');
 gulp.task('svg2png', function () {
-    gulp.src('app/img_src/*.svg')
+    // Chrome does not yet support svg logo or default icon from manifest
+    gulp.src('app/img_src/{logo,unconfigured}.svg')
         .pipe(svg2png())
         .pipe(gulp.dest('dist/images/'));
+});
+gulp.task('copy-svg', function() {
+  return gulp.src([
+    'app/img_src/*.svg'
+  ])
+  .pipe(gulp.dest('dist/images/'));
 });
 
 gulp.task('build', (cb) => {
   runSequence(
-    'lint', 'babel', 'chromeManifest', 'svg2png',
+    'lint', 'babel', 'chromeManifest', ['svg2png', 'copy-svg'],
     ['html', 'compile-fonts','extras'],
     'size', 'package', cb);
 });
