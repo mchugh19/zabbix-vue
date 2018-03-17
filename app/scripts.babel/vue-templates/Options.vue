@@ -74,6 +74,9 @@
                             @click='refreshGroups(server.url, server.user, server.pass, index)'>
                             <i class="reloadBtn material-icons">autorenew</i>
                             </v-btn>
+                            <span v-if="server.errorMsg" class='serverError'>
+                                <i class="material-icons">warning</i>Error reaching server: {{server.errorMsg}}
+                            </span>
                             </div>
 
                         </v-card>
@@ -106,9 +109,8 @@
 </template>
 
 <script>
-const Zabbix = require('zabbix-promise');
-require('crypt.io');
-global.sjcl = require('sjcl');
+import Zabbix from '../lib/zabbix-promise.js';
+import '../lib/crypt.io.js';
 var browser = browser || chrome;
 var zabbix_data;
 var severitySelect = [
@@ -138,7 +140,8 @@ cryptio.get('ZabbixServers', function(err, results) {
                 'hostGroups': [],
                 'hostGroupsList': [],
                 'minSeverity': 0,
-                'visiblePass': false
+                'visiblePass': false,
+                'errorMsg': ''
 
             }]
         }
@@ -175,7 +178,8 @@ export default {
                 'hostGroups': [],
                 'hostGroupsList': [],
                 'minSeverity': 0,
-                'visiblePass': false
+                'visiblePass': false,
+                'errorMsg': ''
             });
         },
         removeServer: function (index) {
@@ -189,10 +193,11 @@ export default {
             */
 
             if (this.$refs.form.validate()) {
-                // Do not save results of hostGroup lookups
+                // Do not save results of hostGroup lookups or errors
                 let savedServerSettings = this.zabbixs['servers'];
                 for (var i = 0; i < savedServerSettings.length; i++) {
                     savedServerSettings[i].hostGroupsList = [];
+                    savedServerSettings[i].errorMsg = '';
                 }
                 this.zabbixs['servers'] = savedServerSettings;
 
@@ -213,21 +218,31 @@ export default {
             * Perform hostgroup.get lookup and popuplate the hostgroup list
             */
 
+            this.zabbixs['servers'][index]['errorMsg'] = '';
             const zabbix = new Zabbix(
                 server + '/api_jsonrpc.php',
                 user,
                 pass
             );
             zabbix.login()
-                .then(() => zabbix.request('hostgroup.get', {
-                    'output': [
-                        'groupid',
-                        'name'
-                    ]
-                })).then((value) => this.zabbixs['servers'][index].hostGroupsList = value)
-                .then(() => zabbix.logout())
-                .catch((reason) =>
-                this.errors['items'].splice(0, 0, {'msg': "Server connection error"}))
+                .then(() => {
+                    //console.log('Successfully logged in');
+                    return zabbix.call('hostgroup.get', {
+                        'output': [
+                            'groupid',
+                            'name'
+                        ]
+                    });
+                    zabbix.logout();
+                }).then((value) => {
+                    //console.log('found result: ' + JSON.stringify(value['result']));
+                    this.zabbixs['servers'][index].hostGroupsList = value['result'];
+                }).catch(err => {
+                    this.zabbixs['servers'][index].hostGroupsList = [];
+                    this.zabbixs['servers'][index]['errorMsg'] = err.message;
+                    console.log("Error contacting server: " + err);
+
+                })
         }
     }
 }
@@ -279,5 +294,8 @@ body {
 }
 .hostGroupSelect > label {
     top: unset;
+}
+.serverError {
+    float: left;
 }
 </style>

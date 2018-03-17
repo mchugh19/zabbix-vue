@@ -55,7 +55,7 @@ gulp.task('images', () => {
     .pipe(gulp.dest('dist/images'));
 });
 
-gulp.task('html',  () => {
+gulp.task('html', () => {
   return gulp.src('app/*.html')
     .pipe($.useref({searchPath: ['.tmp', 'app', '.']}))
     //.pipe($.sourcemaps.init())
@@ -69,6 +69,22 @@ gulp.task('html',  () => {
       removeComments: true
     })))
     .pipe(gulp.dest('dist'));
+});
+
+gulp.task('javascript-lib', ['babel'], () => {
+  return gulp.src('app/scripts.babel/lib/sjcl.js')
+    //.pipe($.sourcemaps.init())
+    .pipe($.if('*.js', $.uglify()))
+    //.pipe($.sourcemaps.write('maps'))
+    .pipe(gulp.dest('dist/scripts'));
+});
+
+gulp.task('javascript-app', ['javascript-lib'], () => {
+  return gulp.src('.tmp/*.js')
+    //.pipe($.sourcemaps.init())
+    .pipe($.if('*.js', $.uglify()))
+    //.pipe($.sourcemaps.write('maps'))
+    .pipe(gulp.dest('dist/scripts'));
 });
 
 gulp.task('chromeManifest', () => {
@@ -90,7 +106,7 @@ gulp.task('babel', () => {
         console.log(err);
         this.emit('end');
       }))
-    .pipe(gulp.dest('app/scripts/'))
+    .pipe(gulp.dest('.tmp/'))
 });
 
 gulp.task('clean', del.bind(null, ['.tmp', 'dist', 'package']));
@@ -107,17 +123,10 @@ gulp.task('wiredep', () => {
     .pipe(gulp.dest('app'));
 });
 
-gulp.task('package', function () {
-  var manifest = require('./dist/manifest.json');
-  return gulp.src('dist/**')
-      .pipe($.zip('zabbix-vue-' + manifest.version + '.zip'))
-      .pipe(gulp.dest('package'));
-});
-
 // Task to copy fonts to dist.
 gulp.task('compile-fonts', function() {
   return gulp.src([
-    'fonts/*'
+    '.tmp/fonts/*'
   ])
   .pipe(gulp.dest('dist/fonts/'));
 });
@@ -138,11 +147,19 @@ gulp.task('copy-svg', function() {
 
 gulp.task('build', (cb) => {
   runSequence(
-    'lint', 'babel', 'chromeManifest', ['svg2png', 'copy-svg'],
-    ['html', 'compile-fonts','extras'],
-    'size', 'package', cb);
+    'lint', 'chromeManifest', 'javascript-app',
+    ['svg2png', 'copy-svg'],
+    'html', 'compile-fonts','extras',
+    'size', cb);
 });
 
 gulp.task('default', ['clean'], cb => {
   runSequence('build', cb);
+});
+
+gulp.task('package', function () {
+  var manifest = require('./dist/manifest.json');
+  return gulp.src('dist/**')
+      .pipe($.zip('zabbix-vue-' + manifest.version + '.zip'))
+      .pipe(gulp.dest('package'));
 });
