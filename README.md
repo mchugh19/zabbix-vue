@@ -30,6 +30,6 @@ Options screen displays many settings including the ability to only show problem
 
 ## Build
 `npm install`
-`gulp`
+`gulp clean && gulp build && gulp package`
 
 Then test package/*.zip in Firefox Developer Edition or load the dist/ directory in Chrome.
