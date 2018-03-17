@@ -106,9 +106,6 @@
 </template>
 
 <script>
-const Zabbix = require('zabbix-promise');
-require('crypt.io');
-global.sjcl = require('sjcl');
 var browser = browser || chrome;
 var zabbix_data;
 var severitySelect = [
@@ -219,14 +216,19 @@ export default {
                 pass
             );
             zabbix.login()
-                .then(() => zabbix.request('hostgroup.get', {
-                    'output': [
-                        'groupid',
-                        'name'
-                    ]
-                })).then((value) => this.zabbixs['servers'][index].hostGroupsList = value)
-                .then(() => zabbix.logout())
-                .catch((reason) =>
+                .then(() => {
+                    //console.log('Successfully logged in');
+                    return zabbix.call('hostgroup.get', {
+                        'output': [
+                            'groupid',
+                            'name'
+                        ]
+                    });
+                }).then((value) => {
+                    this.zabbixs['servers'][index].hostGroupsList = value['result'];
+                }).then(() => {
+                    return zabbix.logout();
+                }).catch((reason) =>
                 this.errors['items'].splice(0, 0, {'msg': "Server connection error"}))
         }
     }

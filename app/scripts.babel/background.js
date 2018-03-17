@@ -1,10 +1,6 @@
 'use strict';
 
 var browser = browser || chrome;
-const Zabbix = require('zabbix-promise');
-require('crypt.io');
-global.sjcl = require('sjcl');
-
 var settings = null;
 var interval;
 var triggerResults = {};
@@ -97,12 +93,13 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 	}
 
 	zabbix.login()
-	.then(() => zabbix.request('trigger.get', requestObject))
-	.then((value) => {
-		callback(value)
-		zabbix.logout()
+	.then(() => {
+		return zabbix.call('trigger.get', requestObject);
+		zabbix.logout();
 	})
-	.catch(function(res){
+	.then((value) => {
+		callback(value['result']);
+	}).catch(function(res){
 		let errorMessage = 'Error communicating with: ' + server.toString()
 		console.log(errorMessage)
 		//Show error on popup
@@ -218,7 +215,7 @@ function setBrowserIcon(severity) {
 	* 4 high
 	* 5 disaster
 	*/
-	console.log('Setting icon for priority: ' + severity.toString());
+	//console.log('Setting icon for priority: ' + severity.toString());
 	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.svg'})
 }
 
