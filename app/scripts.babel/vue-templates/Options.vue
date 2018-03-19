@@ -4,10 +4,10 @@
             <v-container fluid grid-list-sm>
                 <v-layout row>
                     <v-card class="serverConfig">
-                    <h1>Server Settings</h1><br>
+                    <h1>{{ $i18n('serverSettings')}}</h1><br>
 
                         <v-card class="serverBlock" v-for="(server, index) in zabbixs.servers" v-bind:key="server[index]">
-                            <h2>Server: {{server.alias}}</h2>
+                            <h2>{{ $i18n('server')}}: {{server.alias}}</h2>
 
                             <v-btn
                             id='removeServer'
@@ -17,44 +17,44 @@
                             </v-btn>
 
                             <v-text-field
-                            label="Alias"
+                            :label="$i18n('alias')"
                             v-model="server.alias"
-                            :rules="[v => !!v || 'Item is required']"
+                            :rules="[v => !!v || $i18n('required')]"
                             required
                             ></v-text-field>
                             <v-text-field
-                            label="URL"
+                            :label="$i18n('URL')"
                             v-model="server.url"
                             :rules="urlRules"
                             required
                             ></v-text-field>
                             <v-text-field
-                            label="Zabbix User"
+                            :label="$i18n('zabbixUser')"
                             v-model="server.user"
-                            :rules="[v => !!v || 'Item is required']"
+                            :rules="[v => !!v || $i18n('required')]"
                             required
                             ></v-text-field>
                             <v-text-field
-                            label="Zabbix Password"
+                            :label="$i18n('zabbixPass')"
                             v-model="server.pass"
                             required
                             :append-icon="server.visiblePass ? 'visibility' : 'visibility_off'"
                             :append-icon-cb="() => (server.visiblePass = !server.visiblePass)"
                             :type="server.visiblePass ? 'text' : 'password'"
-                            :rules="[v => !!v || 'Item is required']"
+                            :rules="[v => !!v || $i18n('required')]"
                             ></v-text-field>
                             <v-checkbox
-                            label="Hide Acknowledged Events"
+                            :label="$i18n('hideEvents')"
                             v-model="server.hide"
                             ></v-checkbox>
                             <v-checkbox
-                            label="Ignore Hosts in Maintenance"
+                            :label="$i18n('ignoreHosts')"
                             v-model="server.maintenance"
                             ></v-checkbox>
                             <v-select
                             :items="severitySelector"
                             v-model="server.minSeverity"
-                            label="Monitor Minimum Severity"
+                            :label="$i18n('minSev')"
                             item-text="name"
                             item-value="priority">
                             </v-select>
@@ -64,7 +64,7 @@
                             class="hostGroupSelect"
                             :items="server.hostGroupsList"
                             v-model="server.hostGroups"
-                            label="Monitor Hostgroups"
+                            :label="$i18n('monGroups')"
                             item-text="name"
                             item-value="groupid"
                             autocomplete
@@ -75,7 +75,7 @@
                             <i class="reloadBtn material-icons">autorenew</i>
                             </v-btn>
                             <span v-if="server.errorMsg" class='serverError'>
-                                <i class="material-icons">warning</i>Error reaching server: {{server.errorMsg}}
+                                <i class="material-icons">warning</i>{{ $i18n('serverError')}}: {{server.errorMsg}}
                             </span>
                             </div>
 
@@ -84,9 +84,9 @@
                 </v-layout>
                 <v-layout row>
                     <v-card class="globalSettings" name='globalSettings'>
-                        <h1>General Settings</h1>
+                        <h1>{{ $i18n('generalSettings')}}</h1>
                         <v-text-field
-                            label="Update Interval"
+                            :label="$i18n('updateInterval')"
                             v-model="zabbixs.global.interval"
                             :rules="intervalRules"
                             type='Number'
@@ -99,12 +99,12 @@
                         @click="save_data"
                         :disabled="!zabbixs.global.formValid"
                         >
-                        Save
+                        {{ $i18n('save')}}
                     </v-btn>
                 </v-layout>
             </v-container>
         </v-form>
-        <button id='addZabbix' @click="addServer">Add Server</button>
+        <button id='addZabbix' @click="addServer">{{ $i18n('addServer')}}</button>
     </v-app>
 </template>
 
@@ -114,12 +114,12 @@ import '../lib/crypt.io.js';
 var browser = browser || chrome;
 var zabbix_data;
 var severitySelect = [
-    {'name': 'not classified', 'priority': 0},
-    {'name': 'information', 'priority': 1},
-    {'name': 'warning', 'priority': 2},
-    {'name': 'average', 'priority': 3},
-    {'name': 'high', 'priority': 4},
-    {'name': 'disaster', 'priority': 5}
+    {'name': browser.i18n.getMessage('notClassified'), 'priority': 0},
+    {'name': browser.i18n.getMessage('information'), 'priority': 1},
+    {'name': browser.i18n.getMessage('warning'), 'priority': 2},
+    {'name': browser.i18n.getMessage('average'), 'priority': 3},
+    {'name': browser.i18n.getMessage('high'), 'priority': 4},
+    {'name': browser.i18n.getMessage('disaster'), 'priority': 5}
 ]
 
 cryptio.get('ZabbixServers', function(err, results) {
@@ -157,12 +157,12 @@ export default {
             'zabbixs': zabbix_data,
             'severitySelector': severitySelect,
             urlRules: [
-                v => /^(https?):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(v) || 'Must be a valid URL',
-                v => !!v || 'URL is required'
+                v => /^(https?):\/\/(((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:)*@)?(((\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.(\d|[1-9]\d|1\d\d|2[0-4]\d|25[0-5]))|((([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|\d|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.)+(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])*([a-z]|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])))\.?)(:\d*)?)(\/((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)+(\/(([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)*)*)?)?(\?((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|[\uE000-\uF8FF]|\/|\?)*)?(\#((([a-z]|\d|-|\.|_|~|[\u00A0-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF])|(%[\da-f]{2})|[!\$&'\(\)\*\+,;=]|:|@)|\/|\?)*)?$/i.test(v) || this.$i18n('requiredURL'),
+                v => !!v || this.$i18n('requiredURL')
             ],
             intervalRules: [
-                v => !! v || 'Interval required',
-                (v) => v > 9 || 'Don\'t check more frequently than every 10 seconds!'
+                v => !! v || this.$i18n('required'),
+                (v) => v > 9 || this.$i18n('lessSeconds')
             ]
         }
     },
@@ -193,11 +193,12 @@ export default {
             */
 
             if (this.$refs.form.validate()) {
-                // Do not save results of hostGroup lookups or errors
+                // Do not save results of hostGroup lookups, password display, or errors
                 let savedServerSettings = this.zabbixs['servers'];
                 for (var i = 0; i < savedServerSettings.length; i++) {
                     savedServerSettings[i].hostGroupsList = [];
                     savedServerSettings[i].errorMsg = '';
+                    savedServerSettings[i].visiblePass = false;
                 }
                 this.zabbixs['servers'] = savedServerSettings;
 
@@ -240,8 +241,7 @@ export default {
                 }).catch(err => {
                     this.zabbixs['servers'][index].hostGroupsList = [];
                     this.zabbixs['servers'][index]['errorMsg'] = err.message;
-                    console.log("Error contacting server: " + err);
-
+                    console.log(this.$i18n('serverError') + ': ' + err);
                 })
         }
     }

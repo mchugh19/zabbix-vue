@@ -5,7 +5,14 @@ import del from 'del';
 import runSequence from 'run-sequence';
 import {stream as wiredep} from 'wiredep';
 import webpackStream from 'webpack-stream';
-import webpack from 'webpack'
+import webpack from 'webpack';
+
+// Define uglify-es
+var uglifyjs = require('uglify-es');
+var pump = require('pump');
+var composer = require('gulp-uglify/composer');
+var minify = composer(uglifyjs, console);
+
 
 const $ = gulpLoadPlugins();
 
@@ -39,21 +46,6 @@ gulp.task('lint', lint('app/scripts.babel/**/*.js', {
   }
 }));
 
-gulp.task('images', () => {
-  return gulp.src('app/images/**/*')
-    .pipe($.if($.if.isFile, $.cache($.imagemin({
-      progressive: true,
-      interlaced: true,
-      // don't remove IDs from SVGs, they are often used
-      // as hooks for embedding and styling
-      svgoPlugins: [{cleanupIDs: false}]
-    }))
-    .on('error', function (err) {
-      console.log(err);
-      this.end();
-    })))
-    .pipe(gulp.dest('dist/images'));
-});
 
 gulp.task('html', () => {
   return gulp.src('app/*.html')
@@ -71,20 +63,15 @@ gulp.task('html', () => {
     .pipe(gulp.dest('dist'));
 });
 
-gulp.task('javascript-lib', ['babel'], () => {
-  return gulp.src('app/scripts.babel/lib/sjcl.js')
-    //.pipe($.sourcemaps.init())
-    .pipe($.if('*.js', $.uglify()))
-    //.pipe($.sourcemaps.write('maps'))
-    .pipe(gulp.dest('dist/scripts'));
-});
-
-gulp.task('javascript-app', ['javascript-lib'], () => {
-  return gulp.src('.tmp/*.js')
-    //.pipe($.sourcemaps.init())
-    .pipe($.if('*.js', $.uglify()))
-    //.pipe($.sourcemaps.write('maps'))
-    .pipe(gulp.dest('dist/scripts'));
+gulp.task('javascript', ['babel'], (cb) => {
+  var options = {};
+  pump([
+      gulp.src(['.tmp/*.js', 'app/scripts.babel/lib/sjcl.js']),
+      minify(options),
+      gulp.dest('dist/scripts')
+    ],
+    cb
+  );
 });
 
 gulp.task('chromeManifest', () => {
@@ -147,7 +134,7 @@ gulp.task('copy-svg', function() {
 
 gulp.task('build', (cb) => {
   runSequence(
-    'lint', 'chromeManifest', 'javascript-app',
+    'lint', 'chromeManifest', 'javascript',
     ['svg2png', 'copy-svg'],
     'html', 'compile-fonts','extras',
     'size', cb);

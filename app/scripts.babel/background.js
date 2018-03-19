@@ -229,10 +229,10 @@ function setActiveTriggersTable() {
 	*/
 	let topSeverity = -1;
 	let popupHeaders = [
-		{'text': 'System','value': 'system'},
-		{'text': 'Description','value': 'description'},
-		{'text': 'Priority','value': 'priority'},
-		{'text': 'Age','value': 'age'}
+		{'text': browser.i18n.getMessage('headerSystem'),'value': 'system'},
+		{'text': browser.i18n.getMessage('headerDescription'),'value': 'description'},
+		{'text': browser.i18n.getMessage('headerPriority'),'value': 'priority'},
+		{'text': browser.i18n.getMessage('headerAge'),'value': 'age'}
 	]
 
 	//console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
