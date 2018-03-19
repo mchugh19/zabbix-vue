@@ -1,7 +1,7 @@
 <template>
     <v-app class="popup">
         <span v-if="triggerTableData.data.error" class='serverError'>
-            <i class="material-icons">warning</i> Check server configuration in extension options: {{triggerTableData.data.errorMessage}}
+            <i class="material-icons">warning</i>{{$i18n('checkConfig')}}: {{triggerTableData.data.errorMessage}}
         </span>
         <v-card class="serverBlock" id="triggerTable" v-for="serverObj in triggerTableData.data.servers" v-bind:key="serverObj.server">
             <v-card-title>
@@ -9,7 +9,7 @@
                 <v-spacer></v-spacer>
                 <v-text-field
                 append-icon="search"
-                label="Filter"
+                :label="$i18n('filter')"
                 single-line
                 hide-details
                 v-model="serverObj.search"
@@ -40,21 +40,21 @@
                 </template>
                 <template slot="expand" slot-scope="props">
                     <v-layout row justify-left>
-                        <v-btn color="teal lighten-3" @click="hostDetails(serverObj.url, props.item.hostid)">Host Details</v-btn>
-                        <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">Latest Data</v-btn>
-                        <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">Host Graphs</v-btn>
-                        <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">Problem Details</v-btn>
-                        <v-btn color="teal lighten-3" @click="eventDetails(serverObj.url, props.item.triggerid, props.item.eventid)">Event Details</v-btn>
-                        <v-btn color="teal lighten-3" @click="ackEvent(serverObj.url, props.item.triggerid, props.item.eventid)">Ack Event</v-btn>
+                        <v-btn color="teal lighten-3" @click="hostDetails(serverObj.url, props.item.hostid)">{{$i18n('hostDetails')}}</v-btn>
+                        <v-btn color="teal lighten-3" @click="latestData(serverObj.url, props.item.hostid)">{{$i18n('latestData')}}</v-btn>
+                        <v-btn color="teal lighten-3" @click="hostGraphs(serverObj.url, props.item.hostid)">{{$i18n('hostGraphs')}}</v-btn>
+                        <v-btn color="teal lighten-3" @click="problemDetails(serverObj.url, props.item.triggerid)">{{$i18n('problemDetails')}}</v-btn>
+                        <v-btn color="teal lighten-3" @click="eventDetails(serverObj.url, props.item.triggerid, props.item.eventid)">{{$i18n('eventDetails')}}</v-btn>
+                        <v-btn color="teal lighten-3" @click="ackEvent(serverObj.url, props.item.triggerid, props.item.eventid)">{{$i18n('ackEvent')}}</v-btn>
                     </v-layout>
                 </template>
                 <template slot="no-data">
                     <v-alert :value="true" color="green lighten-1" icon="done">
-                        No problems
+                        {{$i18n('noProb')}}
                     </v-alert>
                 </template>
                 <v-alert slot="no-results" :value="true" color="red" icon="warning">
-                    Your search for "{{ serverObj.search }}" found no results.
+                    {{$i18n('noResults')}}: {{ serverObj.search }}
                 </v-alert>
             </v-data-table>
         </v-card>
@@ -76,13 +76,13 @@ function requestTableRefresh() {
                 if (Object.keys(response).length === 0 && response.constructor === Object) {
                     // No servers defined
                     triggerTable.data.error = true;
-                    triggerTable.data.errorMessage = 'No servers defined';
+                    triggerTable.data.errorMessage = this.$i18n('noServers');
                 } else {
                     triggerTable.data = response;
                 }
             } else {
                 triggerTable.data.error = true;
-                triggerTable.data.errorMessage = 'Plugin Error';
+                triggerTable.data.errorMessage = this.$i18n('error');
             }
             //console.log('triggerTable is now: ' + JSON.stringify(triggerTable));
         }
@@ -121,13 +121,12 @@ export default {
         },
         priority_name_filter: function(value) {
             var PRIORITY_NAMES = {
-                0: 'Not Classified',
-                1: 'Information',
-                2: 'Warning',
-                3: 'Average',
-                4: 'High',
-                5: 'Disaster',
-                9: 'Normal'
+                0: browser.i18n.getMessage('notClassified'),
+                1: browser.i18n.getMessage('information'),
+                2: browser.i18n.getMessage('warning'),
+                3: browser.i18n.getMessage('average'),
+                4: browser.i18n.getMessage('high'),
+                5: browser.i18n.getMessage('disaster')
             }
             return PRIORITY_NAMES[value];
         },

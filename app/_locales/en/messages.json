@@ -6,5 +6,172 @@
   "appDescription": {
     "message": "Zabbix Vue",
     "description": "Monitor Zabbix problems from your browser"
+  },
+
+  "notClassified": {
+    "message": "Not Classified",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Information",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Warning",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Average",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "High",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Disaster",
+    "description": "Zabbix severity"
+  },
+
+
+  "serverSettings": {
+    "message": "Server Settings",
+    "description": "Options screen label"
+  },
+  "server": {
+    "message": "Server",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "Alias",
+    "description": "Options screen label"
+  },
+  "URL": {
+    "message": "URL",
+    "description": "Options screen label"
+  },
+  "zabbixUser": {
+    "message": "Zabbix User",
+    "description": "Options screen label"
+  },
+  "zabbixPass": {
+    "message": "Zabbix Password",
+    "description": "Options screen label"
+  },
+  "hideEvents": {
+    "message": "Hide Acknowledged Events",
+    "description": "Options screen label"
+  },
+  "ignoreHosts": {
+    "message": "Ignore Hosts in Maintenance",
+    "description": "Options screen label"
+  },
+  "minSev": {
+    "message": "Monitor Minimum Severity",
+    "description": "Options screen label"
+  },
+  "monGroups": {
+    "message": "Monitor Hostgroups",
+    "description": "Options screen label"
+  },
+  "generalSettings": {
+    "message": "General Settings",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Update Interval",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "ADD SERVER",
+    "description": "Options screen button"
+  },
+
+  "required": {
+    "message": "Item is required",
+    "description": "Options screen validation message"
+  },
+  "requiredURL": {
+    "message": "Valid URL is required",
+    "description": "Options screen validation message"
+  },
+  "lessSeconds": {
+    "message": "Don't check more frequently than every 10 seconds",
+    "description": "Options screen validation message"
+  },
+  "serverError": {
+    "message": "Error contacting server",
+    "description": "Generic error message"
+  },
+  "checkConfig": {
+    "message": "Check server configuration in extension options",
+    "description": "Configuration error message"
+  },
+
+  "headerSystem": {
+    "message": "System",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "Description",
+    "description": "Popup headers"
+  },
+  "headerPriority": {
+    "message": "Priority",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Age",
+    "description": "Popup headers"
+  },
+
+  "hostDetails": {
+    "message": "Host Details",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Latest Data",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Host Graphs",
+    "description": "Popup button"
+  },
+  "problemDetails": {
+    "message": "Problem Details",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Event Details",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Ack Event",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filter",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "No problems",
+    "description": "Popup message"
+  },
+  "noResults": {
+    "message": "No results found for",
+    "description": "Popup message"
+  },
+  "noServers": {
+    "message": "No servers defined",
+    "description": "Popup error"
+  },
+  "error": {
+    "message": "Plugin Error",
+    "description": "Popup error"
   }
+
 }
