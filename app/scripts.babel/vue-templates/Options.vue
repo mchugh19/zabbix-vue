@@ -92,6 +92,10 @@
                             type='Number'
                             required
                             ></v-text-field>
+                            <v-checkbox
+                            :label="$i18n('notify')"
+                            v-model="zabbixs.global.notify"
+                            ></v-checkbox>
                     </v-card>
                 </v-layout>
                 <v-layout row>
@@ -128,6 +132,7 @@ cryptio.get('ZabbixServers', function(err, results) {
         zabbix_data = {
             'global': {
                 'interval': 60,
+                'notify': true,
                 'formValid': true
             },
             'servers': [{
@@ -148,6 +153,10 @@ cryptio.get('ZabbixServers', function(err, results) {
         }
     } else {
         zabbix_data = results;
+        // Set defaults
+        if (zabbix_data.global.notify == null) {
+            zabbix_data.global.notify = true;
+        }
     };
     //console.log('zabbix_data is now: ' + JSON.stringify(zabbix_data));
 })

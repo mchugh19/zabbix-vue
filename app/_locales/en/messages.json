@@ -82,6 +82,10 @@
     "message": "Update Interval",
     "description": "Options screen label"
   },
+  "notify": {
+    "message": "Display Popup Notifications",
+    "description": "Options screen label"
+  },
   "save": {
     "message": "Save",
     "description": "Options screen button"

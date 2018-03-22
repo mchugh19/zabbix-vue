@@ -18,11 +18,17 @@ function initalize() {
 	cryptio.get('ZabbixServers', function(err, results){
 		if (err) {settings = null};
 		settings = results;
+
 		// Set default pagination if doesn't yet exist
 		for (var i = 0; i < settings['servers'].length; i++) {
 			if (settings['servers'][i]['pagination'] == null) {
 				settings['servers'][i]['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1};
 			}
+		}
+
+		// Set default notification if not set
+		if (settings['global']['notify'] == null) {
+			settings['global']['notify'] = true;
 		}
 	});
 	try {
@@ -159,9 +165,11 @@ function getAllTriggers(){
 						});
 					});
 
-					// Notify popup for new triggers
-					for (let trig of triggerDiff) {
-						sendNotify(trig);
+					if (settings['global']['notify']) {
+						// Notify popup for new triggers
+						for (let trig of triggerDiff) {
+							sendNotify(trig);
+						}
 					}
 
 					// Record new trigger list
