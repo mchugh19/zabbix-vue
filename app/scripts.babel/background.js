@@ -30,6 +30,12 @@ function initalize() {
 		if (settings['global']['notify'] == null) {
 			settings['global']['notify'] = true;
 		}
+
+		// Set default display name if not set
+		if (settings['global']['displayName'] == null) {
+			settings['global']['displayName'] = 'host';
+		}
+
 	});
 	try {
 		interval = settings['global']['interval'];
@@ -65,6 +71,7 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 		'skipDependent': 1,
 		'selectHosts': [
 			'host',
+			'name',
 			'hostid',
 			'maintenance_status'
 		],
@@ -267,7 +274,7 @@ function setActiveTriggersTable() {
 			// Iterate over found triggers and format for popup
 			console.log('Generating trigger table for server: ' + JSON.stringify(server));
 			for (var t = 0; t < triggerResults[server].length; t++) {
-				let system = triggerResults[server][t]['hosts'][0]['host']
+				let system = triggerResults[server][t]['hosts'][0][settings.global.displayName]
 				let description = triggerResults[server][t]['description']
 				let priority = triggerResults[server][t]['priority']
 				// Set priority number if higher than current
