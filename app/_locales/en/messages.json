@@ -86,6 +86,18 @@
     "message": "Display Popup Notifications",
     "description": "Options screen label"
   },
+  "selectName": {
+    "message": "Display name in popup",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Host name",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Visible name",
+    "description": "Options screen label"
+  },
   "save": {
     "message": "Save",
     "description": "Options screen button"

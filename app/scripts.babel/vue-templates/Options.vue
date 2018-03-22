@@ -96,6 +96,13 @@
                             :label="$i18n('notify')"
                             v-model="zabbixs.global.notify"
                             ></v-checkbox>
+                            <v-radio-group
+                            v-model="zabbixs.global.displayName"
+                            :label="$i18n('selectName')"
+                            >
+                                <v-radio :label="$i18n('displayHost')" value="host"></v-radio>
+                                <v-radio :label="$i18n('displayName')" value="name"></v-radio>
+                            </v-radio-group>
                     </v-card>
                 </v-layout>
                 <v-layout row>
@@ -133,6 +140,7 @@ cryptio.get('ZabbixServers', function(err, results) {
             'global': {
                 'interval': 60,
                 'notify': true,
+                'displayName': 'host',
                 'formValid': true
             },
             'servers': [{
@@ -156,6 +164,9 @@ cryptio.get('ZabbixServers', function(err, results) {
         // Set defaults
         if (zabbix_data.global.notify == null) {
             zabbix_data.global.notify = true;
+        }
+        if (zabbix_data.global.displayName == null) {
+            zabbix_data.global.displayName = 'host';
         }
     };
     //console.log('zabbix_data is now: ' + JSON.stringify(zabbix_data));
