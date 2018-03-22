@@ -18,6 +18,12 @@ function initalize() {
 	cryptio.get('ZabbixServers', function(err, results){
 		if (err) {settings = null};
 		settings = results;
+		// Set default pagination if doesn't yet exist
+		for (var i = 0; i < settings['servers'].length; i++) {
+			if (settings['servers'][i]['pagination'] == null) {
+				settings['servers'][i]['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1};
+			}
+		}
 	});
 	try {
 		interval = settings['global']['interval'];
@@ -285,15 +291,17 @@ function setActiveTriggersTable() {
 			serverObject['server'] = server
 			// Add search string for server
 			serverObject['search'] = '';
-			serverObject['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1}
 			// Lookup zabbix url from settings
 			let url = ''
+			let pagination = {}
 			for (var x = 0; x < settings['servers'].length; x++) {
-				if (settings['servers'][i]['alias'] === server) {
-					url = settings['servers'][i]['url'];
+				if (settings['servers'][x]['alias'] === server) {
+					url = settings['servers'][x]['url'];
+					pagination = settings['servers'][i]['pagination'];
 				}
 			}
-			serverObject['url'] = url
+			serverObject['url'] = url;
+			serverObject['pagination'] = pagination;
 			//console.log('serverObject is: ' + JSON.stringify(serverObject));
 			popupTable['servers'].push(serverObject);
 		}
@@ -327,6 +335,23 @@ function handleMessage(request, sender, sendResponse) {
 	case 'reinitalize':
 		// Sent by options to alert to config changes in order to refresh
 		initalize();
+		break;
+	case 'submitPagination':
+		// Message sent by popup to save header sorting
+		let updated = false;
+		if (settings['servers'][request.index]['pagination'].sortBy != request.sortBy) {
+			settings['servers'][request.index]['pagination'].sortBy = request.sortBy;
+			updated = true;
+		}
+		if (settings['servers'][request.index]['pagination'].descending != request.descending) {
+			settings['servers'][request.index]['pagination'].descending = request.descending;
+			updated = true;
+		}
+		if (updated) {
+			cryptio.set('ZabbixServers', settings, function(err, results) {
+				if (err) throw err;
+			});
+		}
 		break;
 	}
 	return true;
