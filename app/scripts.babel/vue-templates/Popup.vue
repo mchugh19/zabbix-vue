@@ -180,6 +180,27 @@ export default {
         ackEvent: function(url, triggerid, eventid) {
             window.open(url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid, '_blank');
         }
+    },
+    watch: {
+        // Watch for updates in order to pass along data-table sorting
+        "triggerTableData.data.servers": {
+            handler: function (val, oldVal) {
+                if (oldVal) {
+                // initial load activates watch, so only update on next change (already has oldVal)
+                    for (var i = 0; i < this.triggerTableData.data.servers.length; i++) {
+                        let sortBy = val[i].pagination.sortBy;
+                        let descending = val[i].pagination.descending;
+                        browser.runtime.sendMessage({
+                            'method': 'submitPagination',
+                            'index': i,
+                            'sortBy': sortBy,
+                            'descending': descending
+                        })
+                    }
+                }
+            },
+            deep: true
+        }
     }
 }
 </script>

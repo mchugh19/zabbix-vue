@@ -141,7 +141,8 @@ cryptio.get('ZabbixServers', function(err, results) {
                 'hostGroupsList': [],
                 'minSeverity': 0,
                 'visiblePass': false,
-                'errorMsg': ''
+                'errorMsg': '',
+                'pagination': {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1}
 
             }]
         }
@@ -179,7 +180,8 @@ export default {
                 'hostGroupsList': [],
                 'minSeverity': 0,
                 'visiblePass': false,
-                'errorMsg': ''
+                'errorMsg': '',
+                'pagination': {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1}
             });
         },
         removeServer: function (index) {
@@ -252,6 +254,8 @@ export default {
 html,
 #app {
     width: 400px;
+    height: 600px;
+    overflow: scroll;
 }
 body {
 	margin: 0;
