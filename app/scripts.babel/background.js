@@ -220,7 +220,7 @@ function sendNotify(message) {
 	*/
 	browser.notifications.create('notification', {
 		type: 'basic',
-		title: message.hosts[0].host,
+		title: message.hosts[0][settings.global.displayName],
 		message: message.description,
 		iconUrl: 'images/sev_' + message.priority + '.svg',
 	}, function() {
