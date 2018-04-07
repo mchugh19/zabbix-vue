@@ -5,7 +5,7 @@
   "description": "__MSG_appDescription__",
   "author": "https://github.com/mchugh19/zabbix-vue",
   "icons": {
-    "110": "images/logo.png"
+    "128": "images/logo.png"
   },
   "default_locale": "en",
   "background": {
