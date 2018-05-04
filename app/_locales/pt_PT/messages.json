@@ -1,0 +1,192 @@
+{
+  "appName": {
+    "message": "Zabbix Vue",
+    "description": "Monitor Zabbix problemas no seu browser"
+  },
+  "appDescription": {
+    "message": "Zabbix Vue",
+    "description": "Monitor Zabbix problemas no seu browser"
+  },
+
+  "notClassified": {
+    "message": "Nao classificada",
+    "description": "Severidade Zabbix"
+  },
+  "information": {
+    "message": "Informacao",
+    "description": "Severidade Zabbix"
+  },
+  "warning": {
+    "message": "Aviso",
+    "description": "Severidade Zabbix"
+  },
+  "average": {
+    "message": "Media",
+    "description": "Severidade Zabbix"
+  },
+  "high": {
+    "message": "Alta",
+    "description": "Severidade Zabbix"
+  },
+  "disaster": {
+    "message": "Desastre",
+    "description": "Severidade Zabbix"
+  },
+
+
+  "serverSettings": {
+    "message": "Configuracoes do servidor",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "server": {
+    "message": "Servidor",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "alias": {
+    "message": "Alias",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "URL": {
+    "message": "URL",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "zabbixUser": {
+    "message": "utilizador Zabbix",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "zabbixPass": {
+    "message": "password Zabbix",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "hideEvents": {
+    "message": "esconder eventos ja aceites",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "ignoreHosts": {
+    "message": "ignorar maquinas em mnutencao",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "minSev": {
+    "message": "monitorizar severidade minima",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "monGroups": {
+    "message": "monitorizar grupo de maquinas",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "generalSettings": {
+    "message": "Opcoes gerais",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "updateInterval": {
+    "message": "intervalo de actualizacao",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "notify": {
+    "message": "mostrar motificacoes popup",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "selectName": {
+    "message": "mostrar nome na popup",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "displayHost": {
+    "message": "nome da maquina",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "displayName": {
+    "message": "nome visivel",
+    "description": "etiqueta do ecra de opcoes"
+  },
+  "save": {
+    "message": "guardar",
+    "description": "botao do ecra de opcoes"
+  },
+  "addServer": {
+    "message": "adicionar servidor",
+    "description": "botao do ecra de opcoes"
+  },
+
+  "required": {
+    "message": "Item obrigatorio",
+    "description": "mensagem de validacao do ecra de opcoes"
+  },
+  "requiredURL": {
+    "message": "URL valido obrigatorio",
+    "description": "mensagem de validacao do ecra de opcoes"
+  },
+  "lessSeconds": {
+    "message": "nao verificar com mais frequencia do que 10 segundos",
+    "description": "mensagem de validacao do ecra de opcoes"
+  },
+  "serverError": {
+    "message": "erro ao connectar com o servidor",
+    "description": "mensagem de erro generica"
+  },
+  "checkConfig": {
+    "message": "verificar as configuracoes do servidor nas opcoes extra",
+    "description": "mensagem de erro nas configuracoes"
+  },
+
+  "headerSystem": {
+    "message": "Sistema",
+    "description": "cabecalho popup"
+  },
+  "headerDescription": {
+    "message": "Descricao",
+    "description": "cabecalho popup"
+  },
+  "headerPriority": {
+    "message": "Prioridade",
+    "description": "cabecalho popup"
+  },
+  "headerAge": {
+    "message": "Idade",
+    "description": "cabecalho popup"
+  },
+
+  "hostDetails": {
+    "message": "detalhes da maquina",
+    "description": "botao popup"
+  },
+  "latestData": {
+    "message": "ultima informacao",
+    "description": "botao popup"
+  },
+  "hostGraphs": {
+    "message": "grafico das maquinas",
+    "description": "botao popup"
+  },
+  "problemDetails": {
+    "message": "detalhes do problema",
+    "description": "botao popup"
+  },
+  "eventDetails": {
+    "message": "detalhes do evento",
+    "description": "botao popup"
+  },
+  "ackEvent": {
+    "message": "evento de confirmacao",
+    "description": "botao popup"
+  },
+  "filter": {
+    "message": "filtro",
+    "description": "identificacao popup"
+  },
+  "noProb": {
+    "message": "nao ha problemas",
+    "description": "mensagem popup"
+  },
+  "noResults": {
+    "message": "Nao ha resultados encontrados para",
+    "description": "mensagem popup"
+  },
+  "noServers": {
+    "message": "Nao ha servidores definidos",
+    "description": "erro popup"
+  },
+  "error": {
+    "message": "erro no Plugin",
+    "description": "erro popup"
+  }
+}
