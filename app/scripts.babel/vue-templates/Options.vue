@@ -269,8 +269,8 @@ export default {
 <style>
 html,
 #app {
-    width: 400px;
-    height: 600px;
+    width: 600px;
+    height: 800px;
     overflow: scroll;
 }
 body {
@@ -281,7 +281,7 @@ body {
     margin-top: 8px;
     margin-left: 8px;
     margin-right: 8px;
-    width: 400px;
+    width: 100%;
 }
 .serverBlock.card {
     margin-top: 8px;
@@ -298,6 +298,7 @@ body {
     float: right;
     min-width: unset;
     width: 40px;
+    margin-top: auto;
 }
 .reloadBtn {
     margin: unset;
@@ -307,7 +308,8 @@ body {
     padding-right: 12px;
 }
 .hostGroupSelect {
-    width: 300px;
+    width: 88%;
+    padding-right: 0px;
     overflow: hidden;
     float: left;
     padding-top: 0px;
@@ -317,5 +319,8 @@ body {
 }
 .serverError {
     float: left;
+}
+#addZabbix {
+    min-height: 30px;
 }
 </style>
