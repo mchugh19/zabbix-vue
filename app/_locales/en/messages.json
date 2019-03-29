@@ -1,11 +1,11 @@
 {
   "appName": {
     "message": "Zabbix Vue",
-    "description": "Monitor Zabbix problems from your browser"
+    "description": "Extension name"
   },
   "appDescription": {
-    "message": "Zabbix Vue",
-    "description": "Monitor Zabbix problems from your browser"
+    "message": "Monitor Zabbix problems from your browser",
+    "description": "Description in extension store"
   },
 
   "notClassified": {
