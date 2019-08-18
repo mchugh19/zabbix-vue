@@ -5,7 +5,7 @@ import Zabbix from './lib/zabbix-promise.js';
 import './lib/crypt.io.js';
 
 var settings = null;
-var interval;
+var interval = 60;
 var triggerResults = {};
 var popupTable = {};
 
@@ -16,14 +16,22 @@ function initalize() {
 	* Called by options so also kickoff an initial Zabbix poll
 	*/
 	cryptio.get('ZabbixServers', function(err, results){
-		if (err) {settings = null};
+		if (err) {settings = {}};
 		settings = results;
 
 		// Set default pagination if doesn't yet exist
-		for (var i = 0; i < settings['servers'].length; i++) {
-			if (settings['servers'][i]['pagination'] == null) {
-				settings['servers'][i]['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1};
+		if (settings && settings['servers']) {
+			for (var i = 0; i < settings['servers'].length; i++) {
+				if (settings['servers'][i]['pagination'] == null) {
+					settings['servers'][i]['pagination'] = {'sortBy': 'priority', 'descending': true, 'rowsPerPage': -1};
+				}
 			}
+		}
+
+		// Initalizie settings
+		if (!settings || settings['global'] == null) {
+			settings = {};
+			settings.global = {};
 		}
 
 		// Set default notification if not set
@@ -150,7 +158,12 @@ function getAllTriggers(){
 	* Call setActiveTriggersTable function to update popup dataset
 	*/
 	var triggerCount = 0;
-	if (!settings || 0 === settings.length) {
+	if (
+			!settings ||
+			settings.length === 0 ||
+			!settings['servers'] ||
+			settings['servers'].length == 0
+	 	) {
 		triggerResults = {};
 		console.log('No servers defined.');
 	} else {
