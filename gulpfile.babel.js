@@ -20,6 +20,7 @@ gulp.task('extras', () => {
   return gulp.src([
     'app/*.*',
     'app/_locales/**',
+    'app/sounds/*.mp3',
     '!app/scripts.babel',
     '!app/*.json',
     '!app/*.html',
@@ -118,7 +119,7 @@ gulp.task('compile-fonts', function() {
   .pipe(gulp.dest('dist/fonts/'));
 });
 
-var svg2png = require('gulp-svg2png');
+var svg2png = require('gulp-rsvg');
 gulp.task('svg2png', function () {
     // Chrome does not yet support svg logo or default icon from manifest
     gulp.src('app/img_src/{logo,unconfigured}.svg')

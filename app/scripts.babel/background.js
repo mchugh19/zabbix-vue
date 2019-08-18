@@ -31,6 +31,11 @@ function initalize() {
 			settings['global']['notify'] = true;
 		}
 
+		// Set default sound if not set
+		if (settings['global']['sound'] == null) {
+			settings['global']['sound'] = false;
+		}
+
 		// Set default display name if not set
 		if (settings['global']['displayName'] == null) {
 			settings['global']['displayName'] = 'host';
@@ -176,6 +181,14 @@ function getAllTriggers(){
 						// Notify popup for new triggers
 						for (let trig of triggerDiff) {
 							sendNotify(trig);
+						}
+					}
+
+					if (triggerDiff && triggerDiff.length) {
+						if (settings['global']['sound']) {
+							//console.log('Playing audio for new triggers: ' + triggerDiff.toString());
+							var myAudio = new Audio(chrome.runtime.getURL('sounds/drip.mp3'));
+							myAudio.play();
 						}
 					}
 
