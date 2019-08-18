@@ -279,7 +279,7 @@ html,
 #app {
     width: 600px;
     height: 800px;
-    overflow: scroll;
+    overflow: inherit;
 }
 body {
 	margin: 0;

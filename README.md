@@ -33,3 +33,7 @@ Options screen displays many settings including the ability to only show problem
 `gulp clean && gulp build && gulp package`
 
 Then test package/*.zip in Firefox Developer Edition or load the dist/ directory in Chrome.
+
+## Attribution
+Includes notification from freesound.org:
+["Drip Echo"](https://freesound.org/people/SpiceProgram/sounds/399191/) by [SpiceProgram](https://spiceprogram.org/)
