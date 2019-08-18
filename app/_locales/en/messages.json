@@ -86,6 +86,10 @@
     "message": "Display Popup Notifications",
     "description": "Options screen label"
   },
+  "sound": {
+    "message": "Play audio notifications",
+    "description": "Options screen label"
+  },
   "selectName": {
     "message": "Display name in popup",
     "description": "Options screen label"
