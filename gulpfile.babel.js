@@ -120,7 +120,7 @@ gulp.task('compile-fonts', function() {
 var svg2png = require('gulp-rsvg');
 gulp.task('svg2png', function () {
     // Chrome does not yet support svg logo or default icon from manifest
-    gulp.src('app/img_src/{logo,unconfigured}.svg')
+    gulp.src('app/img_src/*.svg')
         .pipe(svg2png())
         .pipe(gulp.dest('dist/images/'));
 });

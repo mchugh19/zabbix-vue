@@ -143,7 +143,7 @@ function getServerTriggers(server, user, pass, groups, hideAck, hideMaintenance,
 		popupTable['errorMessage'] = errorMessage;
 		//Set browser icon to config error state
 		browser.browserAction.setBadgeText({text: ''});
-		browser.browserAction.setIcon({path: 'images/unconfigured.svg'})
+		browser.browserAction.setIcon({path: 'images/unconfigured.png'})
 
 	})
 }
@@ -248,7 +248,7 @@ function sendNotify(message) {
 		type: 'basic',
 		title: message.hosts[0][settings.global.displayName],
 		message: message.description,
-		iconUrl: 'images/sev_' + message.priority + '.svg',
+		iconUrl: 'images/sev_' + message.priority + '.png',
 	}, function() {
 			setTimeout(function() { browser.notifications.clear('notification', function() {}); }, 5000);
 	});
@@ -266,7 +266,7 @@ function setBrowserIcon(severity) {
 	* 5 disaster
 	*/
 	//console.log('Setting icon for priority: ' + severity.toString());
-	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.svg'})
+	browser.browserAction.setIcon({path: 'images/sev_' + severity + '.png'})
 }
 
 
