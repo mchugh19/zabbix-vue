@@ -238,7 +238,7 @@ export default {
       * Only run for the last update of the input field
       * Query zabbix version api to confirm connectivity
       */
-      console.log('looking up url: ' + val + " and index " + index)
+      //console.log('looking up url: ' + val + " and index " + index)
       if (this.timeout) {
         // Reset timer on new data. Thus only run for latest input
         clearTimeout(this.timeout);
@@ -279,7 +279,7 @@ export default {
             return false;
           });
 
-        console.log("url looks okay!");
+        //console.log("url looks okay!");
         this.zabbixs.servers[index].errorMsg = "";
         return true;
       }, 800);
@@ -323,7 +323,7 @@ export default {
         var ZabbixServers = this.zabbixs;
         cryptio.set("ZabbixServers", ZabbixServers, function (err, results) {
           if (err) throw err;
-          console.log(results);
+          //console.log(results);
         });
         window.close();
         browser.runtime.sendMessage({ method: "reinitalize" });

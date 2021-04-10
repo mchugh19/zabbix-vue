@@ -249,7 +249,7 @@ export default {
   },
   methods: {
     expandRow: function (item) {
-      console.log("expand for " + JSON.stringify(item))
+      //console.log("expand for " + JSON.stringify(item))
       this.triggerTableData.data.expanded = item === this.triggerTableData.data.expanded[0] ? [] : [item]
     },
     updateTriggerData: function (newTriggers) {
