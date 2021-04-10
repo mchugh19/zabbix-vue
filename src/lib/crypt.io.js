@@ -6,17 +6,18 @@
  * Author: Jason Gerfen <jason.gerfen@gmail.com>
  * License: MIT (see LICENSE)
  */
-(function(window, undefined) {
+import sjcl from "./sjcl.js";
+(function (window, undefined) {
+  "use strict";
 
-    'use strict';
-
-    /**
-     * @function cryptio
-     * @abstract Namespace for saving/retrieving encrypted HTML5 storage engine
-     * data
-     */
-    var cryptio = cryptio || function() {
-
+  /**
+   * @function cryptio
+   * @abstract Namespace for saving/retrieving encrypted HTML5 storage engine
+   * data
+   */
+  var cryptio =
+    cryptio ||
+    function () {
       /**
        * @var {Object} defaults
        * @abstract Default set of options for plug-in
@@ -26,8 +27,8 @@
        * @param {String} storage Storage mechanism (local, session or cookies)
        */
       var defaults = {
-        passphrase: '',
-        storage: 'local'
+        passphrase: "",
+        storage: "local",
       };
 
       /**
@@ -35,16 +36,16 @@
        * @abstract Initial setup routines
        */
       var setup = setup || {
-
         /**
          * @function set
          * @abstract Initialization
          *
          * @param {Object} opts Plug-in option object
          */
-        init: function(opts) {
-          opts.passphrase = opts.passphrase || (crypto.key(opts.passphrase) || crypto.key());
-        }
+        init: function (opts) {
+          opts.passphrase =
+            opts.passphrase || crypto.key(opts.passphrase) || crypto.key();
+        },
       };
 
       /**
@@ -52,7 +53,6 @@
        * @abstract Interface to handle storage options
        */
       var storage = storage || {
-
         /**
          * @function quota
          * @abstract Tests specified storage option for current amount of space available.
@@ -65,9 +65,8 @@
          *
          * @returns {Boolean}
          */
-        quota: function(storage) {
-          var max = /local|session/.test(storage) ? 1024 * 1025 * 5 :
-            1024 * 4,
+        quota: function (storage) {
+          var max = /local|session/.test(storage) ? 1024 * 1025 * 5 : 1024 * 4,
             cur = libs.total(storage),
             total = max - cur;
 
@@ -85,28 +84,28 @@
          *
          * @returns {Boolean}
          */
-        set: function(opts, key, data, cb) {
+        set: function (opts, key, data, cb) {
           var ret = false;
 
           if (!storage.quota(opts.storage))
-            cb('Browser storage quota has been exceeded.');
+            cb("Browser storage quota has been exceeded.");
 
           if (opts.passphrase) {
             try {
               data = sjcl.encrypt(opts.passphrase, storage.fromJSON(data));
-            } catch(err) {
+            } catch (err) {
               return cb(err);
             }
           }
 
-          ret = this[opts.storage] ?
-            this[opts.storage].set(key, data) :
-            this.local.set(key, data);
+          ret = this[opts.storage]
+            ? this[opts.storage].set(key, data)
+            : this.local.set(key, data);
 
           if (!ret) {
-            cb('Error occured saving data');
+            cb("Error occured saving data");
           } else {
-            cb(null, 'Successfully set data');
+            cb(null, "Successfully set data");
           }
         },
 
@@ -120,16 +119,16 @@
          *
          * @returns {Object}
          */
-        get: function(opts, key, cb) {
+        get: function (opts, key, cb) {
           var ret = false;
 
-          ret = this[opts.storage] ?
-            this[opts.storage].get(key) :
-            this.local.get(key);
+          ret = this[opts.storage]
+            ? this[opts.storage].get(key)
+            : this.local.get(key);
 
           try {
             ret = sjcl.decrypt(opts.passphrase, ret);
-          } catch(err) {
+          } catch (err) {
             cb(err);
           }
 
@@ -138,7 +137,7 @@
           if (ret) {
             cb(null, ret);
           } else {
-            cb('Error occured retrieving storage data');
+            cb("Error occured retrieving storage data");
           }
         },
 
@@ -150,7 +149,7 @@
          *
          * @returns {String}
          */
-        fromJSON: function(obj) {
+        fromJSON: function (obj) {
           var ret;
           try {
             ret = JSON.stringify(obj);
@@ -168,7 +167,7 @@
          *
          * @returns {Object}
          */
-        toJSON: function(obj) {
+        toJSON: function (obj) {
           var ret;
           try {
             ret = JSON.parse(obj);
@@ -183,7 +182,6 @@
          * @abstract Method for handling setting & retrieving of cookie objects
          */
         cookie: {
-
           /**
            * @function set
            * @abstract Handle setting of cookie objects
@@ -193,11 +191,17 @@
            *
            * @returns {Boolean}
            */
-          set: function(key, value) {
+          set: function (key, value) {
             var date = new Date();
-            date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
-            document.cookie = key + '=' + value + ';expires=' + date.toGMTString() +
-              ';path=/;domain=' + this.domain();
+            date.setTime(date.getTime() + 30 * 24 * 60 * 60 * 1000);
+            document.cookie =
+              key +
+              "=" +
+              value +
+              ";expires=" +
+              date.toGMTString() +
+              ";path=/;domain=" +
+              this.domain();
             return true;
           },
 
@@ -209,12 +213,15 @@
            *
            * @returns {String|False}
            */
-          get: function(key) {
-            var i, index, value, content = document.cookie.split(';');
+          get: function (key) {
+            var i,
+              index,
+              value,
+              content = document.cookie.split(";");
             for (i = 0; i < content.length; i++) {
-              index = content[i].substr(0, content[i].indexOf('='));
-              value = content[i].substr(content[i].indexOf('=') + 1);
-              index = index.replace(/^\s+|\s+$/g, '');
+              index = content[i].substr(0, content[i].indexOf("="));
+              value = content[i].substr(content[i].indexOf("=") + 1);
+              index = index.replace(/^\s+|\s+$/g, "");
               if (index == key) {
                 return unescape(value);
               }
@@ -228,9 +235,9 @@
            *
            * @returns {String}
            */
-          domain: function() {
+          domain: function () {
             return location.hostname;
-          }
+          },
         },
 
         /**
@@ -238,7 +245,6 @@
          * @abstract Method for handling setting & retrieving of localStorage objects
          */
         local: {
-
           /**
            * @function set
            * @abstract Handle setting & retrieving of localStorage objects
@@ -248,7 +254,7 @@
            *
            * @returns {Boolean}
            */
-          set: function(key, data) {
+          set: function (key, data) {
             try {
               window.localStorage.setItem(key, data);
               return true;
@@ -265,9 +271,9 @@
            *
            * @returns {Object|String|Boolean}
            */
-          get: function(key) {
+          get: function (key) {
             return window.localStorage.getItem(key);
-          }
+          },
         },
 
         /**
@@ -275,7 +281,6 @@
          * @abstract Method for handling setting & retrieving of sessionStorage objects
          */
         session: {
-
           /**
            * @function set
            * @abstract Set session storage objects
@@ -285,7 +290,7 @@
            *
            * @returns {Boolean}
            */
-          set: function(key, data) {
+          set: function (key, data) {
             try {
               window.sessionStorage.setItem(key, data);
               return true;
@@ -302,10 +307,10 @@
            *
            * @returns {Object|String|Boolean}
            */
-          get: function(key) {
+          get: function (key) {
             return window.sessionStorage.getItem(key);
-          }
-        }
+          },
+        },
       };
 
       /**
@@ -313,7 +318,6 @@
        * @abstract Interface to handle encryption option
        */
       var crypto = crypto || {
-
         /**
          * @function key
          * @abstract Prepares key for encryption/decryption routines
@@ -322,7 +326,7 @@
          *
          * @returns {String}
          */
-        key: function(pass) {
+        key: function (pass) {
           pass = pass || this.muid();
 
           var salt = crypto.salt(pass);
@@ -336,8 +340,9 @@
          *
          * @returns {String}
          */
-        muid: function() {
-          var ret = window.navigator.appName +
+        muid: function () {
+          var ret =
+            window.navigator.appName +
             window.navigator.language +
             window.navigator.platform;
 
@@ -352,10 +357,11 @@
          *
          * @returns {String}
          */
-        salt: function(str) {
+        salt: function (str) {
           return sjcl.codec.base64.fromBits(
-                  sjcl.hash.sha256.hash(window.navigator.appName));
-        }
+            sjcl.hash.sha256.hash(window.navigator.appName)
+          );
+        },
       };
 
       /**
@@ -363,7 +369,6 @@
        * @abstract Miscellaneous helper libraries
        */
       var libs = libs || {
-
         /**
          * @function total
          * @abstract Returns size of specified storage
@@ -372,9 +377,9 @@
          *
          * @returns {Insteger}
          */
-        total: function(storage) {
-          var current = '',
-            engine = window.storage + 'Storage';
+        total: function (storage) {
+          var current = "",
+            engine = window.storage + "Storage";
 
           for (var key in engine) {
             if (engine.hasOwnProperty(key)) {
@@ -382,7 +387,7 @@
             }
           }
 
-          return current ? 3 + ((current.length * 16) / (8 * 1024)) : 0;
+          return current ? 3 + (current.length * 16) / (8 * 1024) : 0;
         },
 
         /**
@@ -393,14 +398,14 @@
          *
          * @returns {Integer}
          */
-        size: function(obj) {
+        size: function (obj) {
           var n = 0;
 
-          if (/object/.test(typeof(obj))) {
+          if (/object/.test(typeof obj)) {
             for (var i in obj) {
               if (obj.hasOwnProperty(obj[i])) n++;
             }
-          } else if (/array/.test(typeof(obj))) {
+          } else if (/array/.test(typeof obj)) {
             n = obj.length;
           }
           return n;
@@ -415,19 +420,20 @@
          *
          * @returns {Object}
          */
-        merge: function(defaults, obj) {
+        merge: function (defaults, obj) {
           defaults = defaults || {};
 
           for (var item in defaults) {
             if (defaults.hasOwnProperty(item)) {
-              obj[item] = (/object/.test(typeof(defaults[item]))) ?
-                this.merge(obj[item], defaults[item]) : defaults[item];
+              obj[item] = /object/.test(typeof defaults[item])
+                ? this.merge(obj[item], defaults[item])
+                : defaults[item];
             }
             obj[item] = defaults[item];
           }
 
           return obj;
-        }
+        },
       };
 
       /**
@@ -438,9 +444,8 @@
        * @param {String} key Key of storage object to retrieve
        * @param {Function} cb User supplied callback function
        */
-      cryptio.prototype.get = function(obj, key, cb) {
-        if (cb == undefined)
-          cb = key, key = obj, obj = {};
+      cryptio.prototype.get = function (obj, key, cb) {
+        if (cb == undefined) (cb = key), (key = obj), (obj = {});
 
         var opts = libs.merge(obj, defaults);
 
@@ -458,9 +463,8 @@
        * @param {Object} data User provided data to store
        * @param {Function} cb User supplied callback function
        */
-      cryptio.prototype.set = function(obj, key, data, cb) {
-        if (cb == undefined)
-          cb = data,data = key, key = obj, obj = {};
+      cryptio.prototype.set = function (obj, key, data, cb) {
+        if (cb == undefined) (cb = data), (data = key), (key = obj), (obj = {});
 
         var opts = libs.merge(obj, defaults);
 
@@ -468,10 +472,8 @@
 
         storage.set(opts, key, data, cb);
       };
-
     };
 
-    /* crypt.io, do work */
-    window.cryptio = new cryptio;
-
-  })(window);
+  /* crypt.io, do work */
+  window.cryptio = new cryptio();
+})(window);

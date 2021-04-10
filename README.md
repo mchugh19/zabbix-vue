@@ -29,10 +29,10 @@ Options screen displays many settings including the ability to only show problem
 
 
 ## Build
-`npm install`
-`gulp clean && gulp build && gulp package`
+`yarn install`
+`yarn build --mode production`
 
-Then test package/*.zip in Firefox Developer Edition or load the dist/ directory in Chrome.
+Then create a zip file from the dist/ directory's contents in Firefox Developer Edition or load the dist/ directory in Chrome.
 
 ## Attribution
 Includes notification from freesound.org:
