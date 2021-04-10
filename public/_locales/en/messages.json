@@ -161,6 +161,10 @@
     "message": "Host Graphs",
     "description": "Popup button"
   },
+  "hostDashboards": {
+    "message": "Host Dashboards",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Problem Details",
     "description": "Popup button"

@@ -1,65 +1,34 @@
 {
   "name": "zabbix-vue",
+  "version": "2.0.0",
   "private": true,
-  "engines": {
-    "node": ">=0.8.0"
-  },
-  "devDependencies": {
-    "babel-core": "^6.7.2",
-    "babel-preset-es2015": "^6.6.0",
-    "css-loader": "^0.28.10",
-    "del": "^2.2.0",
-    "file-loader": "^1.1.10",
-    "gulp": "^3.9.1",
-    "gulp-babel": "^6.1.2",
-    "gulp-cache": "^0.4.3",
-    "gulp-chrome-manifest": "0.0.13",
-    "gulp-clean-css": "^2.0.3",
-    "gulp-eslint": "^2.0.0",
-    "gulp-htmlmin": "^2.0.0",
-    "gulp-if": "^2.0.0",
-    "gulp-imagemin": "^2.4.0",
-    "gulp-livereload": "^3.8.1",
-    "gulp-load-plugins": "^1.2.0",
-    "gulp-rsvg": "^1.0.2",
-    "gulp-size": "^2.1.0",
-    "gulp-sourcemaps": "^1.6.0",
-    "gulp-uglify": "^3.0.0",
-    "gulp-useref": "^3.0.8",
-    "gulp-zip": "^3.2.0",
-    "librsvg": "^0.7.0",
-    "main-bower-files": "^2.11.1",
-    "material-design-icons-iconfont": "^3.0.3",
-    "pump": "^3.0.0",
-    "run-sequence": "^1.1.5",
-    "style-loader": "^0.20.2",
-    "uglify-es": "^3.3.9",
-    "vue-plugin-webextension-i18n": "^0.1.0",
-    "wiredep": "^4.0.0"
-  },
-  "eslintConfig": {
-    "env": {
-      "node": true,
-      "browser": true
-    },
-    "globals": {
-      "chrome": true
-    },
-    "rules": {
-      "eol-last": 0,
-      "quotes": [
-        2,
-        "single"
-      ]
-    }
+  "scripts": {
+    "serve": "vue-cli-service build --mode development --watch",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "babel-loader": "^7.1.2",
-    "vue": "^2.5.13",
-    "vue-loader": "^14.1.1",
-    "vue-template-compiler": "^2.5.13",
-    "vuetify": "^1.0.3",
-    "webpack": "^3.11.0",
-    "webpack-stream": "^4.0.1"
+    "material-design-icons-iconfont": "^6.1.0",
+    "vue": "^2.6.11",
+    "vue-plugin-webextension-i18n": "^0.1.2",
+    "vuetify": "^2.4.9",
+    "yarn": "^1.22.10"
+  },
+  "devDependencies": {
+    "@vue/cli-plugin-babel": "~4.5.0",
+    "@vue/cli-plugin-eslint": "~4.5.0",
+    "@vue/cli-plugin-router": "~4.5.0",
+    "@vue/cli-service": "~4.5.0",
+    "@vue/eslint-config-prettier": "^6.0.0",
+    "babel-eslint": "^10.1.0",
+    "eslint": "^6.7.2",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-vue": "^6.2.2",
+    "prettier": "^2.2.1",
+    "sass": "^1.26.5",
+    "sass-loader": "^8.0.2",
+    "svg-to-png-loader": "^3.0.0",
+    "vue-cli-plugin-browser-extension": "latest",
+    "vue-template-compiler": "^2.6.11"
   }
 }
