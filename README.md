@@ -29,7 +29,7 @@ Options screen displays many settings including the ability to only show problem
 
 
 ## Build
-`yum install`
+`yarn install`
 `yarn build --mode production`
 
 Then create a zip file from the dist/ directory's contents in Firefox Developer Edition or load the dist/ directory in Chrome.
