@@ -346,7 +346,6 @@ export default {
           let result = zabbix.call("hostgroup.get", {
             output: ["groupid", "name"],
           });
-          zabbix.logout();
           return result;
         })
         .then((value) => {
@@ -357,6 +356,9 @@ export default {
           this.zabbixs["servers"][index].hostGroupsList = [];
           this.zabbixs["servers"][index]["errorMsg"] = err.message;
           console.log(this.$i18n("serverError") + ": " + err);
+        })
+        .finally(() => {
+          zabbix.logout();
         });
     },
   },

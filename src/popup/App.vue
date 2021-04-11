@@ -28,13 +28,14 @@
       </v-card-title>
       <v-data-table
         :items="serverObj.triggers"
+        item-key="triggerid"
         :headers="triggerTableData.data.headers"
         :loading="triggerTableData.data.loaded"
-        :hide-default-footer="true"
         :search="serverObj.search"
         :sort-by.sync="serverObj.pagination.sortBy"
         :sort-desc.sync="serverObj.pagination.descending"
-        item-key="triggerid"
+        :hide-default-footer="true"
+        disable-pagination
         class="elevation-1"
         dense
         single-expand
@@ -408,4 +409,9 @@ tr.Cnotclassified {
 body {
   min-width: 800px;
 }
+.v-data-table--dense>.v-data-table__wrapper>table>tbody>tr>td,
+.v-data-table--dense>.v-data-table__wrapper>table>tbody>tr>th {
+  height: 20px;
+}
+
 </style>

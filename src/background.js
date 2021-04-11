@@ -137,7 +137,6 @@ function getServerTriggers(
     .login()
     .then(() => {
       let result = zabbix.call("trigger.get", requestObject);
-      zabbix.logout();
       return result;
     })
     .then((value) => {
@@ -153,6 +152,9 @@ function getServerTriggers(
       //Set browser icon to config error state
       browser.browserAction.setBadgeText({ text: "" });
       browser.browserAction.setIcon({ path: "images/unconfigured.png" });
+    })
+    .finally(function (res) {
+      zabbix.logout();
     });
 }
 
