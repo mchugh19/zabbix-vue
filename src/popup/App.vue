@@ -413,5 +413,7 @@ body {
 .v-data-table--dense>.v-data-table__wrapper>table>tbody>tr>th {
   height: 20px;
 }
-
+.v-btn:not(.v-btn--round).v-size--small {
+  height: 19px;
+}
 </style>
