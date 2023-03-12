@@ -90,6 +90,8 @@ function getServerTriggers(
   server,
   user,
   pass,
+  apiToken,
+  version,
   groups,
   hideAck,
   hideMaintenance,
@@ -128,7 +130,7 @@ function getServerTriggers(
     requestObject.maintenance = false;
   }
 
-  const zabbix = new Zabbix(server + "/api_jsonrpc.php", user, pass);
+  const zabbix = new Zabbix(server + "/api_jsonrpc.php", user, pass, apiToken, version);
   if (groups.length > 0) {
     requestObject.groupids = groups;
   }
@@ -184,6 +186,8 @@ function getAllTriggers() {
         let serverURL = settings["servers"][i].url;
         let user = settings["servers"][i].user;
         let pass = settings["servers"][i].pass;
+        let version = settings["servers"][i].version;
+        let apiToken = settings["servers"][i].apiToken;
         let groups = settings["servers"][i].hostGroups;
         let hideAck = settings["servers"][i].hide;
         let hideMaintenance = settings["servers"][i].maintenance;
@@ -194,6 +198,8 @@ function getAllTriggers() {
           serverURL,
           user,
           pass,
+          apiToken,
+          version,
           groups,
           hideAck,
           hideMaintenance,

@@ -40,12 +40,12 @@
         dense
         single-expand
       >
-        <template v-slot:item="{index, item, isExpanded, expand}">
+        <template v-slot:item="{ index, item, isExpanded, expand }">
           <tr
             :key="item.name"
             :class="item.priority | priority_class"
-            @mouseover="toolsIndex=index"
-            @mouseleave="toolsIndex=null"
+            @mouseover="toolsIndex = index"
+            @mouseleave="toolsIndex = null"
             @click="expand(!isExpanded)"
           >
             <td>{{ item.system }}</td>
@@ -72,7 +72,9 @@
               small
               class="pa-0 px-1 ma-0 mr-1"
               color="teal lighten-3"
-              @click="hostDetails(serverObj.url, serverObj.version, item.hostid)"
+              @click="
+                hostDetails(serverObj.url, serverObj.version, item.hostid)
+              "
               >{{ $i18n("hostDetails") }}</v-btn
             >
             <v-btn
@@ -93,14 +95,18 @@
               small
               class="pa-0 px-1 ma-0 mr-1"
               color="teal lighten-3"
-              @click="hostDashboards(serverObj.url, serverObj.version, item.hostid)"
+              @click="
+                hostDashboards(serverObj.url, serverObj.version, item.hostid)
+              "
               >{{ $i18n("hostDashboards") }}</v-btn
             >
             <v-btn
               small
               class="pa-0 px-1 ma-0 mr-1"
               color="teal lighten-3"
-              @click="problemDetails(serverObj.url, serverObj.version, item.triggerid)"
+              @click="
+                problemDetails(serverObj.url, serverObj.version, item.triggerid)
+              "
               >{{ $i18n("problemDetails") }}</v-btn
             >
             <v-btn
@@ -251,7 +257,8 @@ export default {
   methods: {
     expandRow: function (item) {
       //console.log("expand for " + JSON.stringify(item))
-      this.triggerTableData.data.expanded = item === this.triggerTableData.data.expanded[0] ? [] : [item]
+      this.triggerTableData.data.expanded =
+        item === this.triggerTableData.data.expanded[0] ? [] : [item];
     },
     updateTriggerData: function (newTriggers) {
       this.triggers = newTriggers;
@@ -267,7 +274,7 @@ export default {
             hostid,
           "_blank"
         );
-      }  else {
+      } else {
         window.open(
           url +
             "/latest.php?fullscreen=0&filter_set=1&show_without_data=1&hostids%5B%5D=" +
@@ -284,7 +291,7 @@ export default {
             hostid,
           "_blank"
         );
-      }  else {
+      } else {
         window.open(
           url + "/charts.php?fullscreen=0&groupid=0&graphid=0&hostid=" + hostid,
           "_blank"
@@ -292,15 +299,17 @@ export default {
       }
     },
     problemDetails: function (url, version, triggerid) {
-      if (version.split(".")[0] >= 5 ||
-         (version.split(".")[0] == 5 && version.split(".")[1] >=2 )) {
+      if (
+        version.split(".")[0] >= 5 ||
+        (version.split(".")[0] == 5 && version.split(".")[1] >= 2)
+      ) {
         window.open(
           url +
             "/zabbix.php?show=1&show_timeline=1&action=problem.view&triggerids%5B%5D=" +
             triggerid,
           "_blank"
         );
-      }  else {
+      } else {
         window.open(
           url +
             "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" +
@@ -310,21 +319,16 @@ export default {
       }
     },
     hostDashboards: function (url, version, hostid) {
-      if (version.split(".")[0] > 5 ||
-         (version.split(".")[0] == 5 && version.split(".")[1] >= 2 )) {
+      if (
+        version.split(".")[0] > 5 ||
+        (version.split(".")[0] == 5 && version.split(".")[1] >= 2)
+      ) {
         window.open(
-          url +
-            "/zabbix.php?action=host.dashboard.view&hostid=" +
-            hostid,
+          url + "/zabbix.php?action=host.dashboard.view&hostid=" + hostid,
           "_blank"
         );
       } else {
-        window.open(
-          url +
-            "/host_screen.php?hostid=" +
-            hostid,
-          "_blank"
-        );
+        window.open(url + "/host_screen.php?hostid=" + hostid, "_blank");
       }
       // TODO get url for pre 5.0
     },
@@ -337,11 +341,12 @@ export default {
     ackEvent: function (url, version, triggerid, eventid) {
       if (version.split(".")[0] >= 5) {
         window.open(
-          url + "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +
+          url +
+            "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +
             eventid,
           "_blank"
         );
-      }  else {
+      } else {
         window.open(
           url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid,
           "_blank"
@@ -409,8 +414,8 @@ tr.Cnotclassified {
 body {
   min-width: 800px;
 }
-.v-data-table--dense>.v-data-table__wrapper>table>tbody>tr>td,
-.v-data-table--dense>.v-data-table__wrapper>table>tbody>tr>th {
+.v-data-table--dense > .v-data-table__wrapper > table > tbody > tr > td,
+.v-data-table--dense > .v-data-table__wrapper > table > tbody > tr > th {
   height: 20px;
 }
 .v-btn:not(.v-btn--round).v-size--small {

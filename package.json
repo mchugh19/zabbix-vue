@@ -1,11 +1,13 @@
 {
   "name": "zabbix-vue",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service build --mode development --watch",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "start:firefox": "web-ext run --source-dir ./dist/",
+    "start:chrome": "web-ext run -t chromium --source-dir ./dist/"
   },
   "dependencies": {
     "material-design-icons-iconfont": "^6.1.0",
@@ -29,6 +31,7 @@
     "sass-loader": "^8.0.2",
     "svg-to-png-loader": "^3.0.0",
     "vue-cli-plugin-browser-extension": "latest",
-    "vue-template-compiler": "^2.6.11"
+    "vue-template-compiler": "^2.6.11",
+    "web-ext": "^7.5.0"
   }
 }

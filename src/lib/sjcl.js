@@ -1,4 +1,5 @@
 "use strict";
+/* eslint-disable */
 /* eslint quotes: "off" */ var sjcl = {
   cipher: {},
   hash: {},

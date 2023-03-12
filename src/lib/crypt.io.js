@@ -6,6 +6,7 @@
  * Author: Jason Gerfen <jason.gerfen@gmail.com>
  * License: MIT (see LICENSE)
  */
+/* eslint-disable */
 import sjcl from "./sjcl.js";
 (function (window, undefined) {
   "use strict";

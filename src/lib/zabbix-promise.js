@@ -39,12 +39,14 @@ var Zabbix = (function () {
    * @param {string} password - Zabbix user password
    */
 
-  function Zabbix(url, user, password) {
+  function Zabbix(url, user, password, apiToken, version) {
     _classCallCheck(this, Zabbix);
 
     this.url = url;
     this.user = user;
     this.password = password;
+    this.apiToken = apiToken;
+    this.version = version;
   }
 
   /**
@@ -58,6 +60,7 @@ var Zabbix = (function () {
     {
       key: "call",
       value: function call(method, params) {
+        //console.log("ZABLIB method: " + JSON.stringify(method) + " Params: " + JSON.stringify(params))
         var request = {
           jsonrpc: "2.0",
           id: "1",
@@ -65,6 +68,7 @@ var Zabbix = (function () {
           method: method,
           params: params,
         };
+        //console.log("ZABLIB request: " + JSON.stringify(request))
         return this._postJsonRpc(this.url, JSON.stringify(request)).then(
           function (r) {
             return JSON.parse(r);
@@ -82,10 +86,22 @@ var Zabbix = (function () {
       value: function login() {
         var _this = this;
 
+        // make login noop if using an api key
+        if (this.apiToken) {
+          _this.auth = this.apiToken;
+          //console.log("ZABLIB got apiToken SKIPPING LOGIN")
+          return Promise.resolve()
+        }
+        
         var params = {
-          user: this.user,
           password: this.password,
         };
+        // API pre 6.0 needs user, 6.0+ username
+        if (this.version && this.version < 6.0) {
+          params['user'] = this.user
+        } else {
+          params['username'] = this.user
+        }
         return this.call("user.login", params).then(function (reply) {
           _this.auth = reply.result;
           if (_this.auth === undefined) {
@@ -105,6 +121,11 @@ var Zabbix = (function () {
       value: function logout() {
         var _this2 = this;
 
+        // if using an api Token, ignore logout
+        if (this.apiToken) {
+          //console.log("ZABLIB Using API Key. Skipping logout.")
+          return Promise.resolve() 
+        }
         return this.call("user.logout", []).then(function (reply) {
           if (reply.result !== true) {
             throw new Error(JSON.stringify(reply.error));

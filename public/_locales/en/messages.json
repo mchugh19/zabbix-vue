@@ -50,6 +50,14 @@
     "message": "URL",
     "description": "Options screen label"
   },
+  "useToken": {
+    "message": "Use Token auth",
+    "description": "Options screen label"
+  },
+  "zabbixToken": {
+    "message": "Zabbix API Token",
+    "description": "Options screen label"
+  },
   "zabbixUser": {
     "message": "Zabbix User",
     "description": "Options screen label"

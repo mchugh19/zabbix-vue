@@ -12,7 +12,7 @@ const vuetifyOpts = {
   icons: {
     iconfont: "md",
   },
-}
+};
 
 new Vue({
   vuetify: new Vuetify(vuetifyOpts),
