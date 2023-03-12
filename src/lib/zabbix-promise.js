@@ -90,17 +90,18 @@ var Zabbix = (function () {
         if (this.apiToken) {
           _this.auth = this.apiToken;
           //console.log("ZABLIB got apiToken SKIPPING LOGIN")
-          return Promise.resolve()
+          return Promise.resolve();
         }
-        
+
         var params = {
           password: this.password,
         };
+        let versionComp = this.version.split('.').slice(0,2).join('.')
         // API pre 6.0 needs user, 6.0+ username
-        if (this.version && this.version < 6.0) {
-          params['user'] = this.user
+        if (versionComp && versionComp < 6.0) {
+          params["user"] = this.user;
         } else {
-          params['username'] = this.user
+          params["username"] = this.user;
         }
         return this.call("user.login", params).then(function (reply) {
           _this.auth = reply.result;
@@ -124,7 +125,7 @@ var Zabbix = (function () {
         // if using an api Token, ignore logout
         if (this.apiToken) {
           //console.log("ZABLIB Using API Key. Skipping logout.")
-          return Promise.resolve() 
+          return Promise.resolve();
         }
         return this.call("user.logout", []).then(function (reply) {
           if (reply.result !== true) {
