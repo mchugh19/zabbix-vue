@@ -53,7 +53,7 @@
                   ></v-text-field>
 
                   <v-checkbox
-                  class="mb-0 pa-0"
+                    class="mb-0 pa-0"
                     :label="$i18n('useToken')"
                     v-model="server.useToken"
                   ></v-checkbox>
@@ -366,7 +366,13 @@ export default {
        */
 
       this.zabbixs["servers"][index]["errorMsg"] = "";
-      const zabbix = new Zabbix(server + "/api_jsonrpc.php", user, pass, apiToken, version);
+      const zabbix = new Zabbix(
+        server + "/api_jsonrpc.php",
+        user,
+        pass,
+        apiToken,
+        version
+      );
       zabbix
         .login()
         .then(() => {

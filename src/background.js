@@ -2,31 +2,54 @@
 
 import Zabbix from "./lib/zabbix-promise.js";
 import "./lib/crypt.io.js";
-import png_sev_1 from "./images/sev_-1.svg";
-import png_sev0 from "./images/sev_0.svg";
-import png_sev1 from "./images/sev_1.svg";
-import png_sev2 from "./images/sev_2.svg";
-import png_sev3 from "./images/sev_3.svg";
-import png_sev4 from "./images/sev_4.svg";
-import png_sev5 from "./images/sev_5.svg";
-import png_logo from "./images/logo.svg";
-import png_unconfigured from "./images/unconfigured.svg";
 
-const DEF_INTERVAL = 60;
 var browser = browser || chrome;
-var settings = null;
-var interval = 60;
-var triggerResults = {};
-var popupTable = {};
 
-function initalize() {
+/*
+browser.storage.session.set({ key: value }).then(() => {
+    console.log("Value was set");
+  });
+
+  browser.storage.session.get(["key"]).then((result) => {
+    console.log("Value currently is " + result.key);
+  });
+*/
+
+/*
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+  if (reason !== 'install') {
+    return;
+  }
+
+  // Create initial alarm. Timing will be updated when saving options.
+  console.log("Creating default 1 minute alarm");
+  await chrome.alarms.create('default-alarm', {
+    delayInMinutes: 1,
+    periodInMinutes: 1
+  });
+});
+*/
+
+browser.runtime.onStartup.addListener(() => {
+  initalize();
+});
+
+browser.alarms.onAlarm.addListener(() => {
+  getAllTriggers();
+});
+
+async function initalize() {
   /*
    * Set settings from options screen
    * Called by options so also kickoff an initial Zabbix poll
    */
+  console.log("Running initalize");
+  let browser = browser || chrome;
+  let settings = {};
+  // eslint-disable-next-line
   cryptio.get("ZabbixServers", function (err, results) {
     if (err) {
-      settings = {};
+      console.log("Problem fetching settings");
     }
     settings = results;
 
@@ -64,29 +87,24 @@ function initalize() {
     }
   });
   try {
-    interval = settings["global"]["interval"];
-    if (!interval) {
-      interval = DEF_INTERVAL;
+    var interval = settings["global"]["interval"];
+    if (interval) {
+      console.log("Updating alarm to " + interval + " seconds");
+      await browser.alarms.create("default-alarm", {
+        delayInMinutes: interval / 60,
+        periodInMinutes: interval / 60,
+      });
     }
   } catch (err) {
-    interval = DEF_INTERVAL;
+    console.log("No previous polling interval set. Using default.");
   }
-  //console.log("Got settings: " + JSON.stringify(settings));
-  getAllTriggers();
+
+  console.log("Got settings: " + JSON.stringify(settings));
+  await browser.storage.session.set({'ZabbixServers': settings });
+  await getAllTriggers();
 }
 
-function scheduleCheckServers() {
-  /*
-   * Loop and schedule updates based on server check interval from options
-   */
-  getAllTriggers();
-
-  setTimeout(function () {
-    scheduleCheckServers();
-  }, 1000 * interval);
-}
-
-function getServerTriggers(
+async function getServerTriggers(
   server,
   user,
   pass,
@@ -101,7 +119,10 @@ function getServerTriggers(
   /*
    * Return data from zabbix trigger.get call to a specifc server
    */
-  //console.log("getServerTriggers for: " + JSON.stringify(server));
+  let browser = browser || chrome;
+  let popupTable = await browser.storage.session.get("popupTable");
+
+  console.log("getServerTriggers for: " + JSON.stringify(server));
   delete popupTable["error"];
   delete popupTable["errorMessage"];
   let requestObject = {
@@ -130,7 +151,13 @@ function getServerTriggers(
     requestObject.maintenance = false;
   }
 
-  const zabbix = new Zabbix(server + "/api_jsonrpc.php", user, pass, apiToken, version);
+  const zabbix = new Zabbix(
+    server + "/api_jsonrpc.php",
+    user,
+    pass,
+    apiToken,
+    version
+  );
   if (groups.length > 0) {
     requestObject.groupids = groups;
   }
@@ -144,7 +171,7 @@ function getServerTriggers(
     .then((value) => {
       callback(value["result"]);
     })
-    .catch(function (res) {
+    .catch(function () {
       let errorMessage = "Error communicating with: " + server.toString();
       console.log(errorMessage);
       //Show error on popup
@@ -152,15 +179,15 @@ function getServerTriggers(
       popupTable["error"] = true;
       popupTable["errorMessage"] = errorMessage;
       //Set browser icon to config error state
-      browser.browserAction.setBadgeText({ text: "" });
-      browser.browserAction.setIcon({ path: "images/unconfigured.png" });
+      browser.action.setBadgeText({ text: "" });
+      browser.action.setIcon({ path: "images/unconfigured.png" });
     })
-    .finally(function (res) {
+    .finally(function () {
       zabbix.logout();
     });
 }
 
-function getAllTriggers() {
+async function getAllTriggers() {
   /*
    * Loop over each server found in settings
    *   Get trigger results
@@ -168,19 +195,22 @@ function getAllTriggers() {
    * Update browser badge color and count
    * Call setActiveTriggersTable function to update popup dataset
    */
+  let browser = browser || chrome;
   var triggerCount = 0;
+  let settings = browser.storage.session.get("ZabbixServers");
   if (
     !settings ||
     settings.length === 0 ||
     !settings["servers"] ||
     settings["servers"].length == 0
   ) {
-    triggerResults = {};
     console.log("No servers defined.");
   } else {
+    let triggerResults = browser.storage.session.get("triggerResults");
     let serversChecked = [];
     var i = 0;
-    function nextCheck() {
+    // eslint-disable-next-line
+    async function nextCheck() {
       if (i < settings["servers"].length) {
         let server = settings["servers"][i].alias;
         let serverURL = settings["servers"][i].url;
@@ -194,7 +224,7 @@ function getAllTriggers() {
         let minPriority = settings["servers"][i].minSeverity;
         serversChecked.push(server);
         console.log("Found server: " + server);
-        getServerTriggers(
+        await getServerTriggers(
           serverURL,
           user,
           pass,
@@ -249,20 +279,23 @@ function getAllTriggers() {
           }
         }
 
+        // save triggerResults
+        browser.storage.session.set({"triggerResults": triggerResults});
+
         if (triggerCount > 0) {
           // Set bage for the number of active triggers
-          browser.browserAction.setBadgeBackgroundColor({ color: "#888888" });
-          browser.browserAction.setBadgeText({ text: triggerCount.toString() });
+          browser.action.setBadgeBackgroundColor({ color: "#888888" });
+          browser.action.setBadgeText({ text: triggerCount.toString() });
         } else {
           // Clear badge as there are no active triggers
-          browser.browserAction.setBadgeText({ text: "" });
+          browser.action.setBadgeText({ text: "" });
         }
-        setActiveTriggersTable();
+        await setActiveTriggersTable();
       }
       // Increment at the end to emulate a for loop
       i++;
     }
-    nextCheck();
+    await nextCheck();
   }
 }
 
@@ -270,6 +303,8 @@ function sendNotify(message) {
   /*
    * Create a browser notification popup
    */
+  let browser = browser || chrome;
+  let settings = browser.storage.session.get("ZabbixServers");
   browser.notifications.create(
     "notification",
     {
@@ -296,14 +331,17 @@ function setBrowserIcon(severity) {
    * 4 high
    * 5 disaster
    */
+  let browser = browser || chrome;
   //console.log('Setting icon for priority: ' + severity.toString());
-  browser.browserAction.setIcon({ path: "images/sev_" + severity + ".png" });
+  browser.action.setIcon({ path: "images/sev_" + severity + ".png" });
 }
 
-function setActiveTriggersTable() {
+async function setActiveTriggersTable(triggerResults) {
   /*
    * Generate object for display in popup window
    */
+  let browser = browser || chrome;
+  let settings = browser.storage.session.get("ZabbixServers");
   let topSeverity = -1;
   let popupHeaders = [
     { text: browser.i18n.getMessage("headerSystem"), value: "system" },
@@ -322,6 +360,7 @@ function setActiveTriggersTable() {
   ) {
     console.log("No current triggers or servers");
   } else {
+    let popupTable = {};
     popupTable["servers"] = [];
     popupTable["headers"] = popupHeaders;
     popupTable["loaded"] = false;
@@ -392,38 +431,28 @@ function setActiveTriggersTable() {
       //console.log('serverObject is: ' + JSON.stringify(serverObject));
       popupTable["servers"].push(serverObject);
     }
+    await browser.storage.session.set({"popupTable": popupTable})
     //console.log('Complete table: ' + JSON.stringify(popupTable));
     setBrowserIcon(topSeverity);
   }
 }
 
-function getActiveTriggersTable(callback) {
-  callback(popupTable);
-}
-
-// Run our script as soon as the document's DOM is ready.
-document.addEventListener("DOMContentLoaded", function () {
-  console.log("Page loaded. Scheduling checks");
-  initalize();
-  scheduleCheckServers();
-});
-
 // Activate messaging to popup.js and options.js
-function handleMessage(request, sender, sendResponse) {
+async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
     case "refreshTriggers":
       // Sent by popup to request data for display
-      getActiveTriggersTable(function (results) {
-        sendResponse(results);
-      });
+      sendResponse(await browser.storage.session.get("popupTable"));
       break;
     case "reinitalize":
       // Sent by options to alert to config changes in order to refresh
       initalize();
       break;
-    case "submitPagination":
+    case "submitPagination": {
       // Message sent by popup to save header sorting
       var updated = false;
+      var browser = browser || chrome;
+      let settings = browser.storage.session.get("ZabbixServers");
       if (
         settings["servers"][request.index]["pagination"].sortBy !=
         request.sortBy
@@ -441,11 +470,13 @@ function handleMessage(request, sender, sendResponse) {
         updated = true;
       }
       if (updated) {
+        // eslint-disable-next-line
         cryptio.set("ZabbixServers", settings, function (err, results) {
           if (err) throw err;
         });
       }
       break;
+    }
   }
   return true;
 }
