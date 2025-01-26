@@ -1,16 +1,18 @@
 "use strict";
 
+/* global cryptio:readonly */
+
 import Zabbix from "./lib/zabbix-promise.js";
 import "./lib/crypt.io.js";
-import png_sev_1 from "./images/sev_-1.svg";
-import png_sev0 from "./images/sev_0.svg";
-import png_sev1 from "./images/sev_1.svg";
-import png_sev2 from "./images/sev_2.svg";
-import png_sev3 from "./images/sev_3.svg";
-import png_sev4 from "./images/sev_4.svg";
-import png_sev5 from "./images/sev_5.svg";
-import png_logo from "./images/logo.svg";
-import png_unconfigured from "./images/unconfigured.svg";
+import png_sev_1 from "./images/sev_-1.svg";  // eslint-disable-line no-unused-vars
+import png_sev0 from "./images/sev_0.svg";    // eslint-disable-line no-unused-vars
+import png_sev1 from "./images/sev_1.svg";    // eslint-disable-line no-unused-vars
+import png_sev2 from "./images/sev_2.svg";    // eslint-disable-line no-unused-vars
+import png_sev3 from "./images/sev_3.svg";    // eslint-disable-line no-unused-vars
+import png_sev4 from "./images/sev_4.svg";    // eslint-disable-line no-unused-vars
+import png_sev5 from "./images/sev_5.svg";    // eslint-disable-line no-unused-vars
+import png_logo from "./images/logo.svg";     // eslint-disable-line no-unused-vars
+import png_unconfigured from "./images/unconfigured.svg"; // eslint-disable-line no-unused-vars
 
 const DEF_INTERVAL = 60;
 var browser = browser || chrome;
@@ -144,7 +146,7 @@ function getServerTriggers(
     .then((value) => {
       callback(value["result"]);
     })
-    .catch(function (res) {
+    .catch(function () {
       let errorMessage = "Error communicating with: " + server.toString();
       console.log(errorMessage);
       //Show error on popup
@@ -155,7 +157,7 @@ function getServerTriggers(
       browser.browserAction.setBadgeText({ text: "" });
       browser.browserAction.setIcon({ path: "images/unconfigured.png" });
     })
-    .finally(function (res) {
+    .finally(function () {
       zabbix.logout();
     });
 }
@@ -441,7 +443,7 @@ function handleMessage(request, sender, sendResponse) {
         updated = true;
       }
       if (updated) {
-        cryptio.set("ZabbixServers", settings, function (err, results) {
+        cryptio.set("ZabbixServers", settings, function (err) {
           if (err) throw err;
         });
       }
