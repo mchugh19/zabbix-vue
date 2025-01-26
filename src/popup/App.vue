@@ -267,7 +267,14 @@ export default {
       window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
     },
     latestData: function (url, version, hostid) {
-      if (version.split(".")[0] >= 5) {
+      if (version.split(".")[0] >= 7) {
+        window.open(
+          url +
+            "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&hostids%5B%5D=" +
+            hostid,
+          "_blank"
+        );
+      } else if (version.split(".")[0] >= 5) {
         window.open(
           url +
             "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&filter_hostids%5B%5D=" +
@@ -339,7 +346,14 @@ export default {
       );
     },
     ackEvent: function (url, version, triggerid, eventid) {
-      if (version.split(".")[0] >= 5) {
+      if (version.split(".")[0] >= 7) {
+        window.open(
+          url +
+            "/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=" +
+            eventid,
+          "_blank"
+        );
+      } else if (version.split(".")[0] >= 5) {
         window.open(
           url +
             "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +

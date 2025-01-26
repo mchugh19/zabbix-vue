@@ -64,11 +64,16 @@ var Zabbix = (function () {
         var request = {
           jsonrpc: "2.0",
           id: "1",
-          auth: this.auth,
           method: method,
           params: params,
         };
-        //console.log("ZABLIB request: " + JSON.stringify(request))
+        if (this.version) {
+          let versionComp = this.version.split('.').slice(0,2).join('.')
+          if (versionComp && versionComp < 7.0) {
+            request["auth"] = this.auth;
+          }
+        }
+        console.log("ZABLIB request: " + JSON.stringify(request))
         return this._postJsonRpc(this.url, JSON.stringify(request)).then(
           function (r) {
             return JSON.parse(r);
@@ -96,6 +101,7 @@ var Zabbix = (function () {
         var params = {
           password: this.password,
         };
+        _this.auth = undefined;
         let versionComp = this.version.split('.').slice(0,2).join('.')
         // API pre 6.0 needs user, 6.0+ username
         if (versionComp && versionComp < 6.0) {
@@ -140,11 +146,16 @@ var Zabbix = (function () {
     {
       key: "_postJsonRpc",
       value: function _postJsonRpc(url, data) {
+        var _this3 = this;
         return new Promise(function (resolve, reject) {
           var method = "POST";
           var client = new XMLHttpRequest();
           client.open(method, url);
           client.setRequestHeader("Content-Type", "application/json-rpc");
+          // API after 7.0 removes auth object
+          if (_this3.auth) {
+            client.setRequestHeader("Authorization", "Bearer " + _this3.auth)
+          }
           client.send(data);
           client.onload = function () {
             if (this.status >= 200 && this.status < 300) {
