@@ -159,35 +159,35 @@ triggerTable["data"] = {};
 triggerTable["data"]["loaded"] = true;
 triggerTable.data.error = false;
 
-function requestTableRefresh() {
-  browser.runtime.sendMessage(
-    {
-      method: "refreshTriggers",
-    },
-    function (response) {
-      //console.log("refreshTriggers Popup got response: " + JSON.stringify(response));
-      if (response) {
-        if (
-          Object.keys(response).length === 0 &&
-          response.constructor === Object
-        ) {
-          // No servers defined
-          triggerTable.data.error = true;
-          triggerTable.data.errorMessage = browser.i18n.getMessage("noServers");
-        } else {
-          triggerTable.data = response;
-        }
+async function getPopupData() {
+  var popupResults = await browser.storage.session.get("popupTable")
+  if ("popupTable" in popupResults === false) {
+    // No servers defined
+    triggerTable.data.error = true;
+    triggerTable.data.errorMessage = browser.i18n.getMessage("noServers");
+  } else {
+    popupResults = popupResults["popupTable"]
+    console.log("Popup got popupResults: " + JSON.stringify(popupResults));
+    triggerTable.data = popupResults;
+  }
+      /*if (
+        Object.keys(popupResults).length === 0
+      ) {
+        
       } else {
-        triggerTable.data.error = true;
-        triggerTable.data.errorMessage = browser.i18n.getMessage("error");
+       
+        console.log("Processing popupResults " + JSON.stringify(popupResults))
       }
-      //console.log("triggerTable is now: " + JSON.stringify(triggerTable));
-    }
-  );
+    console.log("triggerTable is now: " + JSON.stringify(triggerTable));
+  } else {
+    triggerTable.data.error = true;
+    triggerTable.data.errorMessage = browser.i18n.getMessage("error");
+  }
+    */
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-  requestTableRefresh();
+document.addEventListener("DOMContentLoaded", async function () {
+  await getPopupData();
 
   // Display modifications to work around chrome issue 428044
   // (Tiny popup size)

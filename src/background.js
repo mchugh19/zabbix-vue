@@ -14,7 +14,6 @@ import png_sev5 from "./images/sev_5.svg";    // eslint-disable-line no-unused-v
 import png_logo from "./images/logo.svg";     // eslint-disable-line no-unused-vars
 import png_unconfigured from "./images/unconfigured.svg"; // eslint-disable-line no-unused-vars
 
-const DEF_INTERVAL = 60;
 var browser = browser || chrome;
 
 /*
@@ -133,10 +132,15 @@ async function getServerTriggers(
    */
   let browser = browser || chrome;
   let popupTable = await browser.storage.session.get("popupTable");
+  popupTable = popupTable["popupTable"]
+  if (popupTable && "error" in popupTable) {
+    console.log("Error found in popupTable. Clearning and refreshing triggers");
+    delete popupTable["error"];
+    delete popupTable["errorMessage"];
+    await browser.storage.session.set({"popupTable": popupTable});
+  }
 
-  console.log("getServerTriggers for: " + JSON.stringify(server));
-  delete popupTable["error"];
-  delete popupTable["errorMessage"];
+  console.log("getServerTriggers for: " + JSON.stringify(server))
   let requestObject = {
     expandDescription: 1,
     skipDependent: 1,
@@ -173,30 +177,28 @@ async function getServerTriggers(
   if (groups.length > 0) {
     requestObject.groupids = groups;
   }
+  let triggerResults = {};
 
-  zabbix
-    .login()
-    .then(() => {
-      let result = zabbix.call("trigger.get", requestObject);
-      return result;
-    })
-    .then((value) => {
-      callback(value["result"]);
-    })
-    .catch(function () {
-      let errorMessage = "Error communicating with: " + server.toString();
-      console.log(errorMessage);
-      //Show error on popup
-      //popupTable["servers"] = [];
-      popupTable["error"] = true;
-      popupTable["errorMessage"] = errorMessage;
-      //Set browser icon to config error state
-      browser.action.setBadgeText({ text: "" });
-      browser.action.setIcon({ path: "images/unconfigured.png" });
-    })
-    .finally(function () {
-      zabbix.logout();
-    });
+  try {
+    await zabbix.login();
+    let result = await zabbix.call("trigger.get", requestObject);
+    triggerResults = result["result"];
+  } catch (error) {
+    let errorMessage = "Error communicating with: " + server.toString();
+    console.log(errorMessage);
+    //Show error on popup
+    //popupTable["servers"] = [];
+    popupTable["error"] = true;
+    popupTable["errorMessage"] = errorMessage;
+    await browser.storage.session.set({"popupTable": popupTable});
+    //Set browser icon to config error state
+    browser.action.setBadgeText({ text: "" });
+    browser.action.setIcon({ path: "images/unconfigured.png" });
+  } finally {
+    zabbix.logout();
+  }
+
+  await callback(triggerResults);
 }
 
 async function getAllTriggers() {
@@ -209,7 +211,14 @@ async function getAllTriggers() {
    */
   let browser = browser || chrome;
   var triggerCount = 0;
-  let settings = browser.storage.session.get("ZabbixServers");
+  let settings = {};
+  // eslint-disable-next-line
+  cryptio.get("ZabbixServers", function (err, results) {
+    if (err) {
+      console.log("Problem fetching settings");
+    }
+    settings = results;
+  });
   if (
     !settings ||
     settings.length === 0 ||
@@ -217,8 +226,15 @@ async function getAllTriggers() {
     settings["servers"].length == 0
   ) {
     console.log("No servers defined.");
+    console.log("Settings: " + JSON.stringify(settings));
   } else {
-    let triggerResults = browser.storage.session.get("triggerResults");
+    let triggerResults = await browser.storage.session.get("triggerResults");
+    console.log("getAllTriggers1 existing triggerResults: " + JSON.stringify(triggerResults))
+    triggerResults = triggerResults["triggerResults"]
+    if (!triggerResults) {
+      triggerResults = []
+    }
+    console.log("getAllTriggers existing triggerResults: " + JSON.stringify(triggerResults))
     let serversChecked = [];
     var i = 0;
     // eslint-disable-next-line
@@ -247,7 +263,8 @@ async function getAllTriggers() {
           hideMaintenance,
           minPriority,
           function (results) {
-            // Find triggerid values that are in new results but not in previous
+            console.log("Running getservertriggers callback results: " + JSON.stringify(results))
+            // Find triggerid values that are in new results but previous
             let oldTriggers = triggerResults[server] || [];
             let triggerDiff = results.filter(function (obj) {
               return !oldTriggers.some(function (obj2) {
@@ -278,6 +295,7 @@ async function getAllTriggers() {
             //console.log('triggerResults for server: ' + JSON.stringify(triggerResults[server]));
             triggerCount += triggerResults[server].length;
             nextCheck();
+            //TODO remove above and clean up logic
           }
         );
       } else {
@@ -316,7 +334,14 @@ function sendNotify(message) {
    * Create a browser notification popup
    */
   let browser = browser || chrome;
-  let settings = browser.storage.session.get("ZabbixServers");
+  let settings = {};
+  // eslint-disable-next-line
+  cryptio.get("ZabbixServers", function (err, results) {
+    if (err) {
+      console.log("Problem fetching settings");
+    }
+    settings = results;
+  });
   browser.notifications.create(
     "notification",
     {
@@ -348,12 +373,21 @@ function setBrowserIcon(severity) {
   browser.action.setIcon({ path: "images/sev_" + severity + ".png" });
 }
 
-async function setActiveTriggersTable(triggerResults) {
+async function setActiveTriggersTable() {
   /*
    * Generate object for display in popup window
    */
   let browser = browser || chrome;
-  let settings = browser.storage.session.get("ZabbixServers");
+  let triggerResults = await browser.storage.session.get("triggerResults");
+  triggerResults = triggerResults["triggerResults"];
+  let settings = {};
+  // eslint-disable-next-line
+  cryptio.get("ZabbixServers", function (err, results) {
+    if (err) {
+      console.log("Problem fetching settings");
+    }
+    settings = results;
+  })
   let topSeverity = -1;
   let popupHeaders = [
     { text: browser.i18n.getMessage("headerSystem"), value: "system" },
@@ -450,21 +484,25 @@ async function setActiveTriggersTable(triggerResults) {
 }
 
 // Activate messaging to popup.js and options.js
+// eslint-disable-next-line no-unused-vars
 async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
-    case "refreshTriggers":
-      // Sent by popup to request data for display
-      sendResponse(await browser.storage.session.get("popupTable"));
-      break;
     case "reinitalize":
       // Sent by options to alert to config changes in order to refresh
       initalize();
       break;
-    case "submitPagination": {
+    case "submitPagination":
       // Message sent by popup to save header sorting
       var updated = false;
       var browser = browser || chrome;
-      let settings = browser.storage.session.get("ZabbixServers");
+      var settings = {};
+      // eslint-disable-next-line
+      cryptio.get("ZabbixServers", function (err, results) {
+        if (err) {
+          console.log("Problem fetching settings");
+        }
+        settings = results;
+      })
       if (
         settings["servers"][request.index]["pagination"].sortBy !=
         request.sortBy
@@ -486,8 +524,8 @@ async function handleMessage(request, sender, sendResponse) {
           if (err) throw err;
         });
       }
+      await setActiveTriggersTable();
       break;
-    }
   }
   return true;
 }

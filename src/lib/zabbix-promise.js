@@ -73,9 +73,10 @@ var Zabbix = (function () {
             request["auth"] = this.auth;
           }
         }
-        console.log("ZABLIB request: " + JSON.stringify(request))
+        //console.log("ZABLIB request: " + JSON.stringify(request))
         return this._postJsonRpc(this.url, JSON.stringify(request)).then(
           function (r) {
+            //console.log("ZABLIB response: " + r)
             return JSON.parse(r);
           }
         );
