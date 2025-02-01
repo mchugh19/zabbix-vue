@@ -167,23 +167,13 @@ async function getPopupData() {
     triggerTable.data.errorMessage = browser.i18n.getMessage("noServers");
   } else {
     popupResults = popupResults["popupTable"]
-    console.log("Popup got popupResults: " + JSON.stringify(popupResults));
+    //console.log("Popup got popupResults: " + JSON.stringify(popupResults));
     triggerTable.data = popupResults;
   }
-      /*if (
-        Object.keys(popupResults).length === 0
-      ) {
-        
-      } else {
-       
-        console.log("Processing popupResults " + JSON.stringify(popupResults))
-      }
-    console.log("triggerTable is now: " + JSON.stringify(triggerTable));
-  } else {
-    triggerTable.data.error = true;
-    triggerTable.data.errorMessage = browser.i18n.getMessage("error");
-  }
-    */
+  /*
+  triggerTable.data.error = true;
+  triggerTable.data.errorMessage = browser.i18n.getMessage("error");
+  */
 }
 
 document.addEventListener("DOMContentLoaded", async function () {

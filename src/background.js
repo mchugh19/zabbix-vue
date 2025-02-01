@@ -124,8 +124,7 @@ async function getServerTriggers(
   groups,
   hideAck,
   hideMaintenance,
-  minPriority,
-  callback
+  minPriority
 ) {
   /*
    * Return data from zabbix trigger.get call to a specifc server
@@ -198,7 +197,7 @@ async function getServerTriggers(
     zabbix.logout();
   }
 
-  await callback(triggerResults);
+  return triggerResults;
 }
 
 async function getAllTriggers() {
@@ -229,103 +228,90 @@ async function getAllTriggers() {
     console.log("Settings: " + JSON.stringify(settings));
   } else {
     let triggerResults = await browser.storage.session.get("triggerResults");
-    console.log("getAllTriggers1 existing triggerResults: " + JSON.stringify(triggerResults))
     triggerResults = triggerResults["triggerResults"]
     if (!triggerResults) {
-      triggerResults = []
+      triggerResults = {}
     }
-    console.log("getAllTriggers existing triggerResults: " + JSON.stringify(triggerResults))
+    //console.log("getAllTriggers existing triggerResults: " + JSON.stringify(triggerResults))
+    
     let serversChecked = [];
-    var i = 0;
-    // eslint-disable-next-line
-    async function nextCheck() {
-      if (i < settings["servers"].length) {
-        let server = settings["servers"][i].alias;
-        let serverURL = settings["servers"][i].url;
-        let user = settings["servers"][i].user;
-        let pass = settings["servers"][i].pass;
-        let version = settings["servers"][i].version;
-        let apiToken = settings["servers"][i].apiToken;
-        let groups = settings["servers"][i].hostGroups;
-        let hideAck = settings["servers"][i].hide;
-        let hideMaintenance = settings["servers"][i].maintenance;
-        let minPriority = settings["servers"][i].minSeverity;
-        serversChecked.push(server);
-        console.log("Found server: " + server);
-        await getServerTriggers(
-          serverURL,
-          user,
-          pass,
-          apiToken,
-          version,
-          groups,
-          hideAck,
-          hideMaintenance,
-          minPriority,
-          function (results) {
-            console.log("Running getservertriggers callback results: " + JSON.stringify(results))
-            // Find triggerid values that are in new results but previous
-            let oldTriggers = triggerResults[server] || [];
-            let triggerDiff = results.filter(function (obj) {
-              return !oldTriggers.some(function (obj2) {
-                return obj.triggerid == obj2.triggerid;
-              });
-            });
+    for (var serverIndex in settings["servers"]) {
+      let server = settings["servers"][serverIndex].alias;
+      let serverURL = settings["servers"][serverIndex].url;
+      let user = settings["servers"][serverIndex].user;
+      let pass = settings["servers"][serverIndex].pass;
+      let version = settings["servers"][serverIndex].version;
+      let apiToken = settings["servers"][serverIndex].apiToken;
+      let groups = settings["servers"][serverIndex].hostGroups;
+      let hideAck = settings["servers"][serverIndex].hide;
+      let hideMaintenance = settings["servers"][serverIndex].maintenance;
+      let minPriority = settings["servers"][serverIndex].minSeverity;
+      serversChecked.push(server);
+      console.log("Found server: " + server);
+      let newTriggerData = {};
+      newTriggerData = await getServerTriggers(
+        serverURL,
+        user,
+        pass,
+        apiToken,
+        version,
+        groups,
+        hideAck,
+        hideMaintenance,
+        minPriority
+      );
 
-            if (settings["global"]["notify"]) {
-              // Notify popup for new triggers
-              for (let trig of triggerDiff) {
-                sendNotify(trig);
-              }
-            }
-
-            if (triggerDiff && triggerDiff.length) {
-              if (settings["global"]["sound"]) {
-                //console.log('Playing audio for new triggers: ' + triggerDiff.toString());
-                var myAudio = new Audio(
-                  chrome.runtime.getURL("sounds/drip.mp3")
-                );
-                myAudio.play();
-              }
-            }
-
-            // Record new trigger list
-            triggerResults[server] = results;
-
-            //console.log('triggerResults for server: ' + JSON.stringify(triggerResults[server]));
-            triggerCount += triggerResults[server].length;
-            nextCheck();
-            //TODO remove above and clean up logic
-          }
-        );
-      } else {
-        // all server checks now complete
-
-        // Remove trigger.get data for old servers
-        for (var trigServer in triggerResults) {
-          if (!serversChecked.includes(trigServer)) {
-            console.log("Removing old results for: " + trigServer);
-            delete triggerResults[trigServer];
-          }
+      // Check if new triggers are different from existing
+      // Find triggerid values that are in new results but previous
+      let oldTriggers = triggerResults[server] || [];
+      let triggerDiff = newTriggerData.filter(function (obj) {
+        return !oldTriggers.some(function (obj2) {
+          return obj.triggerid == obj2.triggerid;
+        });
+      });
+      if (settings["global"]["notify"]) {
+        // Notify popup for new triggers
+        for (let trig of triggerDiff) {
+          sendNotify(trig);
         }
-
-        // save triggerResults
-        browser.storage.session.set({"triggerResults": triggerResults});
-
-        if (triggerCount > 0) {
-          // Set bage for the number of active triggers
-          browser.action.setBadgeBackgroundColor({ color: "#888888" });
-          browser.action.setBadgeText({ text: triggerCount.toString() });
-        } else {
-          // Clear badge as there are no active triggers
-          browser.action.setBadgeText({ text: "" });
-        }
-        await setActiveTriggersTable();
       }
-      // Increment at the end to emulate a for loop
-      i++;
+      if (triggerDiff && triggerDiff.length) {
+        if (settings["global"]["sound"]) {
+          //console.log('Playing audio for new triggers: ' + triggerDiff.toString());
+          var myAudio = new Audio(
+            chrome.runtime.getURL("sounds/drip.mp3")
+          );
+          myAudio.play();
+        }
+      }
+      // Record new trigger list
+      triggerResults[server] = newTriggerData;
+      //console.log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
+      triggerCount += triggerResults[server].length;
     }
-    await nextCheck();
+
+    // all server checks now complete
+
+    // Remove trigger.get data for old servers
+    for (var trigServer in triggerResults) {
+      if (!serversChecked.includes(trigServer)) {
+        console.log("Removing old results for: " + trigServer);
+        delete triggerResults[trigServer];
+      }
+    }
+
+    // save triggerResults
+    browser.storage.session.set({"triggerResults": triggerResults});
+
+    if (triggerCount > 0) {
+      // Set bage for the number of active triggers
+      browser.action.setBadgeBackgroundColor({ color: "#888888" });
+      browser.action.setBadgeText({ text: triggerCount.toString() });
+    } else {
+      // Clear badge as there are no active triggers
+      browser.action.setBadgeText({ text: "" });
+    }
+    await setActiveTriggersTable();
   }
 }
 
