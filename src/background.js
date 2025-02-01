@@ -17,16 +17,6 @@ import png_unconfigured from "./images/unconfigured.svg"; // eslint-disable-line
 var browser = browser || chrome;
 
 /*
-browser.storage.session.set({ key: value }).then(() => {
-    console.log("Value was set");
-  });
-
-  browser.storage.session.get(["key"]).then((result) => {
-    console.log("Value currently is " + result.key);
-  });
-*/
-
-/*
 chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   if (reason !== 'install') {
     return;
@@ -63,46 +53,42 @@ async function initalize() {
       console.log("Problem fetching settings");
     }
     settings = results;
+  })
 
-    // Set default pagination if doesn't yet exist
-    if (settings && settings["servers"]) {
-      for (var i = 0; i < settings["servers"].length; i++) {
-        if (settings["servers"][i]["pagination"] == null) {
-          settings["servers"][i]["pagination"] = {
-            sortBy: "priority",
-            descending: true,
-          };
-        }
+  // Initalizie settings
+  if (!settings || settings["global"] == null) {
+    settings = {};
+    settings.global = {};
+  }
+  // Set default pagination if doesn't yet exist
+  if (settings && settings["servers"]) {
+    for (var i = 0; i < settings["servers"].length; i++) {
+      if (settings["servers"][i]["pagination"] == null) {
+        settings["servers"][i]["pagination"] = {
+          sortBy: "priority",
+          descending: true,
+        };
       }
     }
-
-    // Initalizie settings
-    if (!settings || settings["global"] == null) {
-      settings = {};
-      settings.global = {};
-    }
-
-    // Set default notification if not set
-    if (settings["global"]["notify"] == null) {
-      settings["global"]["notify"] = true;
-    }
-
-    // Set default sound if not set
-    if (settings["global"]["sound"] == null) {
-      settings["global"]["sound"] = false;
-    }
-
-    // Set default display name if not set
-    if (settings["global"]["displayName"] == null) {
-      settings["global"]["displayName"] = "host";
-    }
-  });
+  }
+  // Set default notification if not set
+  if (settings["global"]["notify"] == null) {
+    settings["global"]["notify"] = true;
+  }
+  // Set default sound if not set
+  if (settings["global"]["sound"] == null) {
+    settings["global"]["sound"] = false;
+  }
+  // Set default display name if not set
+  if (settings["global"]["displayName"] == null) {
+    settings["global"]["displayName"] = "host";
+  }
+  
   try {
     var interval = settings["global"]["interval"];
     if (interval) {
       console.log("Updating alarm to " + interval + " seconds");
       await browser.alarms.create("default-alarm", {
-        delayInMinutes: interval / 60,
         periodInMinutes: interval / 60,
       });
     }
@@ -111,7 +97,9 @@ async function initalize() {
   }
 
   console.log("Got settings: " + JSON.stringify(settings));
-  await browser.storage.session.set({'ZabbixServers': settings });
+  cryptio.set("ZabbixServers", settings, function (err) {
+    if (err) throw err;
+  });
   await getAllTriggers();
 }
 
@@ -279,7 +267,7 @@ async function getAllTriggers() {
         if (settings["global"]["sound"]) {
           //console.log('Playing audio for new triggers: ' + triggerDiff.toString());
           var myAudio = new Audio(
-            chrome.runtime.getURL("sounds/drip.mp3")
+            browser.runtime.getURL("sounds/drip.mp3")
           );
           myAudio.play();
         }

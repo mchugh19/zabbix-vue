@@ -74,12 +74,7 @@ var Zabbix = (function () {
           }
         }
         //console.log("ZABLIB request: " + JSON.stringify(request))
-        return this._postJsonRpc(this.url, JSON.stringify(request)).then(
-          function (r) {
-            //console.log("ZABLIB response: " + r)
-            return JSON.parse(r);
-          }
-        );
+        return this._postJsonRpc(this.url, JSON.stringify(request));
       },
 
       /**
@@ -146,29 +141,31 @@ var Zabbix = (function () {
     },
     {
       key: "_postJsonRpc",
-      value: function _postJsonRpc(url, data) {
+      value: async function _postJsonRpc(url, data) {
+        const myHeaders = new Headers();
+
         var _this3 = this;
-        return new Promise(function (resolve, reject) {
-          var method = "POST";
-          var client = new XMLHttpRequest();
-          client.open(method, url);
-          client.setRequestHeader("Content-Type", "application/json-rpc");
+        if (_this3.auth) {
           // API after 7.0 removes auth object
-          if (_this3.auth) {
-            client.setRequestHeader("Authorization", "Bearer " + _this3.auth)
+          myHeaders.append("Authorization", "Bearer " + _this3.auth)
+        }
+        myHeaders.append("Content-Type", "application/json-rpc");
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            body: data,
+            headers: myHeaders,
+          });
+          if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
           }
-          client.send(data);
-          client.onload = function () {
-            if (this.status >= 200 && this.status < 300) {
-              resolve(this.response);
-            } else {
-              reject("HTTP status " + this.statusText + " was returned.");
-            }
-          };
-          client.onerror = function () {
-            reject("XMLHTTP request error occurred.");
-          };
-        });
+          const zabResponse = await response.json()
+          //console.log("ZABLIB response: " + JSON.stringify(zabResponse))
+          return zabResponse;
+        } catch (error) {
+          console.error(error.message);
+        }       
       },
     },
   ]);
