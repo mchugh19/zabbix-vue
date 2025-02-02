@@ -1,0 +1,193 @@
+{
+  "appName": {
+    "message": "Zabbix Vue",
+    "description": "Уведомления о проблемах из заббикса в браузере"
+  },
+  "appDescription": {
+    "message": "Zabbix Vue",
+    "description": "Уведомления о проблемах из заббикса в браузере"
+  },
+
+  "notClassified": {
+    "message": "Не классифицированно",
+    "description": "Уровень важности"
+  },
+  "information": {
+    "message": "Информация",
+    "description": "Уровень важности"
+  },
+  "warning": {
+    "message": "Предупреждение",
+    "description": "Уровень важности"
+  },
+  "average": {
+    "message": "Средний",
+    "description": "Уровень важности"
+  },
+  "high": {
+    "message": "Высокий",
+    "description": "ZУровень важности"
+  },
+  "disaster": {
+    "message": "Черезвычайный",
+    "description": "Уровень важности"
+  },
+
+
+  "serverSettings": {
+    "message": "Настройки сервера",
+    "description": "Options screen label"
+  },
+  "server": {
+    "message": "Сервер",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "Выводимое имя",
+    "description": "Options screen label"
+  },
+  "URL": {
+    "message": "Адрес URL",
+    "description": "Options screen label"
+  },
+  "zabbixUser": {
+    "message": "Логин",
+    "description": "Options screen label"
+  },
+  "zabbixPass": {
+    "message": "Пароль",
+    "description": "Options screen label"
+  },
+  "hideEvents": {
+    "message": "Скрывать подтверждённые события",
+    "description": "Options screen label"
+  },
+  "ignoreHosts": {
+    "message": "Не показывать хосты в обслуживании",
+    "description": "Options screen label"
+  },
+  "minSev": {
+    "message": "Показывать с минимальной важностью",
+    "description": "Options screen label"
+  },
+  "monGroups": {
+    "message": "Показывать эти группы хостов",
+    "description": "Options screen label"
+  },
+  "generalSettings": {
+    "message": "Основные настройки",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Интервал обновления",
+    "description": "Options screen label"
+  },
+  "notify": {
+    "message": "Показывать всплывающие уведомления",
+    "description": "Options screen label"
+  },
+  "selectName": {
+    "message": "Показывать во всплывающие уведомлении имя",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Имя хоста",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Отображаемое имя",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Сохранить",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "Добавить сервер",
+    "description": "Options screen button"
+  },
+
+  "required": {
+    "message": "Настройка обязательна",
+    "description": "Options screen validation message"
+  },
+  "requiredURL": {
+    "message": "Неправильный URL",
+    "description": "Options screen validation message"
+  },
+  "lessSeconds": {
+    "message": "Не проверять чаще одного раза в 10 секунд.",
+    "description": "Options screen validation message"
+  },
+  "serverError": {
+    "message": "Ошибка подключения к серверу",
+    "description": "Generic error message"
+  },
+  "checkConfig": {
+    "message": "Проверьте настройки сервера в параметрах расширения",
+    "description": "Configuration error message"
+  },
+
+  "headerSystem": {
+    "message": "Сервер",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "Описание",
+    "description": "Popup headers"
+  },
+  "headerPriority": {
+    "message": "Приоритет",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Возраст",
+    "description": "Popup headers"
+  },
+
+  "hostDetails": {
+    "message": "Детали хоста",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Последние данные",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Графики хоста",
+    "description": "Popup button"
+  },
+  "problemDetails": {
+    "message": "Детали проблемы",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Детали события",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Подтвердить",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Фильтр",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Проблем нет",
+    "description": "Popup message"
+  },
+  "noResults": {
+    "message": "Не найдено",
+    "description": "Popup message"
+  },
+  "noServers": {
+    "message": "Сервера не указаны",
+    "description": "Popup error"
+  },
+  "error": {
+    "message": "Ошибка расширения",
+    "description": "Popup error"
+  }
+
+}

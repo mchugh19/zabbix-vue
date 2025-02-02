@@ -1,0 +1,193 @@
+{
+  "appName": {
+    "message": "Zabbix Vue",
+    "description": "Monitor Zabbix problemen vanuit je browser"
+  },
+  "appDescription": {
+    "message": "Zabbix Vue",
+    "description": "Monitor Zabbix problemen vanuit je browser"
+  },
+
+  "notClassified": {
+    "message": "Niet geclassificeerd",
+    "description": "Zabbix ernst"
+  },
+  "information": {
+    "message": "Informatie",
+    "description": "Zabbix ernst"
+  },
+  "warning": {
+    "message": "Waarschuwing",
+    "description": "Zabbix ernst"
+  },
+  "average": {
+    "message": "Gemiddeld",
+    "description": "Zabbix ernst"
+  },
+  "high": {
+    "message": "Hoog",
+    "description": "Zabbix ernst"
+  },
+  "disaster": {
+    "message": "Ramp",
+    "description": "Zabbix ernst"
+  },
+
+
+  "serverSettings": {
+    "message": "Server Instellingen",
+    "description": "Opties scherm label"
+  },
+  "server": {
+    "message": "Server",
+    "description": "Opties scherm label"
+  },
+  "alias": {
+    "message": "Alias",
+    "description": "Opties scherm label"
+  },
+  "URL": {
+    "message": "URL",
+    "description": "Opties scherm label"
+  },
+  "zabbixUser": {
+    "message": "Zabbix Gebruiker",
+    "description": "Opties scherm label"
+  },
+  "zabbixPass": {
+    "message": "Zabbix Wachtwoord",
+    "description": "Opties scherm label"
+  },
+  "hideEvents": {
+    "message": "Verberg bevestigde Events",
+    "description": "Opties scherm label"
+  },
+  "ignoreHosts": {
+    "message": "Negeer Hosts in Onderhoud",
+    "description": "Opties scherm label"
+  },
+  "minSev": {
+    "message": "Monitor Minimum Ernst",
+    "description": "Opties scherm label"
+  },
+  "monGroups": {
+    "message": "Monitor Hostgroups",
+    "description": "Opties scherm label"
+  },
+  "generalSettings": {
+    "message": "Algemene Instellingen",
+    "description": "Opties scherm label"
+  },
+  "updateInterval": {
+    "message": "Update Interval",
+    "description": "Opties scherm label"
+  },
+  "notify": {
+    "message": "Scherm Popup Notificaties",
+    "description": "Opties scherm label"
+  },
+  "selectName": {
+    "message": "Scherm naam in popup",
+    "description": "Opties scherm label"
+  },
+  "displayHost": {
+    "message": "Host naam",
+    "description": "Opties scherm label"
+  },
+  "displayName": {
+    "message": "Zichtbare naam",
+    "description": "Opties scherm label"
+  },
+  "save": {
+    "message": "Opslaan",
+    "description": "Opties scherm knop"
+  },
+  "addServer": {
+    "message": "SERVER TOEVOEGEN",
+    "description": "Opties scherm knop"
+  },
+
+  "required": {
+    "message": "Item is verplicht",
+    "description": "Opties scherm validatie bericht"
+  },
+  "requiredURL": {
+    "message": "Valide URL is verplicht",
+    "description": "Opties scherm validatie bericht"
+  },
+  "lessSeconds": {
+    "message": "Controleer niet met een frequentie van minder dan 10 seconden",
+    "description": "Opties scherm validatie bericht"
+  },
+  "serverError": {
+    "message": "Fout bij het bereiken van de server",
+    "description": "Algemene foutmelding"
+  },
+  "checkConfig": {
+    "message": "Controleer de serverconfiguratie in extensie opties",
+    "description": "Configuratie foutmelding"
+  },
+
+  "headerSystem": {
+    "message": "Systeem",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "Omschrijving",
+    "description": "Popup headers"
+  },
+  "headerPriority": {
+    "message": "Prioriteit",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Leeftijd",
+    "description": "Popup headers"
+  },
+
+  "hostDetails": {
+    "message": "Host Details",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Laatste Data",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Host Grafieken",
+    "description": "Popup button"
+  },
+  "problemDetails": {
+    "message": "Probleem Details",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Event Details",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Ack Event",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filter",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Geen problemen",
+    "description": "Popup message"
+  },
+  "noResults": {
+    "message": "Geen resultaten gevonden voor",
+    "description": "Popup message"
+  },
+  "noServers": {
+    "message": "Geen servers gedefineerd",
+    "description": "Popup error"
+  },
+  "error": {
+    "message": "Plugin Error",
+    "description": "Popup error"
+  }
+
+}

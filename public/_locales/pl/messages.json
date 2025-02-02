@@ -1,0 +1,193 @@
+{
+    "appName": {
+      "message": "Zabbix Vue",
+      "description": "Monitoruje problemy Zabbixa z poziomy przegladarki internetowej"
+    },
+    "appDescription": {
+      "message": "Zabbix Vue",
+      "description": "Monitoruje problemy Zabbixa z poziomy przegladarki internetowej"
+    },
+  
+    "notClassified": {
+      "message": "Nie sklasyfikowany",
+      "description": "Powaga ostrzeżnia"
+    },
+    "information": {
+      "message": "Informacja",
+      "description": "Powaga ostrzeżnia"
+    },
+    "warning": {
+      "message": "Ostrzeżnie",
+      "description": "Powaga ostrzeżnia"
+    },
+    "average": {
+      "message": "Średni",
+      "description": "Powaga ostrzeżnia"
+    },
+    "high": {
+      "message": "Wysoki",
+      "description": "Powaga ostrzeżnia"
+    },
+    "disaster": {
+      "message": "Katastrofalny",
+      "description": "Powaga ostrzeżnia"
+    },
+  
+  
+    "serverSettings": {
+      "message": "Ustawienia Serwera",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "server": {
+      "message": "Serwer",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "alias": {
+      "message": "Alias",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "URL": {
+      "message": "URL",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "zabbixUser": {
+      "message": "Urzytkownik",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "zabbixPass": {
+      "message": "Hasło",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "hideEvents": {
+      "message": "Ukryj potwierdzone zdarzenia",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "ignoreHosts": {
+      "message": "Ignoruj hosty w konserwacji",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "minSev": {
+      "message": "Monitoruj minimalną powagę",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "monGroups": {
+      "message": "Monitoruj grupy hostów",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "generalSettings": {
+      "message": "Ustawienia główne",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "updateInterval": {
+      "message": "Interwal odswierzeń",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "notify": {
+      "message": "Wyświetl przedział powiadomień",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "selectName": {
+      "message": "Wyświetl nazwę w powiadomieniu",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "displayHost": {
+      "message": "Nazwa Hosta",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "displayName": {
+      "message": "Widoczna Nazwa",
+      "description": "Etykieta na ekranie opcji"
+    },
+    "save": {
+      "message": "Zapisz",
+      "description": "Przycisk ekranu opcji"
+    },
+    "addServer": {
+      "message": "Dodaj Serwer",
+      "description": "Przycisk ekranu opcji"
+    },
+  
+    "required": {
+      "message": "Przedmiot jest wymagany",
+      "description": "Komunikat o sprawdzeniu ekranu opcji"
+    },
+    "requiredURL": {
+      "message": "Prawidłowy adres URL jest wymagany",
+      "description": "Komunikat o sprawdzeniu ekranu opcji"
+    },
+    "lessSeconds": {
+      "message": "Nie sprawdzaj częściej niż co 10 sekund",
+      "description": "Komunikat o sprawdzeniu ekranu opcji"
+    },
+    "serverError": {
+      "message": "Błąd podczas łączenia się z serwerem",
+      "description": "Ogólny komunikat o błędzie"
+    },
+    "checkConfig": {
+      "message": "Sprawdź konfigurację serwera w opcjach rozszerzenia",
+      "description": "Komunikat o błędzie konfiguracji"
+    },
+  
+    "headerSystem": {
+      "message": "System",
+      "description": "Nagłówki Powiadomien"
+    },
+    "headerDescription": {
+      "message": "Opis",
+      "description": "Nagłówki Powiadomien"
+    },
+    "headerPriority": {
+      "message": "Priorytet",
+      "description": "Nagłówki Powiadomien"
+    },
+    "headerAge": {
+      "message": "Wiek",
+      "description": "Nagłówki Powiadomien"
+    },
+  
+    "hostDetails": {
+      "message": "Szczegóły Hosta",
+      "description": "Przycisk Powiadomienia"
+    },
+    "latestData": {
+      "message": "Najnowsze dane",
+      "description": "Przycisk Powiadomienia"
+    },
+    "hostGraphs": {
+      "message": "Wykresy hosta",
+      "description": "Przycisk Powiadomienia"
+    },
+    "problemDetails": {
+      "message": "Szczegóły problemu",
+      "description": "Przycisk Powiadomienia"
+    },
+    "eventDetails": {
+      "message": "Szczegóły wydarzenia",
+      "description": "Przycisk Powiadomienia"
+    },
+    "ackEvent": {
+      "message": "Potwierdź zdarzenie",
+      "description": "Przycisk Powiadomienia"
+    },
+    "filter": {
+      "message": "Filter",
+      "description": "Etykieta Powiadomienia"
+    },
+    "noProb": {
+      "message": "Brak Problemów",
+      "description": "Widomosc Powiadomienia"
+    },
+    "noResults": {
+      "message": "Nie znaleziono wyników dla",
+      "description": "Widomosc Powiadomienia"
+    },
+    "noServers": {
+      "message": "Brak zdefiniowanych serwerów",
+      "description": "Powiadomienie o Błędzie"
+    },
+    "error": {
+      "message": "Błąd Wtyczki",
+      "description": "Błąd Wtyczki"
+    }
+  }
+  
