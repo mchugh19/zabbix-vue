@@ -1,27 +1,33 @@
 {
   "name": "__MSG_appName__",
-  "version": "3.0.0",
+  "{{version}}": "",
   "manifest_version": 3,
   "description": "__MSG_appDescription__",
   "author": "https://github.com/mchugh19/zabbix-vue",
   "icons": {
-    "128": "images/logo.png"
+    "128": ""
   },
   "default_locale": "en",
   "options_ui": {
-    "page": "src/options/options.html"
+    "page": "options/options.html"
   },
   "action": {
     "default_icon": {
       "128": "images/unconfigured.png"
     },
-    "default_popup": "src/popup/popup.html"
+    "default_popup": "popup/popup.html"
   },
   "background": {
-    "{{chrome}}.service_worker": "src/background.js",
-    "{{firefox}}.scripts": ["src/background.js"]
+    "{{chrome}}.service_worker": "background.js",
+    "{{firefox}}.scripts": ["background.js"]
   },
-  "permissions": [
+  "{{chrome}}.permissions": [
+    "alarms",
+    "notifications",
+    "storage",
+    "offscreen"
+  ],
+  "{{firefox}}.permissions": [
     "alarms",
     "notifications",
     "storage"

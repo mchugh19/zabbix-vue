@@ -1,152 +1,183 @@
 <template>
   <v-app>
     <v-alert
-      v-if="triggerTableData.data.error"
+      v-if="triggerTableData.error"
       color="red"
       prominent
       type="warning"
     >
       {{ $i18n("checkConfig") }}:
-      {{ triggerTableData.data.errorMessage }}
+      {{ triggerTableData.errorMessage }}
     </v-alert>
 
     <v-card
+      v-for="(serverObj, serverIndex) in triggerTableData.servers"
       id="triggerTable"
-      v-for="serverObj in triggerTableData.data.servers"
       v-bind:key="serverObj.server"
     >
-      <v-card-title class="pa-0 ma-0">
-        <h3>{{ serverObj.server }}</h3>
-        <v-spacer></v-spacer>
-        <v-text-field
-          append-icon="search"
-          :label="$i18n('filter')"
-          single-line
-          hide-details
-          v-model="serverObj.search"
-        ></v-text-field>
-      </v-card-title>
-      <v-data-table
-        :items="serverObj.triggers"
-        item-key="triggerid"
-        :headers="triggerTableData.data.headers"
-        :loading="triggerTableData.data.loaded"
-        :search="serverObj.search"
-        :sort-by.sync="serverObj.pagination.sortBy"
-        :sort-desc.sync="serverObj.pagination.descending"
-        :hide-default-footer="true"
-        disable-pagination
-        class="elevation-1"
-        dense
-        single-expand
-      >
-        <template v-slot:item="{ index, item, isExpanded, expand }">
-          <tr
-            :key="item.name"
-            :class="item.priority | priority_class"
-            @mouseover="toolsIndex = index"
-            @mouseleave="toolsIndex = null"
-            @click="expand(!isExpanded)"
+      <v-container>
+        <v-row
+          class="flex-nowrap"
+          no-gutters
+        >
+          <v-col
+            class="flex-grow-0 flex-shrink-0"
+            cols="3"
           >
-            <td>{{ item.system }}</td>
+            <h2>{{ serverObj.server }}</h2>
+          </v-col>
+          <v-col
+            class="flex-grow-1 flex-shrink-0"
+            cols="4"
+            style="min-width: 100px; max-width: 100%;"
+          >
+            <v-text-field
+              v-model="serverObj.search"
+              :label="$i18n('filter')"
+              append-inner-icon="mdi-magnify"
+              single-line
+              density="compact"
+              clearable
+              hide-details
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
+      </v-container>
+      <v-data-table
+        v-model:sort-by="serverObj.sortBy"
+        v-model:expanded="serverObj.expanded"
+        :items="serverObj.triggers"
+        item-value="triggerid"
+        :headers="triggerTableData.headers"
+        :loading="triggerTableData.loading"
+        :search="serverObj.search"
+        :single-expand="true"
+        hide-default-footer
+        class="elevation-1"
+        density="compact"
+        items-per-page="-1"
+        @click:row="clickRow"
+        @update:sortBy="sortSave($event, serverIndex)"
+      >
+        <template v-slot:item="{ item }">
+          <tr :class="priority_class(item.priority)" @click="clickRow(item.triggerid, serverIndex)">
+            <td> {{ item.system }}</td>
             <td>
-              <v-layout>
-                {{ item.description }}
-                <v-layout justify-end>
-                  <v-icon v-if="item.acknowledged" small>flag</v-icon>
-                  <v-icon v-if="item.maintenance_status" small>build</v-icon>
-                </v-layout>
-              </v-layout>
+              <v-sheet class="d-flex mb-0" :class="priority_class(item.priority)">
+                <v-sheet class="ma-0 pa-0 me-auto" :class="priority_class(item.priority)">
+                  {{ item.description }}
+                </v-sheet>
+                <v-sheet class="ma-0 pa-0" :class="priority_class(item.priority)">
+                  <v-icon v-if="item.acknowledged" size="small">mdi-flag-variant</v-icon>
+                  <v-icon v-if="item.maintenance_status" size="small">mdi-wrench</v-icon>
+                </v-sheet>
+              </v-sheet>
             </td>
-            <td>
-              {{ item.priority | priority_name_filter }}
-            </td>
-            <td>
-              {{ item.age | date_filter }}
+            <td> {{ priority_name_filter(item.priority) }}</td>
+            <td> {{ date_filter(item.age) }}</td>
+          </tr>
+        </template>
+        <template v-slot:expanded-row="{ columns, item }">
+          <tr>
+            <td :colspan="columns.length">
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="
+                  hostDetails(serverObj.url, serverObj.version, item.hostid)
+                "
+              >
+                {{ $i18n("hostDetails") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="latestData(serverObj.url, serverObj.version, item.hostid)"
+              >
+                {{ $i18n("latestData") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="hostGraphs(serverObj.url, serverObj.version, item.hostid)"
+              >
+                {{ $i18n("hostGraphs") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="
+                  hostDashboards(serverObj.url, serverObj.version, item.hostid)
+                "
+              >
+                {{ $i18n("hostDashboards") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="
+                  problemDetails(serverObj.url, serverObj.version, item.triggerid)
+                "
+              >
+                {{ $i18n("problemDetails") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0 mr-1"
+                color="teal-lighten-3"
+                @click="
+                  eventDetails(
+                    serverObj.url,
+                    serverObj.version,
+                    item.triggerid,
+                    item.eventid
+                  )
+                "
+              >
+                {{ $i18n("eventDetails") }}
+              </v-btn>
+              <v-btn
+                size="small"
+                class="pa-0 px-1 ma-0"
+                color="teal-lighten-3"
+                @click="
+                  ackEvent(
+                    serverObj.url,
+                    serverObj.version,
+                    item.triggerid,
+                    item.eventid
+                  )
+                "
+              >
+                {{ $i18n("ackEvent") }}
+              </v-btn>
             </td>
           </tr>
         </template>
-        <template v-slot:expanded-item="{ headers, item }">
-          <td :colspan="headers.length">
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="
-                hostDetails(serverObj.url, serverObj.version, item.hostid)
-              "
-              >{{ $i18n("hostDetails") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="latestData(serverObj.url, serverObj.version, item.hostid)"
-              >{{ $i18n("latestData") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="hostGraphs(serverObj.url, serverObj.version, item.hostid)"
-              >{{ $i18n("hostGraphs") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="
-                hostDashboards(serverObj.url, serverObj.version, item.hostid)
-              "
-              >{{ $i18n("hostDashboards") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="
-                problemDetails(serverObj.url, serverObj.version, item.triggerid)
-              "
-              >{{ $i18n("problemDetails") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0 mr-1"
-              color="teal lighten-3"
-              @click="
-                eventDetails(
-                  serverObj.url,
-                  serverObj.version,
-                  item.triggerid,
-                  item.eventid
-                )
-              "
-              >{{ $i18n("eventDetails") }}</v-btn
-            >
-            <v-btn
-              small
-              class="pa-0 px-1 ma-0"
-              color="teal lighten-3"
-              @click="
-                ackEvent(
-                  serverObj.url,
-                  serverObj.version,
-                  item.triggerid,
-                  item.eventid
-                )
-              "
-              >{{ $i18n("ackEvent") }}</v-btn
-            >
-          </td>
-        </template>
-        <template slot="no-data">
-          <v-alert :value="true" color="green lighten-1" icon="done">
+        <template #no-data>
+          <v-alert 
+            :value="true" 
+            color="green-lighten-1" 
+            icon="mdi-check"
+          >
             {{ $i18n("noProb") }}
           </v-alert>
         </template>
-        <v-alert slot="no-results" :value="true" color="red" icon="warning">
-          {{ $i18n("noResults") }}: {{ serverObj.search }}
-        </v-alert>
+        <template #no-results>
+          <v-alert
+            :value="true" 
+            color="red" 
+            icon="mdi-alert"
+          >
+            {{ $i18n("noResults") }}: {{ serverObj.search }}
+          </v-alert>
+        </template>
       </v-data-table>
     </v-card>
   </v-app>
@@ -154,31 +185,27 @@
 
 <script>
 import browser from "webextension-polyfill";
-var triggerTable = {};
-triggerTable["data"] = {};
-triggerTable["data"]["loaded"] = true;
-triggerTable.data.error = false;
 
 async function getPopupData() {
+  // Default to no servers defined
+  let tableResults = {
+    error: true,
+    errorMessage: browser.i18n.getMessage("noServers")
+  }
+
   var popupResults = await browser.storage.session.get("popupTable")
-  if ("popupTable" in popupResults === false) {
-    // No servers defined
-    triggerTable.data.error = true;
-    triggerTable.data.errorMessage = browser.i18n.getMessage("noServers");
-  } else {
+  if ("popupTable" in popupResults) {
     popupResults = popupResults["popupTable"]
-    //console.log("Popup got popupResults: " + JSON.stringify(popupResults));
-    triggerTable.data = popupResults;
+    tableResults = popupResults;
   }
   /*
   triggerTable.data.error = true;
   triggerTable.data.errorMessage = browser.i18n.getMessage("error");
   */
+  return tableResults;
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
-  await getPopupData();
-
   // Display modifications to work around chrome issue 428044
   // (Tiny popup size)
   setTimeout(() => {
@@ -189,10 +216,16 @@ document.addEventListener("DOMContentLoaded", async function () {
 export default {
   data() {
     return {
-      triggerTableData: triggerTable,
-    };
+      triggerTableData: {
+        "loading": true,
+        "error": false,
+      }
+    }
   },
-  filters: {
+  async mounted() {
+    this.triggerTableData = await getPopupData();
+  },
+  methods: {
     priority_class: function (value) {
       var PRIORITIES = {
         0: "Cnotclassified",
@@ -243,15 +276,20 @@ export default {
 
       return result;
     },
-  },
-  methods: {
-    expandRow: function (item) {
-      //console.log("expand for " + JSON.stringify(item))
-      this.triggerTableData.data.expanded =
-        item === this.triggerTableData.data.expanded[0] ? [] : [item];
+    sortSave(value, serverIndex) {
+      browser.runtime.sendMessage({
+        method: "submitPagination",
+        index: serverIndex,
+        sortBy: value[0].key,
+        descending: value[0].order,
+      });
     },
-    updateTriggerData: function (newTriggers) {
-      this.triggers = newTriggers;
+    clickRow(item, serverIndex) {
+      if (this.triggerTableData.servers[serverIndex].expanded[0] === item) {
+        this.triggerTableData.servers[serverIndex].expanded = [];
+      } else {
+        this.triggerTableData.servers[serverIndex].expanded = [item];
+      }
     },
     hostDetails: function (url, version, hostid) {
       window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
@@ -356,58 +394,44 @@ export default {
           "_blank"
         );
       }
-    },
-  },
-  watch: {
-    // Watch for updates in order to pass along data-table sorting
-    "triggerTableData.data.servers": {
-      handler: function (val, oldVal) {
-        if (oldVal) {
-          // initial load activates watch, so only update on next change (already has oldVal)
-          for (var i = 0; i < this.triggerTableData.data.servers.length; i++) {
-            let sortBy = val[i].pagination.sortBy;
-            let descending = val[i].pagination.descending;
-            browser.runtime.sendMessage({
-              method: "submitPagination",
-              index: i,
-              sortBy: sortBy,
-              descending: descending,
-            });
-          }
-        }
-      },
-      deep: true,
-    },
-  },
+    }
+  }
 };
 </script>
 <style>
-tr.Cdisaster {
+tr.Cdisaster,
+div.Cdisaster {
   background-color: #ff3838;
   color: #222222;
 }
-tr.Chigh {
+tr.Chigh,
+div.Cdisaster {
   background-color: #ff9999;
   color: #222222;
 }
-tr.Caverage {
+tr.Caverage,
+div.Caverage {
   background-color: #ffb689;
   color: #222222;
 }
-tr.Cwarning {
+tr.Cwarning,
+div.Cwarning {
   background-color: #fff6a5;
   color: #222222;
 }
-tr.Cinformation {
+tr.Cinformation,
+div.Cinformation {
   background-color: #d6f6ff;
   color: #222222;
 }
-tr.Cunknown_trigger {
+tr.Cunknown_trigger,
+div.Cunknown_trigger {
   background-color: #dbdbdb;
   color: #222222;
 }
 tr.Cnormal,
-tr.Cnotclassified {
+tr.Cnotclassified,
+div.Cnotclassified {
   background-color: #dbdbdb;
   color: #222222;
 }
@@ -418,11 +442,18 @@ tr.Cnotclassified {
 body {
   min-width: 800px;
 }
-.v-data-table--dense > .v-data-table__wrapper > table > tbody > tr > td,
-.v-data-table--dense > .v-data-table__wrapper > table > tbody > tr > th {
-  height: 20px;
+.v-table--density-compact {
+  --v-table-header-height: 20px;
+  --v-table-row-height: 20px;
 }
-.v-btn:not(.v-btn--round).v-size--small {
-  height: 19px;
+.v-btn--size-small {
+    --v-btn-height: 19px;
+}
+.v-btn--size-small {
+    --v-btn-size: 0.73rem;
+}
+.v-input--density-compact {
+  --v-input-padding-top: 0px;
+  --v-input-control-height: 0px;
 }
 </style>

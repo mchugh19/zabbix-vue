@@ -159,8 +159,8 @@ export var Zabbix = (function () {
           const zabResponse = await response.json()
           //console.log("ZABLIB response: " + JSON.stringify(zabResponse))
           return zabResponse;
-        } catch (error) {
-          console.error(error.message);
+        } catch {
+          throw new Error('Failed to communicate with server');
         }       
       },
     },
