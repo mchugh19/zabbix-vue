@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
-    "@mdi/font": "^7.4.47",
+    "@mdi/js": "^7.4.47",
     "@vitejs/plugin-vue": "^4.5.0",
     "eslint": "^9.19.0",
     "eslint-plugin-vue": "^9.32.0",

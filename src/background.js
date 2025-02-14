@@ -3,6 +3,8 @@
 import { Zabbix } from './lib/zabbix-promise.js';
 import browser from "webextension-polyfill";
 import { manifest } from 'virtual:render-svg'
+import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
+
 
 browser.runtime.onMessage.addListener(handleMessage);
 browser.alarms.onAlarm.addListener(initalize);
@@ -11,10 +13,8 @@ browser.alarms.onAlarm.addListener(initalize);
 browser.runtime.onInstalled.addListener( async () => {
   console.log(`onInstalled()`);
 
-  const seed_data = {"global":{"interval":60,"notify":true,"sound":false,"displayName":"host","formValid":true},"servers":[{"alias":"New Server","url":"https://dunnock.ddns.waytta.com/zabbix","user":"","pass":"","apiToken":"40efbeae414248adbb9d2c4953bcd792d10a09cd21d518233b88aad77f92e90a","hide":false,"maintenance":false,"hostGroups":[],"hostGroupsList":[],"minSeverity":0,"visiblePass":false,"errorMsg":"","sortBy":[{"key":"priority","order":"desc"}],"useToken":true,"version":"7.2.3"}]}
-  await browser.storage.local.set({"ZabbixServers": JSON.stringify(seed_data)});
-
-  initalize();
+  await migrateOldSettings();
+  await initalize();
 });
 browser.runtime.onStartup.addListener( async () => {
   console.log(`onStartup()`);
@@ -26,6 +26,29 @@ self.addEventListener("activate", (event) => {
 
   setAlarmState(60).then();
 });
+
+async function migrateOldSettings() {
+  /*
+  * Up to version 2 of extension encrypted all data. Only pass and key are sensitive data
+  * Converts old all encrypted format to only encrypt those two fields
+  */
+  var settings = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(settings).includes('ZabbixServers')) {
+    settings = settings["ZabbixServers"]
+    settings = JSON.parse(settings)
+    if (Object.keys(settings).includes('iv')) {
+      console.log("Found previous encrypted settings. Migrating")
+      settings = decryptSettings(JSON.stringify(settings))
+      settings = encryptSettingKeys(JSON.parse(settings));
+      await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
+      console.log("Migration complete")
+    } else {
+      //console.log("no IV keys " + JSON.stringify(settings))
+    }
+  } else {
+    //console.log("no ZabbixServer keys")
+  }
+}
 
 
 async function setAlarmState(interval) {
@@ -187,9 +210,9 @@ async function getAllTriggers() {
       let server = settings["servers"][serverIndex].alias;
       let serverURL = settings["servers"][serverIndex].url;
       let user = settings["servers"][serverIndex].user;
-      let pass = settings["servers"][serverIndex].pass;
+      let pass = decryptSettings(settings["servers"][serverIndex].pass);
       let version = settings["servers"][serverIndex].version;
-      let apiToken = settings["servers"][serverIndex].apiToken;
+      let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
       let groups = settings["servers"][serverIndex].hostGroups;
       let hideAck = settings["servers"][serverIndex].hide;
       let hideMaintenance = settings["servers"][serverIndex].maintenance;
@@ -232,7 +255,8 @@ async function getAllTriggers() {
       }
       if (triggerDiff && triggerDiff.length) {
         if (settings["global"]["sound"]) {
-          if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef            
+          if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+            // mv2 firefox & older chrome sound support         
             var myAudio = new Audio(
               browser.runtime.getURL("sounds/drip.mp3")
             );

@@ -23,9 +23,8 @@
                 <v-icon
                   v-if="zabbixs.servers.length > 1"
                   @click="removeServer(index)"
-                >
-                  mdi-close
-                </v-icon>
+                  :icon="mdiClose"
+                />
               </v-toolbar>
               
               <v-text-field
@@ -70,13 +69,20 @@
                 v-if="!server.useToken"
                 :label="$i18n('zabbixPass')"
                 required
-                :append-icon="
-                  server.visiblePass ? 'mdi-eye' : 'mdi-eye-off'
-                "
                 :type="server.visiblePass ? 'text' : 'password'"
                 :rules="[(v) => !!v || $i18n('required')]"
-                @click:append="server.visiblePass = !server.visiblePass"
-              />
+              >
+              <template v-slot:append>
+                <v-icon v-if="server.visiblePass"
+                :icon="mdiEye" 
+                @click="server.visiblePass = !server.visiblePass"
+                />
+                <v-icon v-if="!server.visiblePass"
+                :icon="mdiEyeOff" 
+                @click="server.visiblePass = !server.visiblePass"
+                />
+              </template>
+              </v-text-field>
 
               <v-checkbox
                 v-model="server.hide"
@@ -111,7 +117,7 @@
                     />
                     <v-btn
                       class="reloadHostGroups"
-                      icon="mdi-reload"
+                      :icon="mdiReload"
                       @click="
                         refreshGroups(
                           server.url,
@@ -174,9 +180,15 @@
   </v-app>
 </template>
 
+<script setup>
+import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js'
+</script>
+
 <script>
 import { Zabbix } from '../lib/zabbix-promise.js';
 import browser from "webextension-polyfill";
+import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js'
+
 
 var severitySelect = [
   { name: browser.i18n.getMessage("notClassified"), priority: 0 },
@@ -231,6 +243,13 @@ export default {
     if (Object.keys(zabbix_data).length > 0) {
       zabbix_data = zabbix_data["ZabbixServers"]
       zabbix_data = JSON.parse(zabbix_data);
+      for (let serverIndex in zabbix_data["servers"]) {
+        zabbix_data.servers[serverIndex].apiToken = decryptSettings(zabbix_data.servers[serverIndex].apiToken)
+        zabbix_data.servers[serverIndex].pass = decryptSettings(zabbix_data.servers[serverIndex].pass)
+        if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
+          zabbix_data.servers[serverIndex].useToken = true;
+        }
+      }
       this.zabbixs = zabbix_data;
     }
   },
@@ -288,7 +307,7 @@ export default {
     removeServer: function (index) {
       this.zabbixs.servers.splice(index, 1);
     },
-    save_data: function () {
+    save_data: async function () {
       /*
        * Save data to localstorage encrypted and close options window
        * Message background.js to reload the new settings
@@ -304,11 +323,12 @@ export default {
         }
         this.zabbixs["servers"] = savedServerSettings;
 
-        var ZabbixServers = this.zabbixs;
-        browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)}).then(() => {
-          console.log("Options calling reinitalize")
-          browser.runtime.sendMessage({ method: "reinitalize" });
-        })
+        // encrypt pass and api fields
+        var ZabbixServers =  encryptSettingKeys(this.zabbixs);
+        await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
+        console.log("Options calling reinitalize")
+        browser.runtime.sendMessage({ method: "reinitalize" });
+        
         window.close();
       } else {
         console.log("submit problem");

@@ -1,9 +1,9 @@
 import { defineConfig } from "vite";
+import { resolve } from 'path';
 import vue from "@vitejs/plugin-vue";
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 import { renderSVG } from 'vite-plugin-render-svg'
 import eslint from 'vite-plugin-eslint';
-import { manifest } from 'virtual:render-svg';
 
 const target = process.env.TARGET || "chrome";
 
@@ -13,9 +13,6 @@ function generateManifest() {
   const pkg = readJsonFile("package.json");
   return {
     version: pkg.version,
-    icons: {
-      "128": manifest["1"]["logo"],
-    },
     ...manifestFile,
   };
 }

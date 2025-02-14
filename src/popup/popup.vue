@@ -34,13 +34,16 @@
             <v-text-field
               v-model="serverObj.search"
               :label="$i18n('filter')"
-              append-inner-icon="mdi-magnify"
               single-line
               density="compact"
               clearable
               hide-details
               variant="outlined"
-            />
+            >
+              <template v-slot:append-inner >
+                <v-icon :icon="mdiMagnify" />
+              </template>
+            </v-text-field>
           </v-col>
         </v-row>
       </v-container>
@@ -69,8 +72,8 @@
                   {{ item.description }}
                 </v-sheet>
                 <v-sheet class="ma-0 pa-0" :class="priority_class(item.priority)">
-                  <v-icon v-if="item.acknowledged" size="small">mdi-flag-variant</v-icon>
-                  <v-icon v-if="item.maintenance_status" size="small">mdi-wrench</v-icon>
+                  <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" />
+                  <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" />
                 </v-sheet>
               </v-sheet>
             </td>
@@ -160,20 +163,20 @@
             </td>
           </tr>
         </template>
-        <template #no-data>
+        <template v-slot:no-data>
           <v-alert 
             :value="true" 
+            type="success"
             color="green-lighten-1" 
-            icon="mdi-check"
+            v-if="serverObj.search.length === 0"
           >
             {{ $i18n("noProb") }}
           </v-alert>
-        </template>
-        <template #no-results>
           <v-alert
             :value="true" 
             color="red" 
-            icon="mdi-alert"
+            type="error"
+            v-if="serverObj.search.length > 0"
           >
             {{ $i18n("noResults") }}: {{ serverObj.search }}
           </v-alert>
@@ -183,8 +186,13 @@
   </v-app>
 </template>
 
+<script setup>
+import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js'
+</script>
+
 <script>
 import browser from "webextension-polyfill";
+
 
 async function getPopupData() {
   // Default to no servers defined
@@ -405,7 +413,7 @@ div.Cdisaster {
   color: #222222;
 }
 tr.Chigh,
-div.Cdisaster {
+div.Chigh {
   background-color: #ff9999;
   color: #222222;
 }
@@ -431,7 +439,8 @@ div.Cunknown_trigger {
 }
 tr.Cnormal,
 tr.Cnotclassified,
-div.Cnotclassified {
+div.Cnotclassified,
+div.Cnormal {
   background-color: #dbdbdb;
   color: #222222;
 }
@@ -455,5 +464,11 @@ body {
 .v-input--density-compact {
   --v-input-padding-top: 0px;
   --v-input-control-height: 0px;
+}
+.v-container {
+    padding-top: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 3px;
 }
 </style>
