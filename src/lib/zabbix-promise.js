@@ -21,17 +21,13 @@ var _createClass = (function () {
   };
 })();
 
-Object.defineProperty(exports, "__esModule", {
-  value: true,
-});
-
 function _classCallCheck(instance, Constructor) {
   if (!(instance instanceof Constructor)) {
     throw new TypeError("Cannot call a class as a function");
   }
 }
 
-var Zabbix = (function () {
+export var Zabbix = (function () {
   /**
    * Create Zabbix API client.
    * @param {string} url - Zabbix API url e.g. http://localhost/zabbix/api_jsonrpc.php
@@ -163,8 +159,8 @@ var Zabbix = (function () {
           const zabResponse = await response.json()
           //console.log("ZABLIB response: " + JSON.stringify(zabResponse))
           return zabResponse;
-        } catch (error) {
-          console.error(error.message);
+        } catch {
+          throw new Error('Failed to communicate with server');
         }       
       },
     },
@@ -172,5 +168,3 @@ var Zabbix = (function () {
 
   return Zabbix;
 })();
-
-exports.default = Zabbix;

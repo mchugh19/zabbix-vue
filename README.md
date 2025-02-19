@@ -29,8 +29,8 @@ Options screen displays many settings including the ability to only show problem
 
 
 ## Build
-`yarn install`
-`yarn build --mode production`
+`npm install`
+`TARGET=chrome npm run build` or `TARGET=firefox npm run build`
 
 Then create a zip file from the dist/ directory's contents in Firefox Developer Edition or load the dist/ directory in Chrome.
 

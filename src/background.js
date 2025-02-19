@@ -1,106 +1,92 @@
 "use strict";
 
-/* global cryptio:readonly */
+import { Zabbix } from './lib/zabbix-promise.js';
+import browser from "webextension-polyfill";
+import { manifest } from 'virtual:render-svg'
+import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
-import Zabbix from "./lib/zabbix-promise.js";
-import "./lib/crypt.io.js";
-import png_sev_1 from "./images/sev_-1.svg";  // eslint-disable-line no-unused-vars
-import png_sev0 from "./images/sev_0.svg";    // eslint-disable-line no-unused-vars
-import png_sev1 from "./images/sev_1.svg";    // eslint-disable-line no-unused-vars
-import png_sev2 from "./images/sev_2.svg";    // eslint-disable-line no-unused-vars
-import png_sev3 from "./images/sev_3.svg";    // eslint-disable-line no-unused-vars
-import png_sev4 from "./images/sev_4.svg";    // eslint-disable-line no-unused-vars
-import png_sev5 from "./images/sev_5.svg";    // eslint-disable-line no-unused-vars
-import png_logo from "./images/logo.svg";     // eslint-disable-line no-unused-vars
-import png_unconfigured from "./images/unconfigured.svg"; // eslint-disable-line no-unused-vars
 
-var browser = browser || chrome;
+browser.runtime.onMessage.addListener(handleMessage);
+browser.alarms.onAlarm.addListener(initalize);
 
-/*
-chrome.runtime.onInstalled.addListener(async ({ reason }) => {
-  if (reason !== 'install') {
-    return;
+
+browser.runtime.onInstalled.addListener( async () => {
+  console.log(`onInstalled()`);
+
+  await migrateOldSettings();
+  await initalize();
+});
+browser.runtime.onStartup.addListener( async () => {
+  console.log(`onStartup()`);
+
+  await setAlarmState(60);
+});
+self.addEventListener("activate", (event) => {
+  console.log("activated for " + JSON.stringify(event))
+
+  setAlarmState(60).then();
+});
+
+async function migrateOldSettings() {
+  /*
+  * Up to version 2 of extension encrypted all data. Only pass and key are sensitive data
+  * Converts old all encrypted format to only encrypt those two fields
+  */
+  var settings = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(settings).includes('ZabbixServers')) {
+    settings = settings["ZabbixServers"]
+    settings = JSON.parse(settings)
+    if (Object.keys(settings).includes('iv')) {
+      console.log("Found previous encrypted settings. Migrating")
+      settings = decryptSettings(JSON.stringify(settings))
+      settings = encryptSettingKeys(JSON.parse(settings));
+      await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
+      console.log("Migration complete")
+    } else {
+      //console.log("no IV keys " + JSON.stringify(settings))
+    }
+  } else {
+    //console.log("no ZabbixServer keys")
   }
+}
 
-  // Create initial alarm. Timing will be updated when saving options.
-  console.log("Creating default 1 minute alarm");
-  await chrome.alarms.create('default-alarm', {
-    delayInMinutes: 1,
-    periodInMinutes: 1
-  });
-});
-*/
 
-browser.runtime.onStartup.addListener(() => {
-  initalize();
-});
+async function setAlarmState(interval) {
+  const alarm = await browser.alarms.get("default-alarm");
 
-browser.alarms.onAlarm.addListener(() => {
-  getAllTriggers();
-});
+  if (!alarm) {
+    await browser.alarms.create("default-alarm", {
+      delayInMinutes: interval / 60,
+      periodInMinutes: interval / 60,
+    });
+  }
+}
+
 
 async function initalize() {
   /*
-   * Set settings from options screen
-   * Called by options so also kickoff an initial Zabbix poll
+   * Set Zabbix poll alarm, listeners, and activate polling
    */
-  console.log("Running initalize");
-  let browser = browser || chrome;
-  let settings = {};
-  // eslint-disable-next-line
-  cryptio.get("ZabbixServers", function (err, results) {
-    if (err) {
-      console.log("Problem fetching settings");
-    }
-    settings = results;
-  })
+  //console.log("Running initalize");
 
-  // Initalizie settings
-  if (!settings || settings["global"] == null) {
-    settings = {};
-    settings.global = {};
-  }
-  // Set default pagination if doesn't yet exist
-  if (settings && settings["servers"]) {
-    for (var i = 0; i < settings["servers"].length; i++) {
-      if (settings["servers"][i]["pagination"] == null) {
-        settings["servers"][i]["pagination"] = {
-          sortBy: "priority",
-          descending: true,
-        };
+  let settings = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(settings).length > 0) {
+    // settings have been configured
+    settings = settings["ZabbixServers"];
+    settings = JSON.parse(settings);
+
+    try {
+      var interval = settings["global"]["interval"];
+      if (interval) {
+        console.log("Updating alarm to " + interval + " seconds");
+        await setAlarmState(interval);
       }
+    } catch (_) { // eslint-disable-line no-unused-vars
+      await setAlarmState(60);
+      console.log("No previous polling interval set. Using default.");
     }
+    await getAllTriggers();
   }
-  // Set default notification if not set
-  if (settings["global"]["notify"] == null) {
-    settings["global"]["notify"] = true;
-  }
-  // Set default sound if not set
-  if (settings["global"]["sound"] == null) {
-    settings["global"]["sound"] = false;
-  }
-  // Set default display name if not set
-  if (settings["global"]["displayName"] == null) {
-    settings["global"]["displayName"] = "host";
-  }
-  
-  try {
-    var interval = settings["global"]["interval"];
-    if (interval) {
-      console.log("Updating alarm to " + interval + " seconds");
-      await browser.alarms.create("default-alarm", {
-        periodInMinutes: interval / 60,
-      });
-    }
-  } catch (err) {
-    console.log("No previous polling interval set. Using default.");
-  }
-
-  console.log("Got settings: " + JSON.stringify(settings));
-  cryptio.set("ZabbixServers", settings, function (err) {
-    if (err) throw err;
-  });
-  await getAllTriggers();
 }
 
 async function getServerTriggers(
@@ -117,7 +103,6 @@ async function getServerTriggers(
   /*
    * Return data from zabbix trigger.get call to a specifc server
    */
-  let browser = browser || chrome;
   let popupTable = await browser.storage.session.get("popupTable");
   popupTable = popupTable["popupTable"]
   if (popupTable && "error" in popupTable) {
@@ -127,7 +112,7 @@ async function getServerTriggers(
     await browser.storage.session.set({"popupTable": popupTable});
   }
 
-  console.log("getServerTriggers for: " + JSON.stringify(server))
+  //console.log("getServerTriggers for: " + JSON.stringify(server))
   let requestObject = {
     expandDescription: 1,
     skipDependent: 1,
@@ -170,17 +155,20 @@ async function getServerTriggers(
     await zabbix.login();
     let result = await zabbix.call("trigger.get", requestObject);
     triggerResults = result["result"];
-  } catch (error) {
+  } catch (_) { // eslint-disable-line no-unused-vars
     let errorMessage = "Error communicating with: " + server.toString();
     console.log(errorMessage);
     //Show error on popup
     //popupTable["servers"] = [];
-    popupTable["error"] = true;
-    popupTable["errorMessage"] = errorMessage;
+    popupTable = {
+      "error": true,
+      "errorMessage": errorMessage
+    };
     await browser.storage.session.set({"popupTable": popupTable});
     //Set browser icon to config error state
     browser.action.setBadgeText({ text: "" });
-    browser.action.setIcon({ path: "images/unconfigured.png" });
+    browser.action.setIcon({ path: manifest["1"].unconfigured });
+    throw (errorMessage)
   } finally {
     zabbix.logout();
   }
@@ -196,59 +184,61 @@ async function getAllTriggers() {
    * Update browser badge color and count
    * Call setActiveTriggersTable function to update popup dataset
    */
-  let browser = browser || chrome;
   var triggerCount = 0;
-  let settings = {};
-  // eslint-disable-next-line
-  cryptio.get("ZabbixServers", function (err, results) {
-    if (err) {
-      console.log("Problem fetching settings");
-    }
-    settings = results;
-  });
+  var serverError = false;
+  let settings = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(settings).length > 0) {
+    settings = settings["ZabbixServers"];
+    settings = JSON.parse(settings);
+  }
   if (
     !settings ||
     settings.length === 0 ||
     !settings["servers"] ||
     settings["servers"].length == 0
   ) {
-    console.log("No servers defined.");
-    console.log("Settings: " + JSON.stringify(settings));
+    console.log("No servers defined for trigger processing");
   } else {
     let triggerResults = await browser.storage.session.get("triggerResults");
     triggerResults = triggerResults["triggerResults"]
     if (!triggerResults) {
       triggerResults = {}
     }
-    //console.log("getAllTriggers existing triggerResults: " + JSON.stringify(triggerResults))
     
     let serversChecked = [];
     for (var serverIndex in settings["servers"]) {
       let server = settings["servers"][serverIndex].alias;
       let serverURL = settings["servers"][serverIndex].url;
       let user = settings["servers"][serverIndex].user;
-      let pass = settings["servers"][serverIndex].pass;
+      let pass = decryptSettings(settings["servers"][serverIndex].pass);
       let version = settings["servers"][serverIndex].version;
-      let apiToken = settings["servers"][serverIndex].apiToken;
+      let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
       let groups = settings["servers"][serverIndex].hostGroups;
       let hideAck = settings["servers"][serverIndex].hide;
       let hideMaintenance = settings["servers"][serverIndex].maintenance;
       let minPriority = settings["servers"][serverIndex].minSeverity;
       serversChecked.push(server);
-      console.log("Found server: " + server);
+      //console.log("Found server: " + server);
       let newTriggerData = {};
-      newTriggerData = await getServerTriggers(
-        serverURL,
-        user,
-        pass,
-        apiToken,
-        version,
-        groups,
-        hideAck,
-        hideMaintenance,
-        minPriority
-      );
-
+      try {
+        newTriggerData = await getServerTriggers(
+          serverURL,
+          user,
+          pass,
+          apiToken,
+          version,
+          groups,
+          hideAck,
+          hideMaintenance,
+          minPriority
+        );
+      } catch {
+        // Error state already set. Break out of function
+        serverError = true;
+        triggerResults[server] = [{"error": true}]
+        break;
+      }
+      
       // Check if new triggers are different from existing
       // Find triggerid values that are in new results but previous
       let oldTriggers = triggerResults[server] || [];
@@ -260,16 +250,25 @@ async function getAllTriggers() {
       if (settings["global"]["notify"]) {
         // Notify popup for new triggers
         for (let trig of triggerDiff) {
-          sendNotify(trig);
+          await sendNotify(trig, settings.global.displayName);
         }
       }
       if (triggerDiff && triggerDiff.length) {
         if (settings["global"]["sound"]) {
-          //console.log('Playing audio for new triggers: ' + triggerDiff.toString());
-          var myAudio = new Audio(
-            browser.runtime.getURL("sounds/drip.mp3")
-          );
-          myAudio.play();
+          if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+            // mv2 firefox & older chrome sound support         
+            var myAudio = new Audio(
+              browser.runtime.getURL("sounds/drip.mp3")
+            );
+            myAudio.play();
+          } else {
+            // MV3 chrome sound support
+            browser.offscreen.createDocument({
+              url: browser.runtime.getURL('./sounds/audio.html'),
+              reasons: ['AUDIO_PLAYBACK'],
+              justification: 'notification',
+            });
+          }
         }
       }
       // Record new trigger list
@@ -291,45 +290,46 @@ async function getAllTriggers() {
     // save triggerResults
     browser.storage.session.set({"triggerResults": triggerResults});
 
-    if (triggerCount > 0) {
-      // Set bage for the number of active triggers
-      browser.action.setBadgeBackgroundColor({ color: "#888888" });
-      browser.action.setBadgeText({ text: triggerCount.toString() });
-    } else {
-      // Clear badge as there are no active triggers
-      browser.action.setBadgeText({ text: "" });
+    if (!serverError) {
+      // only update badge if it isn't in error state
+      if (triggerCount > 0) {
+        // Set bage for the number of active triggers
+        browser.action.setBadgeBackgroundColor({ color: "#888888" });
+        browser.action.setBadgeText({ text: triggerCount.toString() });
+      } else {
+        // Clear badge as there are no active triggers
+        browser.action.setBadgeText({ text: "" });
+      }
     }
     await setActiveTriggersTable();
   }
 }
 
-function sendNotify(message) {
+async function sendNotify(message, displayName) {
   /*
    * Create a browser notification popup
    */
-  let browser = browser || chrome;
-  let settings = {};
-  // eslint-disable-next-line
-  cryptio.get("ZabbixServers", function (err, results) {
-    if (err) {
-      console.log("Problem fetching settings");
-    }
-    settings = results;
-  });
-  browser.notifications.create(
-    "notification",
-    {
-      type: "basic",
-      title: message.hosts[0][settings.global.displayName],
-      message: message.description,
-      iconUrl: "images/sev_" + message.priority + ".png",
-    },
-    function () {
-      setTimeout(function () {
-        browser.notifications.clear("notification", function () {});
-      }, 5000);
-    }
-  );
+  if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+    await browser.notifications.create(
+      "notification",
+      {
+        type: "basic",
+        title: message.hosts[0][displayName],
+        message: message.description,
+        iconUrl: manifest["1"]["sev_" + message.priority],
+        
+      }
+    );
+  } else {
+    // MV3 chrome notification
+    registration.showNotification( // eslint-disable-line no-undef
+      message.hosts[0][displayName], 
+      {
+        body: message.description,
+        icon: manifest["1"]["sev_" + message.priority],
+      }
+    )
+  }
 }
 
 function setBrowserIcon(severity) {
@@ -342,35 +342,40 @@ function setBrowserIcon(severity) {
    * 4 high
    * 5 disaster
    */
-  let browser = browser || chrome;
   //console.log('Setting icon for priority: ' + severity.toString());
-  browser.action.setIcon({ path: "images/sev_" + severity + ".png" });
+  browser.action.setIcon({ path: manifest["1"]["sev_" + severity]});
 }
 
 async function setActiveTriggersTable() {
   /*
    * Generate object for display in popup window
    */
-  let browser = browser || chrome;
   let triggerResults = await browser.storage.session.get("triggerResults");
   triggerResults = triggerResults["triggerResults"];
-  let settings = {};
-  // eslint-disable-next-line
-  cryptio.get("ZabbixServers", function (err, results) {
-    if (err) {
-      console.log("Problem fetching settings");
-    }
-    settings = results;
-  })
+  let settings = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(settings).length > 0) {
+    settings = settings["ZabbixServers"];
+    settings = JSON.parse(settings);
+  }
+  let hasError = false;
+  //console.log("setPopup got settings: " + JSON.stringify(settings))
+
   let topSeverity = -1;
-  let popupHeaders = [
-    { text: browser.i18n.getMessage("headerSystem"), value: "system" },
+  const popupHeaders = [
+    { title: browser.i18n.getMessage("headerSystem"),
+      sortable: true,
+      value: "system" },
     {
-      text: browser.i18n.getMessage("headerDescription"),
+      title: browser.i18n.getMessage("headerDescription"),
+      sortable: true,
       value: "description",
     },
-    { text: browser.i18n.getMessage("headerPriority"), value: "priority" },
-    { text: browser.i18n.getMessage("headerAge"), value: "age" },
+    { title: browser.i18n.getMessage("headerPriority"),
+      sortable: true,
+      value: "priority" },
+    { title: browser.i18n.getMessage("headerAge"),
+      sortable: true,
+      value: "age" },
   ];
 
   //console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
@@ -392,10 +397,20 @@ async function setActiveTriggersTable() {
       let triggerTable = [];
       let server = servers[i];
 
-      // Iterate over found triggers and format for popup
-      console.log(
-        "Generating trigger table for server: " + JSON.stringify(server)
-      );
+      if (
+        triggerResults[server][0] && 
+        triggerResults[server][0] instanceof Object &&
+        Object.hasOwn(triggerResults[server][0], 'error')
+      ) {
+        hasError = true;
+        break;
+      } else {
+        // Iterate over found triggers and format for popup
+        console.log(
+          "Generating trigger table for server: " + JSON.stringify(server)
+        );
+      }
+      
       for (var t = 0; t < triggerResults[server].length; t++) {
         let system =
           triggerResults[server][t]["hosts"][0][settings.global.displayName];
@@ -434,26 +449,28 @@ async function setActiveTriggersTable() {
       serverObject["server"] = server;
       // Add search string for server
       serverObject["search"] = "";
+      // Add expanded array
+      serverObject.expanded = [];
       // Lookup zabbix url from settings
       let url = "";
       let version = "";
-      let pagination = {};
+      let sortBy = [];
       for (var x = 0; x < settings["servers"].length; x++) {
         if (settings["servers"][x]["alias"] === server) {
           url = settings["servers"][x]["url"];
           version = settings["servers"][x]["version"];
-          pagination = settings["servers"][i]["pagination"];
+          sortBy = settings["servers"][i]["sortBy"];
         }
       }
       serverObject["url"] = url;
       serverObject["version"] = version;
-      serverObject["pagination"] = pagination;
-      //console.log('serverObject is: ' + JSON.stringify(serverObject));
+      serverObject["sortBy"] = sortBy;
       popupTable["servers"].push(serverObject);
     }
-    await browser.storage.session.set({"popupTable": popupTable})
-    //console.log('Complete table: ' + JSON.stringify(popupTable));
-    setBrowserIcon(topSeverity);
+    if (!hasError) {
+      await browser.storage.session.set({"popupTable": popupTable})
+      setBrowserIcon(topSeverity);
+    }
   }
 }
 
@@ -461,46 +478,29 @@ async function setActiveTriggersTable() {
 // eslint-disable-next-line no-unused-vars
 async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
-    case "reinitalize":
+    case "reinitalize": {
+      console.log("Background triggered reinialize")
       // Sent by options to alert to config changes in order to refresh
-      initalize();
+      await initalize();
       break;
-    case "submitPagination":
+    }
+    case "submitPagination": {
       // Message sent by popup to save header sorting
-      var updated = false;
-      var browser = browser || chrome;
-      var settings = {};
-      // eslint-disable-next-line
-      cryptio.get("ZabbixServers", function (err, results) {
-        if (err) {
-          console.log("Problem fetching settings");
-        }
-        settings = results;
-      })
-      if (
-        settings["servers"][request.index]["pagination"].sortBy !=
-        request.sortBy
-      ) {
-        settings["servers"][request.index]["pagination"].sortBy =
-          request.sortBy;
-        updated = true;
+      var settings = await browser.storage.local.get("ZabbixServers");
+      if (Object.keys(settings).length > 0) {
+        settings = settings["ZabbixServers"]
+        settings = JSON.parse(settings);
       }
-      if (
-        settings["servers"][request.index]["pagination"].descending !=
-        request.descending
-      ) {
-        settings["servers"][request.index]["pagination"].descending =
-          request.descending;
-        updated = true;
-      }
-      if (updated) {
-        cryptio.set("ZabbixServers", settings, function (err) {
-          if (err) throw err;
-        });
-      }
+      const newSort = [{
+        "key": request.sortBy,
+        "order": request.descending
+      }]
+      settings.servers[request.index]["sortBy"] = newSort;
+
+      await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
       await setActiveTriggersTable();
       break;
+    }
   }
   return true;
 }
-browser.runtime.onMessage.addListener(handleMessage);
