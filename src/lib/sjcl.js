@@ -1379,3 +1379,5 @@ sjcl.misc.cachedPbkdf2 = function (a, b) {
   define([], function () {
     return sjcl;
   });
+
+  export { sjcl };
