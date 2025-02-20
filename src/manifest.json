@@ -28,6 +28,9 @@
     "storage",
     "offscreen"
   ],
+  "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'"
+  },
   "{{firefox}}.permissions": [
     "alarms",
     "notifications",
