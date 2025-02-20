@@ -28,6 +28,9 @@
     "storage",
     "offscreen"
   ],
+  "host_permissions": [
+    "*://*/"
+  ],
   "{{firefox}}.permissions": [
     "alarms",
     "notifications",
