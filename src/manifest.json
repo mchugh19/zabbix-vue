@@ -32,5 +32,10 @@
     "alarms",
     "notifications",
     "storage"
-  ]
+  ],
+  "{{firefox}}.browser_specific_settings": {
+    "gecko": {
+      "id": "{493da8e7-8299-4edd-9895-99452a03de66}"
+    }
+  }
 }
