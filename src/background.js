@@ -19,7 +19,7 @@ browser.runtime.onInstalled.addListener( async () => {
 browser.runtime.onStartup.addListener( async () => {
   console.log(`onStartup()`);
 
-  await setAlarmState(60);
+  await initalize();
 });
 self.addEventListener("activate", (event) => {
   console.log("activated for " + JSON.stringify(event))
