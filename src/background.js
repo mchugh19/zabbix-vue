@@ -5,6 +5,7 @@ import browser from "webextension-polyfill";
 import { manifest } from 'virtual:render-svg'
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
+const ZABBIX_SERVERS_KEY = "ZabbixServers";
 
 browser.runtime.onMessage.addListener(handleMessage);
 browser.alarms.onAlarm.addListener(initalize);
@@ -27,15 +28,18 @@ self.addEventListener("activate", (event) => {
   setAlarmState(60).then();
 });
 
+async function getSettings() {
+  const settings = await browser.storage.local.get(ZABBIX_SERVERS_KEY);
+  return settings[ZABBIX_SERVERS_KEY] ? JSON.parse(settings[ZABBIX_SERVERS_KEY]) : null;
+}
+
 async function migrateOldSettings() {
   /*
   * Up to version 2 of extension encrypted all data. Only pass and key are sensitive data
   * Converts old all encrypted format to only encrypt those two fields
   */
-  var settings = await browser.storage.local.get("ZabbixServers");
-  if (Object.keys(settings).includes('ZabbixServers')) {
-    settings = settings["ZabbixServers"]
-    settings = JSON.parse(settings)
+  var settings = await getSettings();
+  if (settings) {
     if (Object.keys(settings).includes('iv')) {
       console.log("Found previous encrypted settings. Migrating")
       settings = decryptSettings(JSON.stringify(settings))
@@ -52,10 +56,11 @@ async function migrateOldSettings() {
 
 
 async function setAlarmState(interval) {
-  const alarm = await browser.alarms.get("default-alarm");
+  const alarmName = "default-alarm";
+  const alarm = await browser.alarms.get(alarmName);
 
   if (!alarm) {
-    await browser.alarms.create("default-alarm", {
+    await browser.alarms.create(alarmName, {
       delayInMinutes: interval / 60,
       periodInMinutes: interval / 60,
     });
@@ -69,12 +74,9 @@ async function initalize() {
    */
   //console.log("Running initalize");
 
-  let settings = await browser.storage.local.get("ZabbixServers");
-  if (Object.keys(settings).length > 0) {
+  const settings = await getSettings();
+  if (settings) {
     // settings have been configured
-    settings = settings["ZabbixServers"];
-    settings = JSON.parse(settings);
-
     try {
       var interval = settings["global"]["interval"];
       if (interval) {
@@ -138,6 +140,9 @@ async function getServerTriggers(
   if (hideMaintenance) {
     requestObject.maintenance = false;
   }
+  if (groups.length > 0) {
+    requestObject.groupids = groups;
+  }
 
   const zabbix = new Zabbix(
     server + "/api_jsonrpc.php",
@@ -146,11 +151,7 @@ async function getServerTriggers(
     apiToken,
     version
   );
-  if (groups.length > 0) {
-    requestObject.groupids = groups;
-  }
   let triggerResults = {};
-
   try {
     await zabbix.login();
     let result = await zabbix.call("trigger.get", requestObject);
@@ -159,7 +160,6 @@ async function getServerTriggers(
     let errorMessage = "Error communicating with: " + server.toString();
     console.log(errorMessage);
     //Show error on popup
-    //popupTable["servers"] = [];
     popupTable = {
       "error": true,
       "errorMessage": errorMessage
@@ -186,11 +186,7 @@ async function getAllTriggers() {
    */
   var triggerCount = 0;
   var serverError = false;
-  let settings = await browser.storage.local.get("ZabbixServers");
-  if (Object.keys(settings).length > 0) {
-    settings = settings["ZabbixServers"];
-    settings = JSON.parse(settings);
-  }
+  let settings = await getSettings();
   if (
     !settings ||
     settings.length === 0 ||
@@ -198,111 +194,112 @@ async function getAllTriggers() {
     settings["servers"].length == 0
   ) {
     console.log("No servers defined for trigger processing");
-  } else {
-    let triggerResults = await browser.storage.session.get("triggerResults");
-    triggerResults = triggerResults["triggerResults"]
-    if (!triggerResults) {
-      triggerResults = {}
+    return null;
+  }
+
+  let triggerResults = await browser.storage.local.get("triggerResults");
+  triggerResults = triggerResults["triggerResults"]
+  if (!triggerResults) {
+    triggerResults = {}
+  }
+  
+  let serversChecked = [];
+  for (var serverIndex in settings["servers"]) {
+    let server = settings["servers"][serverIndex].alias;
+    let serverURL = settings["servers"][serverIndex].url;
+    let user = settings["servers"][serverIndex].user;
+    let pass = decryptSettings(settings["servers"][serverIndex].pass);
+    let version = settings["servers"][serverIndex].version;
+    let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
+    let groups = settings["servers"][serverIndex].hostGroups;
+    let hideAck = settings["servers"][serverIndex].hide;
+    let hideMaintenance = settings["servers"][serverIndex].maintenance;
+    let minPriority = settings["servers"][serverIndex].minSeverity;
+    serversChecked.push(server);
+    //console.log("Found server: " + server);
+    let newTriggerData = {};
+    try {
+      newTriggerData = await getServerTriggers(
+        serverURL,
+        user,
+        pass,
+        apiToken,
+        version,
+        groups,
+        hideAck,
+        hideMaintenance,
+        minPriority
+      );
+    } catch {
+      // Error state already set. Break out of function
+      serverError = true;
+      triggerResults[server] = [{"error": true}]
+      break;
     }
     
-    let serversChecked = [];
-    for (var serverIndex in settings["servers"]) {
-      let server = settings["servers"][serverIndex].alias;
-      let serverURL = settings["servers"][serverIndex].url;
-      let user = settings["servers"][serverIndex].user;
-      let pass = decryptSettings(settings["servers"][serverIndex].pass);
-      let version = settings["servers"][serverIndex].version;
-      let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
-      let groups = settings["servers"][serverIndex].hostGroups;
-      let hideAck = settings["servers"][serverIndex].hide;
-      let hideMaintenance = settings["servers"][serverIndex].maintenance;
-      let minPriority = settings["servers"][serverIndex].minSeverity;
-      serversChecked.push(server);
-      //console.log("Found server: " + server);
-      let newTriggerData = {};
-      try {
-        newTriggerData = await getServerTriggers(
-          serverURL,
-          user,
-          pass,
-          apiToken,
-          version,
-          groups,
-          hideAck,
-          hideMaintenance,
-          minPriority
-        );
-      } catch {
-        // Error state already set. Break out of function
-        serverError = true;
-        triggerResults[server] = [{"error": true}]
-        break;
-      }
-      
-      // Check if new triggers are different from existing
-      // Find triggerid values that are in new results but previous
-      let oldTriggers = triggerResults[server] || [];
-      let triggerDiff = newTriggerData.filter(function (obj) {
-        return !oldTriggers.some(function (obj2) {
-          return obj.triggerid == obj2.triggerid;
-        });
+    // Check if new triggers are different from existing
+    // Find triggerid values that are in new results but previous
+    let oldTriggers = triggerResults[server] || [];
+    let triggerDiff = newTriggerData.filter(function (obj) {
+      return !oldTriggers.some(function (obj2) {
+        return obj.triggerid == obj2.triggerid;
       });
-      if (settings["global"]["notify"]) {
-        // Notify popup for new triggers
-        for (let trig of triggerDiff) {
-          await sendNotify(trig, settings.global.displayName);
+    });
+    if (settings["global"]["notify"]) {
+      // Notify popup for new triggers
+      for (let trig of triggerDiff) {
+        await sendNotify(trig, settings.global.displayName);
+      }
+    }
+    if (triggerDiff && triggerDiff.length) {
+      if (settings["global"]["sound"]) {
+        if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+          // mv2 firefox & older chrome sound support         
+          var myAudio = new Audio(
+            browser.runtime.getURL("sounds/drip.mp3")
+          );
+          myAudio.play();
+        } else {
+          // MV3 chrome sound support
+          browser.offscreen.createDocument({
+            url: browser.runtime.getURL('./sounds/audio.html'),
+            reasons: ['AUDIO_PLAYBACK'],
+            justification: 'notification',
+          });
         }
       }
-      if (triggerDiff && triggerDiff.length) {
-        if (settings["global"]["sound"]) {
-          if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
-            // mv2 firefox & older chrome sound support         
-            var myAudio = new Audio(
-              browser.runtime.getURL("sounds/drip.mp3")
-            );
-            myAudio.play();
-          } else {
-            // MV3 chrome sound support
-            browser.offscreen.createDocument({
-              url: browser.runtime.getURL('./sounds/audio.html'),
-              reasons: ['AUDIO_PLAYBACK'],
-              justification: 'notification',
-            });
-          }
-        }
-      }
-      // Record new trigger list
-      triggerResults[server] = newTriggerData;
-      //console.log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
-      triggerCount += triggerResults[server].length;
     }
-
-    // all server checks now complete
-
-    // Remove trigger.get data for old servers
-    for (var trigServer in triggerResults) {
-      if (!serversChecked.includes(trigServer)) {
-        console.log("Removing old results for: " + trigServer);
-        delete triggerResults[trigServer];
-      }
-    }
-
-    // save triggerResults
-    browser.storage.session.set({"triggerResults": triggerResults});
-
-    if (!serverError) {
-      // only update badge if it isn't in error state
-      if (triggerCount > 0) {
-        // Set bage for the number of active triggers
-        browser.action.setBadgeBackgroundColor({ color: "#888888" });
-        browser.action.setBadgeText({ text: triggerCount.toString() });
-      } else {
-        // Clear badge as there are no active triggers
-        browser.action.setBadgeText({ text: "" });
-      }
-    }
-    await setActiveTriggersTable();
+    // Record new trigger list
+    triggerResults[server] = newTriggerData;
+    //console.log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
+    triggerCount += triggerResults[server].length;
   }
+
+  // all server checks now complete
+
+  // Remove trigger.get data for old servers
+  for (var trigServer in triggerResults) {
+    if (!serversChecked.includes(trigServer)) {
+      console.log("Removing old results for: " + trigServer);
+      delete triggerResults[trigServer];
+    }
+  }
+
+  // save triggerResults
+  browser.storage.local.set({"triggerResults": triggerResults});
+
+  if (!serverError) {
+    // only update badge if it isn't in error state
+    if (triggerCount > 0) {
+      // Set bage for the number of active triggers
+      browser.action.setBadgeBackgroundColor({ color: "#888888" });
+      browser.action.setBadgeText({ text: triggerCount.toString() });
+    } else {
+      // Clear badge as there are no active triggers
+      browser.action.setBadgeText({ text: "" });
+    }
+  }
+  await setActiveTriggersTable(triggerResults);
 }
 
 async function sendNotify(message, displayName) {
@@ -346,19 +343,22 @@ function setBrowserIcon(severity) {
   browser.action.setIcon({ path: manifest["1"]["sev_" + severity]});
 }
 
-async function setActiveTriggersTable() {
+async function setActiveTriggersTable(triggerResults) {
   /*
    * Generate object for display in popup window
    */
-  let triggerResults = await browser.storage.session.get("triggerResults");
-  triggerResults = triggerResults["triggerResults"];
-  let settings = await browser.storage.local.get("ZabbixServers");
-  if (Object.keys(settings).length > 0) {
-    settings = settings["ZabbixServers"];
-    settings = JSON.parse(settings);
-  }
+
+  console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
+  const settings = await getSettings();
   let hasError = false;
-  //console.log("setPopup got settings: " + JSON.stringify(settings))
+
+  if (
+    Object.keys(triggerResults).length === 0 &&
+    triggerResults.constructor === Object
+  ) {
+    console.log("No current triggers or servers");
+    return null;
+  } 
 
   let topSeverity = -1;
   const popupHeaders = [
@@ -378,99 +378,73 @@ async function setActiveTriggersTable() {
       value: "age" },
   ];
 
-  //console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
-  if (
-    Object.keys(triggerResults).length === 0 &&
-    triggerResults.constructor === Object
-  ) {
-    console.log("No current triggers or servers");
-  } else {
-    let popupTable = {};
-    popupTable["servers"] = [];
-    popupTable["headers"] = popupHeaders;
-    popupTable["loaded"] = false;
-    let servers = Object.keys(triggerResults);
-    for (var i = 0; i < servers.length; i++) {
-      // Iterate over each configured server, generate trigger list
+  let popupTable = {
+    "servers": [],
+    "headers": popupHeaders,
+    "loaded": false,
+  };
+  let servers = Object.keys(triggerResults);
+  for (var i = 0; i < servers.length; i++) {
+    // Iterate over each configured server, generate trigger list
+    let triggerTable = [];
+    let server = servers[i];
 
-      let serverObject = {};
-      let triggerTable = [];
-      let server = servers[i];
-
-      if (
-        triggerResults[server][0] && 
-        triggerResults[server][0] instanceof Object &&
-        Object.hasOwn(triggerResults[server][0], 'error')
-      ) {
-        hasError = true;
-        break;
-      } else {
-        // Iterate over found triggers and format for popup
-        console.log(
-          "Generating trigger table for server: " + JSON.stringify(server)
-        );
-      }
-      
-      for (var t = 0; t < triggerResults[server].length; t++) {
-        let system =
-          triggerResults[server][t]["hosts"][0][settings.global.displayName];
-        let description = triggerResults[server][t]["description"];
-        let priority = triggerResults[server][t]["priority"];
-        // Set priority number if higher than current
-        // Used to set browser icon
-        if (priority > topSeverity) {
-          topSeverity = priority;
-        }
-        let age = triggerResults[server][t]["lastchange"];
-        let triggerid = triggerResults[server][t]["triggerid"];
-        let hostid = triggerResults[server][t]["hosts"][0]["hostid"];
-        let eventid = triggerResults[server][t]["lastEvent"]["eventid"];
-        let acknowledged = Number(
-          triggerResults[server][t]["lastEvent"]["acknowledged"]
-        );
-        let maintenance = Number(
-          triggerResults[server][t]["hosts"][0]["maintenance_status"]
-        );
-        triggerTable.push({
-          system: system,
-          description: description,
-          priority: priority,
-          age: age,
-          triggerid: triggerid,
-          hostid: hostid,
-          eventid: eventid,
-          acknowledged: acknowledged,
-          maintenance_status: maintenance,
-        });
-      }
-      //console.log('TriggerTable: ' + JSON.stringify(triggerTable));
-      serverObject["triggers"] = triggerTable;
-
-      serverObject["server"] = server;
-      // Add search string for server
-      serverObject["search"] = "";
-      // Add expanded array
-      serverObject.expanded = [];
-      // Lookup zabbix url from settings
-      let url = "";
-      let version = "";
-      let sortBy = [];
-      for (var x = 0; x < settings["servers"].length; x++) {
-        if (settings["servers"][x]["alias"] === server) {
-          url = settings["servers"][x]["url"];
-          version = settings["servers"][x]["version"];
-          sortBy = settings["servers"][i]["sortBy"];
-        }
-      }
-      serverObject["url"] = url;
-      serverObject["version"] = version;
-      serverObject["sortBy"] = sortBy;
-      popupTable["servers"].push(serverObject);
+    if (
+      triggerResults[server][0] && 
+      triggerResults[server][0] instanceof Object &&
+      Object.hasOwn(triggerResults[server][0], 'error')
+    ) {
+      hasError = true;
+      break;
+    } else {
+      // Iterate over found triggers and format for popup
+      console.log(
+        "Generating trigger table for server: " + JSON.stringify(server)
+      );
     }
-    if (!hasError) {
-      await browser.storage.session.set({"popupTable": popupTable})
-      setBrowserIcon(topSeverity);
+    
+    for (var t = 0; t < triggerResults[server].length; t++) {
+      let priority = triggerResults[server][t]["priority"];
+      // Set priority number if higher than current
+      // Used to set browser icon
+      if (priority > topSeverity) {
+        topSeverity = priority;
+      }
+      triggerTable.push({
+        system: triggerResults[server][t]["hosts"][0][settings.global.displayName],
+        description: triggerResults[server][t]["description"],
+        priority: priority,
+        age: triggerResults[server][t]["lastchange"],
+        triggerid: triggerResults[server][t]["triggerid"],
+        hostid: triggerResults[server][t]["hosts"][0]["hostid"],
+        eventid: triggerResults[server][t]["lastEvent"]["eventid"],
+        acknowledged: Number(triggerResults[server][t]["lastEvent"]["acknowledged"]),
+        maintenance_status: Number(triggerResults[server][t]["hosts"][0]["maintenance_status"]),
+      });
     }
+    //console.log('TriggerTable: ' + JSON.stringify(triggerTable));
+    let serverObject = {
+      "triggers": triggerTable,
+      "server": server,
+      "search": "",
+      "expanded": [],
+    };
+
+    // Lookup zabbix url from settings
+    for (var x = 0; x < settings["servers"].length; x++) {
+      if (settings["servers"][x]["alias"] === server) {
+        serverObject["url"] = settings["servers"][x]["url"];
+        serverObject["version"] = settings["servers"][x]["version"];
+        serverObject["sortBy"] = settings["servers"][i]["sortBy"];
+      }
+    }
+
+    popupTable["servers"].push(serverObject);
+  }
+
+  if (!hasError) {
+    await browser.storage.session.set({"popupTable": popupTable})
+    setBrowserIcon(topSeverity);
   }
 }
 
@@ -486,11 +460,7 @@ async function handleMessage(request, sender, sendResponse) {
     }
     case "submitPagination": {
       // Message sent by popup to save header sorting
-      var settings = await browser.storage.local.get("ZabbixServers");
-      if (Object.keys(settings).length > 0) {
-        settings = settings["ZabbixServers"]
-        settings = JSON.parse(settings);
-      }
+      var settings = await getSettings();
       const newSort = [{
         "key": request.sortBy,
         "order": request.descending

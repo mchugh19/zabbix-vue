@@ -246,9 +246,14 @@ export default {
       for (let serverIndex in zabbix_data["servers"]) {
         zabbix_data.servers[serverIndex].apiToken = decryptSettings(zabbix_data.servers[serverIndex].apiToken)
         zabbix_data.servers[serverIndex].pass = decryptSettings(zabbix_data.servers[serverIndex].pass)
+        // Add fields for options screen
         if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
           zabbix_data.servers[serverIndex].useToken = true;
+        } else {
+          zabbix_data.servers[serverIndex].useToken = false;
         }
+        zabbix_data.servers[serverIndex].visiblePass = false;
+        zabbix_data.servers[serverIndex].hostGroupsList = [];
       }
       this.zabbixs = zabbix_data;
     }
@@ -317,9 +322,11 @@ export default {
         // Do not save results of hostGroup lookups, password display, or errors
         let savedServerSettings = this.zabbixs["servers"];
         for (var i = 0; i < savedServerSettings.length; i++) {
-          savedServerSettings[i].hostGroupsList = [];
           savedServerSettings[i].errorMsg = "";
-          savedServerSettings[i].visiblePass = false;
+          delete savedServerSettings[i].visiblePass;
+          delete savedServerSettings[i].useToken;
+          delete savedServerSettings[i].hostGroupsList;
+
         }
         this.zabbixs["servers"] = savedServerSettings;
 
