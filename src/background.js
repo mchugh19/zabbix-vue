@@ -348,7 +348,7 @@ async function setActiveTriggersTable(triggerResults) {
    * Generate object for display in popup window
    */
 
-  //console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
+  console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
   const settings = await getSettings();
   let hasError = false;
 
