@@ -168,7 +168,7 @@
             :value="true" 
             type="success"
             color="green-lighten-1" 
-            v-if="serverObj.search.length === 0"
+            v-if="serverObj.search.length === 0 && !serverObj.error"
           >
             {{ $i18n("noProb") }}
           </v-alert>
@@ -176,9 +176,18 @@
             :value="true" 
             color="red" 
             type="error"
-            v-if="serverObj.search.length > 0"
+            v-if="serverObj.search.length > 0 && !serverObj.error"
           >
             {{ $i18n("noResults") }}: {{ serverObj.search }}
+          </v-alert>
+          <v-alert
+            v-if="serverObj.error"
+            color="red"
+            prominent
+            type="warning"
+          >
+            {{ $i18n("checkConfig") }}:
+            {{ serverObj.errorMessage }}
           </v-alert>
         </template>
       </v-data-table>
