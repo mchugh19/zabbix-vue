@@ -174,20 +174,19 @@
           </v-alert>
           <v-alert
             :value="true" 
-            color="red" 
-            type="error"
+            type="info"
             v-if="serverObj.search.length > 0 && !serverObj.error"
           >
             {{ $i18n("noResults") }}: {{ serverObj.search }}
           </v-alert>
           <v-alert
             v-if="serverObj.error"
-            color="red"
             prominent
-            type="warning"
+            type="error"
+            density=“compact”
           >
-            {{ $i18n("checkConfig") }}:
             {{ serverObj.errorMessage }}
+            {{ serverObj.errorDetails }}
           </v-alert>
         </template>
       </v-data-table>

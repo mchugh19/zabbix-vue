@@ -109,6 +109,7 @@ async function getServerTriggers(
     console.log("Error found in popupTable. Clearning and refreshing triggers");
     delete popupTable["error"];
     delete popupTable["errorMessage"];
+    delete popupTable["errorDetails"];
     await browser.storage.session.set({"popupTable": popupTable});
   }
 
@@ -162,7 +163,8 @@ async function getServerTriggers(
 
     triggerResults = {
       "error": true,
-      "errorMessage": errorMessage
+      "errorMessage": errorMessage,
+      "errorDetails": err.message,
     };
   }
 
@@ -412,6 +414,7 @@ async function setActiveTriggersTable(triggerResults) {
       hasError = true;
       serverObject["error"] = triggerResults[server]["error"];
       serverObject["errorMessage"] = triggerResults[server]["errorMessage"];
+      serverObject["errorDetails"] = triggerResults[server]["errorDetails"];
     } else {
       // Iterate over found triggers and format for popup
       console.log(
