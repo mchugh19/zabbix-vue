@@ -168,17 +168,25 @@
             :value="true" 
             type="success"
             color="green-lighten-1" 
-            v-if="serverObj.search.length === 0"
+            v-if="serverObj.search.length === 0 && !serverObj.error"
           >
             {{ $i18n("noProb") }}
           </v-alert>
           <v-alert
             :value="true" 
-            color="red" 
-            type="error"
-            v-if="serverObj.search.length > 0"
+            type="info"
+            v-if="serverObj.search.length > 0 && !serverObj.error"
           >
             {{ $i18n("noResults") }}: {{ serverObj.search }}
+          </v-alert>
+          <v-alert
+            v-if="serverObj.error"
+            prominent
+            type="error"
+            density=“compact”
+          >
+            {{ serverObj.errorMessage }}
+            {{ serverObj.errorDetails }}
           </v-alert>
         </template>
       </v-data-table>
