@@ -154,8 +154,21 @@ async function getServerTriggers(
   try {
     await zabbix.login();
     let result = await zabbix.call("trigger.get", requestObject);
-    triggerResults = result["result"];
     zabbix.logout();
+
+    if ("result" in result) {
+      triggerResults = result["result"];
+    } else {
+      let errorMessage = "Error communicating with: " + server.toString();
+      console.log(errorMessage);
+      let details = result.error.message + " " + result.error.data;
+      console.log(details);
+      triggerResults = {
+        "error": true,
+        "errorMessage": errorMessage,
+        "errorDetails": details,
+      };
+    }
   } catch (err) { // eslint-disable-line no-unused-vars
     let errorMessage = "Error communicating with: " + server.toString();
     console.log(errorMessage);
@@ -227,6 +240,7 @@ async function getAllTriggers() {
       minPriority
     );
 
+    //console.log("New trigger data for server: " + server + " : " + JSON.stringify(newTriggerData));
     if ("error" in newTriggerData) {
       // Error state already set. Break out of function
       serverError = true;
@@ -278,21 +292,15 @@ async function getAllTriggers() {
   }
   browser.storage.local.set({"triggerResults": triggerResults});
 
-  if (serverError) {
-    // set badge to error state, but keep count
-    browser.action.setIcon({ path: manifest["1"].unconfigured });
+  if (triggerCount > 0) {
+    // Set bage for the number of active triggers
+    browser.action.setBadgeBackgroundColor({ color: "#888888" });
     browser.action.setBadgeText({ text: triggerCount.toString() });
   } else {
-    // only update badge fully when healthy
-    if (triggerCount > 0) {
-      // Set bage for the number of active triggers
-      browser.action.setBadgeBackgroundColor({ color: "#888888" });
-      browser.action.setBadgeText({ text: triggerCount.toString() });
-    } else {
-      // Clear badge as there are no active triggers
-      browser.action.setBadgeText({ text: "" });
-    }
+    // Clear badge as there are no active triggers
+    browser.action.setBadgeText({ text: "" });
   }
+
   await setActiveTriggersTable(completeTriggerResults);
 }
 
@@ -342,8 +350,9 @@ function playSounds(settings) {
   }
 }
 
-function setBrowserIcon(severity) {
+async function setBrowserIcon(severity) {
   /*
+   * unconfigured
    * -1 no problems
    * 0 not classified
    * 1 information
@@ -352,8 +361,8 @@ function setBrowserIcon(severity) {
    * 4 high
    * 5 disaster
    */
-  //console.log('Setting icon for priority: ' + severity.toString());
-  browser.action.setIcon({ path: manifest["1"]["sev_" + severity]});
+  //console.log('Setting icon for priority: ' + severity);
+  await browser.action.setIcon({ path: manifest["1"][severity]});
 }
 
 async function setActiveTriggersTable(triggerResults) {
@@ -456,8 +465,10 @@ async function setActiveTriggersTable(triggerResults) {
 
   await browser.storage.session.set({"popupTable": popupTable})
 
-  if (!hasError) {
-    setBrowserIcon(topSeverity);
+  if (hasError) {
+    await setBrowserIcon("unconfigured");
+  } else {
+    await setBrowserIcon("sev_" + topSeverity);
   }
 }
 
