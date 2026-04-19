@@ -269,7 +269,7 @@ export default {
         clearTimeout(this.timeout);
       }
 
-      this.timeout = setTimeout(() => {
+      this.timeout = setTimeout(async () => {
         let url;
         try {
           url = new URL(val);
@@ -282,6 +282,21 @@ export default {
         } else {
           this.zabbixs.servers[index].errorMsg = this.$i18n("requiredURL");
           return false;
+        }
+
+        // Request host permission for this server before testing API
+        const origin = url.origin + "/*";
+        try {
+          const hasPermission = await browser.permissions.contains({ origins: [origin] });
+          if (!hasPermission) {
+            const granted = await browser.permissions.request({ origins: [origin] });
+            if (!granted) {
+              this.zabbixs.servers[index].errorMsg = "Host permission required";
+              return false;
+            }
+          }
+        } catch (e) {
+          console.log("Permission request failed: " + e);
         }
 
         // validate zabbix connection with query zabbix api version and save in storage
@@ -319,6 +334,27 @@ export default {
        */
 
       if (this.$refs.form.validate()) {
+        // Request host permissions for each configured server URL
+        for (const server of this.zabbixs["servers"]) {
+          if (server.url) {
+            try {
+              const url = new URL(server.url);
+              const origin = url.origin + "/*";
+              const hasPermission = await browser.permissions.contains({ origins: [origin] });
+              if (!hasPermission) {
+                const granted = await browser.permissions.request({ origins: [origin] });
+                if (!granted) {
+                  console.log("Permission denied for " + origin);
+                  server.errorMsg = "Host permission required for " + url.origin;
+                  return;
+                }
+              }
+            } catch (e) {
+              console.log("Invalid server URL: " + server.url);
+            }
+          }
+        }
+
         // Do not save results of hostGroup lookups, password display, or errors
         let savedServerSettings = this.zabbixs["servers"];
         for (var i = 0; i < savedServerSettings.length; i++) {
