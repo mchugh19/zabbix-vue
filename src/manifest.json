@@ -28,9 +28,7 @@
     "storage",
     "offscreen"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": [],
   "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'"
   },

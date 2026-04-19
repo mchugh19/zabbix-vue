@@ -201,6 +201,17 @@ import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js'
 <script>
 import browser from "webextension-polyfill";
 
+// Zabbix severity levels - replaces magic numbers 0-5
+const SEVERITY = Object.freeze({
+  NOT_CLASSIFIED: 0,
+  INFORMATION: 1,
+  WARNING: 2,
+  AVERAGE: 3,
+  HIGH: 4,
+  DISASTER: 5,
+  NONE: -1,
+});
+
 
 async function getPopupData() {
   // Default to no servers defined
@@ -209,7 +220,7 @@ async function getPopupData() {
     errorMessage: browser.i18n.getMessage("noServers")
   }
 
-  var popupResults = await browser.storage.session.get("popupTable")
+  let popupResults = await browser.storage.session.get("popupTable")
   if ("popupTable" in popupResults) {
     popupResults = popupResults["popupTable"]
     tableResults = popupResults;
@@ -243,38 +254,38 @@ export default {
   },
   methods: {
     priority_class: function (value) {
-      var PRIORITIES = {
-        0: "Cnotclassified",
-        1: "Cinformation",
-        2: "Cwarning",
-        3: "Caverage",
-        4: "Chigh",
-        5: "Cdisaster",
+      const PRIORITIES = {
+        [SEVERITY.NOT_CLASSIFIED]: "Cnotclassified",
+        [SEVERITY.INFORMATION]: "Cinformation",
+        [SEVERITY.WARNING]: "Cwarning",
+        [SEVERITY.AVERAGE]: "Caverage",
+        [SEVERITY.HIGH]: "Chigh",
+        [SEVERITY.DISASTER]: "Cdisaster",
         9: "Cnormal",
       };
       return PRIORITIES[value];
     },
     priority_name_filter: function (value) {
-      var PRIORITY_NAMES = {
-        0: browser.i18n.getMessage("notClassified"),
-        1: browser.i18n.getMessage("information"),
-        2: browser.i18n.getMessage("warning"),
-        3: browser.i18n.getMessage("average"),
-        4: browser.i18n.getMessage("high"),
-        5: browser.i18n.getMessage("disaster"),
+      const PRIORITY_NAMES = {
+        [SEVERITY.NOT_CLASSIFIED]: browser.i18n.getMessage("notClassified"),
+        [SEVERITY.INFORMATION]: browser.i18n.getMessage("information"),
+        [SEVERITY.WARNING]: browser.i18n.getMessage("warning"),
+        [SEVERITY.AVERAGE]: browser.i18n.getMessage("average"),
+        [SEVERITY.HIGH]: browser.i18n.getMessage("high"),
+        [SEVERITY.DISASTER]: browser.i18n.getMessage("disaster"),
       };
       return PRIORITY_NAMES[value];
     },
     date_filter: function (value) {
-      var curtime = new Date().getTime();
-      var diff = curtime - value * 1000;
+      const curtime = new Date().getTime();
+      const diff = curtime - value * 1000;
 
-      var seconds = parseInt(diff / 1000);
-      var minutes = parseInt(seconds / 60);
-      var hours = parseInt(minutes / 60);
-      var days = parseInt(hours / 24);
+      const seconds = parseInt(diff / 1000);
+      const minutes = parseInt(seconds / 60);
+      const hours = parseInt(minutes / 60);
+      const days = parseInt(hours / 24);
 
-      var result = "";
+      let result = "";
       if (days > 0) {
         result += days + "d, ";
       }

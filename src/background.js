@@ -6,24 +6,45 @@ import { manifest } from 'virtual:render-svg'
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
+const DEBUG = false;
+const log = (...args) => DEBUG && log(...args);
+
+// Zabbix severity levels - replaces magic numbers 0-5
+const SEVERITY = Object.freeze({
+  NOT_CLASSIFIED: 0,
+  INFORMATION: 1,
+  WARNING: 2,
+  AVERAGE: 3,
+  HIGH: 4,
+  DISASTER: 5,
+  NONE: -1, // Used for "no triggers" state
+});
 
 browser.runtime.onMessage.addListener(handleMessage);
-browser.alarms.onAlarm.addListener(initalize);
+const handleAlarm = (alarm) => {
+  if (alarm?.name === 'default-alarm') {
+    initalize();
+  }
+};
+
+// Guarantee single registration (safe across MV3 restarts / HMR)
+browser.alarms.onAlarm.removeListener(handleAlarm);
+browser.alarms.onAlarm.addListener(handleAlarm);
 
 
 browser.runtime.onInstalled.addListener( async () => {
-  console.log(`onInstalled()`);
+  log(`onInstalled()`);
 
   await migrateOldSettings();
   await initalize();
 });
 browser.runtime.onStartup.addListener( async () => {
-  console.log(`onStartup()`);
+  log(`onStartup()`);
 
   await initalize();
 });
 self.addEventListener("activate", (event) => {
-  console.log("activated for " + JSON.stringify(event))
+  log("activated for " + JSON.stringify(event))
 
   setAlarmState(60).then();
 });
@@ -38,19 +59,19 @@ async function migrateOldSettings() {
   * Up to version 2 of extension encrypted all data. Only pass and key are sensitive data
   * Converts old all encrypted format to only encrypt those two fields
   */
-  var settings = await getSettings();
+  let settings = await getSettings();
   if (settings) {
     if (Object.keys(settings).includes('iv')) {
-      console.log("Found previous encrypted settings. Migrating")
+      log("Found previous encrypted settings. Migrating")
       settings = decryptSettings(JSON.stringify(settings))
       settings = encryptSettingKeys(JSON.parse(settings));
       await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
-      console.log("Migration complete")
+      log("Migration complete")
     } else {
-      //console.log("no IV keys " + JSON.stringify(settings))
+      //log("no IV keys " + JSON.stringify(settings))
     }
   } else {
-    //console.log("no ZabbixServer keys")
+    //log("no ZabbixServer keys")
   }
 }
 
@@ -72,20 +93,27 @@ async function initalize() {
   /*
    * Set Zabbix poll alarm, listeners, and activate polling
    */
+  // Prevent concurrent runs if alarm fires while previous poll is still active
+  if (self.__zabbixPolling) return;
+  self.__zabbixPolling = true;
+  try {
   const settings = await getSettings();
   if (settings) {
     // settings have been configured
     try {
-      var interval = settings["global"]["interval"];
+      const interval = settings["global"]["interval"];
       if (interval) {
-        console.log("Updating alarm to " + interval + " seconds");
+        log("Updating alarm to " + interval + " seconds");
         await setAlarmState(interval);
       }
     } catch (_) { // eslint-disable-line no-unused-vars
       await setAlarmState(60);
-      console.log("No previous polling interval set. Using default.");
+      log("No previous polling interval set. Using default.");
     }
     await getAllTriggers();
+  }
+  } finally {
+    self.__zabbixPolling = false;
   }
 }
 
@@ -106,14 +134,14 @@ async function getServerTriggers(
   let popupTable = await browser.storage.session.get("popupTable");
   popupTable = popupTable["popupTable"]
   if (popupTable && "error" in popupTable) {
-    console.log("Error found in popupTable. Clearning and refreshing triggers");
+    log("Error found in popupTable. Clearning and refreshing triggers");
     delete popupTable["error"];
     delete popupTable["errorMessage"];
     delete popupTable["errorDetails"];
     await browser.storage.session.set({"popupTable": popupTable});
   }
 
-  //console.log("getServerTriggers for: " + JSON.stringify(server))
+  //log("getServerTriggers for: " + JSON.stringify(server))
   let requestObject = {
     expandDescription: 1,
     skipDependent: 1,
@@ -154,31 +182,36 @@ async function getServerTriggers(
   try {
     await zabbix.login();
     let result = await zabbix.call("trigger.get", requestObject);
-    zabbix.logout();
 
     if ("result" in result) {
       triggerResults = result["result"];
     } else {
       let errorMessage = "Error communicating with: " + server.toString();
-      console.log(errorMessage);
+      log(errorMessage);
       let details = result.error.message + " " + result.error.data;
-      console.log(details);
+      log(details);
       triggerResults = {
         "error": true,
         "errorMessage": errorMessage,
         "errorDetails": details,
       };
     }
-  } catch (err) { // eslint-disable-line no-unused-vars
+  } catch (err) {
     let errorMessage = "Error communicating with: " + server.toString();
-    console.log(errorMessage);
-    console.log(err.message);
+    console.error(errorMessage, err);
+    log(err.message);
 
     triggerResults = {
       "error": true,
       "errorMessage": errorMessage,
       "errorDetails": err.message,
     };
+  } finally {
+    try {
+      await zabbix.logout();
+    } catch (logoutErr) {
+      log("Logout failed:", logoutErr.message);
+    }
   }
 
   return triggerResults;
@@ -192,7 +225,7 @@ async function getAllTriggers() {
    * Update browser badge color and count
    * Call setActiveTriggersTable function to update popup dataset
    */
-  var triggerCount = 0;
+  let triggerCount = 0;
   let settings = await getSettings();
   if (
     !settings ||
@@ -200,7 +233,7 @@ async function getAllTriggers() {
     !settings["servers"] ||
     settings["servers"].length == 0
   ) {
-    console.log("No servers defined for trigger processing");
+    log("No servers defined for trigger processing");
     return null;
   }
 
@@ -209,11 +242,11 @@ async function getAllTriggers() {
   if (!triggerResults) {
     triggerResults = {}
   }
-  //console.log("Current triggerResults: " + JSON.stringify(triggerResults));
+  //log("Current triggerResults: " + JSON.stringify(triggerResults));
   
   let serversChecked = [];
-  for (var serverIndex in settings["servers"]) {
-    var serverError = false;
+  for (let serverIndex in settings["servers"]) {
+    let serverError = false;
 
     let server = settings["servers"][serverIndex].alias;
     let serverURL = settings["servers"][serverIndex].url;
@@ -226,7 +259,7 @@ async function getAllTriggers() {
     let hideMaintenance = settings["servers"][serverIndex].maintenance;
     let minPriority = settings["servers"][serverIndex].minSeverity;
     serversChecked.push(server);
-    //console.log("Found server: " + server);
+    //log("Found server: " + server);
     let newTriggerData = {};
     newTriggerData = await getServerTriggers(
       serverURL,
@@ -240,7 +273,12 @@ async function getAllTriggers() {
       minPriority
     );
 
-    //console.log("New trigger data for server: " + server + " : " + JSON.stringify(newTriggerData));
+    // Zero out credentials from memory immediately after use
+    pass = null;
+    apiToken = null;
+    user = null;
+
+    //log("New trigger data for server: " + server + " : " + JSON.stringify(newTriggerData));
     if ("error" in newTriggerData) {
       // Error state already set. Break out of function
       serverError = true;
@@ -254,9 +292,11 @@ async function getAllTriggers() {
         });
       });
       if (settings["global"]["notify"]) {
-        // Notify popup for new triggers
-        for (let trig of triggerDiff) {
-          await sendNotify(trig, settings.global.displayName);
+        // Notify popup for new triggers - batch to prevent spam
+        if (triggerDiff.length === 1) {
+          await sendNotify(triggerDiff[0], settings.global.displayName);
+        } else if (triggerDiff.length > 1) {
+          await sendBatchNotify(triggerDiff, server, settings.global.displayName);
         }
       }
       // Play sounds
@@ -266,7 +306,7 @@ async function getAllTriggers() {
     }
     // Record new trigger list
     triggerResults[server] = newTriggerData;
-    //console.log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
+    //log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
     if (!serverError) {
       // When not erroring, update trigger count
       triggerCount += triggerResults[server].length;
@@ -278,7 +318,7 @@ async function getAllTriggers() {
   // Remove trigger.get data for old servers
   for (let trigServer in triggerResults) {
     if (!serversChecked.includes(trigServer)) {
-      console.log("Removing old results for: " + trigServer);
+      log("Removing old results for: " + trigServer);
       delete triggerResults[trigServer];
     }
   }
@@ -290,7 +330,7 @@ async function getAllTriggers() {
       delete triggerResults[trigServer];
     }
   }
-  browser.storage.local.set({"triggerResults": triggerResults});
+  await browser.storage.local.set({"triggerResults": triggerResults});
 
   if (triggerCount > 0) {
     // Set bage for the number of active triggers
@@ -302,6 +342,35 @@ async function getAllTriggers() {
   }
 
   await setActiveTriggersTable(completeTriggerResults);
+}
+
+async function sendBatchNotify(messages, serverName, displayName) {
+  /*
+   * Create a single batched notification for multiple triggers
+   */
+  const count = messages.length;
+  const highestSeverity = Math.max(...messages.map(m => m.priority));
+  
+  if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+    await browser.notifications.create(
+      "notification-batch",
+      {
+        type: "basic",
+        title: `${count} new problems on ${serverName}`,
+        message: `${messages.slice(0, 3).map(m => m.hosts[0][displayName]).join(', ')}${count > 3 ? '...' : ''}`,
+        iconUrl: manifest["1"]["sev_" + highestSeverity],
+      }
+    );
+  } else {
+    // MV3 chrome notification
+    registration.showNotification( // eslint-disable-line no-undef
+      `${count} new problems on ${serverName}`, 
+      {
+        body: `${messages.slice(0, 3).map(m => m.hosts[0][displayName]).join(', ')}${count > 3 ? '...' : ''}`,
+        icon: manifest["1"]["sev_" + highestSeverity],
+      }
+    )
+  }
 }
 
 async function sendNotify(message, displayName) {
@@ -335,7 +404,7 @@ function playSounds(settings) {
   if (settings["global"]["sound"]) {
     if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
       // mv2 firefox & older chrome sound support         
-      var myAudio = new Audio(
+      const myAudio = new Audio(
         browser.runtime.getURL("sounds/drip.mp3")
       );
       myAudio.play();
@@ -361,7 +430,7 @@ async function setBrowserIcon(severity) {
    * 4 high
    * 5 disaster
    */
-  //console.log('Setting icon for priority: ' + severity);
+  //log('Setting icon for priority: ' + severity);
   await browser.action.setIcon({ path: manifest["1"][severity]});
 }
 
@@ -370,7 +439,7 @@ async function setActiveTriggersTable(triggerResults) {
    * Generate object for display in popup window
    */
 
-  //console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
+  //log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
   const settings = await getSettings();
   let hasError = false;
 
@@ -378,11 +447,11 @@ async function setActiveTriggersTable(triggerResults) {
     Object.keys(triggerResults).length === 0 &&
     triggerResults.constructor === Object
   ) {
-    console.log("No current triggers or servers");
+    log("No current triggers or servers");
     return null;
   }
 
-  let topSeverity = -1;
+  let topSeverity = SEVERITY.NONE;
   const popupHeaders = [
     { title: browser.i18n.getMessage("headerSystem"),
       sortable: true,
@@ -419,14 +488,14 @@ async function setActiveTriggersTable(triggerResults) {
     if (
       Object.hasOwn(triggerResults[server], 'error')
     ) {
-      console.log("Error found in triggerResults for server: " + server);
+      log("Error found in triggerResults for server: " + server);
       hasError = true;
       serverObject["error"] = triggerResults[server]["error"];
       serverObject["errorMessage"] = triggerResults[server]["errorMessage"];
       serverObject["errorDetails"] = triggerResults[server]["errorDetails"];
     } else {
       // Iterate over found triggers and format for popup
-      console.log(
+      log(
         "Generating trigger table for server: " + server
       );
       for (var t = 0; t < triggerResults[server].length; t++) {
@@ -477,14 +546,14 @@ async function setActiveTriggersTable(triggerResults) {
 async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
     case "reinitalize": {
-      console.log("Background triggered reinialize")
+      log("Background triggered reinialize")
       // Sent by options to alert to config changes in order to refresh
       await initalize();
       break;
     }
     case "submitPagination": {
       // Message sent by popup to save header sorting
-      var settings = await getSettings();
+      const settings = await getSettings();
       const newSort = [{
         "key": request.sortBy,
         "order": request.descending
