@@ -3,6 +3,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // ── Mocks — vi.hoisted ensures these are available when vi.mock runs ────────
 
 const { mockBrowser, mockZabbixInstance } = vi.hoisted(() => {
+  // Globals used by background.js top-level code — must exist before module loads
+  globalThis.__BROWSER__ = 'chrome';
+  globalThis.self = { addEventListener: vi.fn() };
+  globalThis.registration = { showNotification: vi.fn() };
+
   return {
     mockBrowser: {
       storage: {
@@ -71,11 +76,6 @@ vi.mock('../lib/zabbix-promise.js', () => ({
     logout: mockZabbixInstance.logout,
   })),
 }));
-
-// Stub browser globals used by background.js
-vi.stubGlobal('__BROWSER__', 'chrome');
-vi.stubGlobal('self', { addEventListener: vi.fn() });
-vi.stubGlobal('registration', { showNotification: vi.fn() });
 
 // ── Now import the module under test ────────────────────────────────────────
 
