@@ -498,3 +498,19 @@ async function handleMessage(request, sender, sendResponse) {
   }
   return true;
 }
+
+// Exports for testing — these don't affect extension runtime behavior
+export {
+  getSettings,
+  migrateOldSettings,
+  setAlarmState,
+  initalize,
+  getServerTriggers,
+  getAllTriggers,
+  sendNotify,
+  playSounds,
+  setBrowserIcon,
+  setActiveTriggersTable,
+  handleMessage,
+  ZABBIX_SERVERS_KEY,
+};
