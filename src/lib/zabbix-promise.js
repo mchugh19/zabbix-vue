@@ -35,7 +35,7 @@ export var Zabbix = (function () {
    * @param {string} password - Zabbix user password
    */
 
-  function Zabbix(url, user, password, apiToken, version) {
+  function Zabbix(url, user, password, apiToken, version, onVersionChange) {
     _classCallCheck(this, Zabbix);
 
     this.url = url;
@@ -43,6 +43,7 @@ export var Zabbix = (function () {
     this.password = password;
     this.apiToken = apiToken;
     this.version = version;
+    this.onVersionChange = onVersionChange;
   }
 
   /**
@@ -55,7 +56,7 @@ export var Zabbix = (function () {
   _createClass(Zabbix, [
     {
       key: "call",
-      value: function call(method, params) {
+      value: async function call(method, params) {
         //console.log("ZABLIB method: " + JSON.stringify(method) + " Params: " + JSON.stringify(params))
         var request = {
           jsonrpc: "2.0",
@@ -70,7 +71,32 @@ export var Zabbix = (function () {
           }
         }
         //console.log("ZABLIB request: " + JSON.stringify(request))
-        return this._postJsonRpc(this.url, JSON.stringify(request));
+        var response = await this._postJsonRpc(this.url, JSON.stringify(request));
+
+        // Self-heal when server was upgraded but extension version config is stale.
+        // Zabbix 7.2+ removed the "auth" body parameter and rejects it outright.
+        if (response.error && response.error.data &&
+            response.error.data.includes('unexpected parameter "auth"')) {
+          console.log("ZABLIB auth parameter rejected — auto-detecting server version");
+          var versionResponse = await this._postJsonRpc(this.url, JSON.stringify({
+            jsonrpc: "2.0",
+            method: "apiinfo.version",
+            params: [],
+            id: "1"
+          }));
+          if (versionResponse.result) {
+            console.log("ZABLIB detected server version: " + versionResponse.result);
+            this.version = versionResponse.result;
+            if (this.onVersionChange) {
+              this.onVersionChange(this.version);
+            }
+            // Retry without auth in body
+            delete request["auth"];
+            response = await this._postJsonRpc(this.url, JSON.stringify(request));
+          }
+        }
+
+        return response;
       },
 
       /**
