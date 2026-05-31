@@ -1,33 +1,41 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// ── Mocks — must be hoisted before imports ──────────────────────────────────
+// ── Mocks — vi.hoisted ensures these are available when vi.mock runs ────────
 
-// Mock webextension-polyfill
-const mockBrowser = {
-  storage: {
-    local: { get: vi.fn(), set: vi.fn() },
-    session: { get: vi.fn(), set: vi.fn() },
-  },
-  alarms: {
-    get: vi.fn(),
-    create: vi.fn(),
-    onAlarm: { addListener: vi.fn() },
-  },
-  runtime: {
-    onMessage: { addListener: vi.fn() },
-    onInstalled: { addListener: vi.fn() },
-    onStartup: { addListener: vi.fn() },
-    getURL: vi.fn((path) => `chrome-extension://ext-id/${path}`),
-  },
-  action: {
-    setBadgeBackgroundColor: vi.fn(),
-    setBadgeText: vi.fn(),
-    setIcon: vi.fn(),
-  },
-  notifications: { create: vi.fn() },
-  i18n: { getMessage: vi.fn((key) => key) },
-  offscreen: { createDocument: vi.fn() },
-};
+const { mockBrowser, mockZabbixInstance } = vi.hoisted(() => {
+  return {
+    mockBrowser: {
+      storage: {
+        local: { get: vi.fn(), set: vi.fn() },
+        session: { get: vi.fn(), set: vi.fn() },
+      },
+      alarms: {
+        get: vi.fn(),
+        create: vi.fn(),
+        onAlarm: { addListener: vi.fn() },
+      },
+      runtime: {
+        onMessage: { addListener: vi.fn() },
+        onInstalled: { addListener: vi.fn() },
+        onStartup: { addListener: vi.fn() },
+        getURL: vi.fn((path) => `chrome-extension://ext-id/${path}`),
+      },
+      action: {
+        setBadgeBackgroundColor: vi.fn(),
+        setBadgeText: vi.fn(),
+        setIcon: vi.fn(),
+      },
+      notifications: { create: vi.fn() },
+      i18n: { getMessage: vi.fn((key) => key) },
+      offscreen: { createDocument: vi.fn() },
+    },
+    mockZabbixInstance: {
+      login: vi.fn().mockResolvedValue(),
+      call: vi.fn().mockResolvedValue({ result: [] }),
+      logout: vi.fn().mockResolvedValue(),
+    },
+  };
+});
 
 vi.mock('webextension-polyfill', () => ({
   default: mockBrowser,
@@ -56,12 +64,6 @@ vi.mock('../lib/crypto.js', () => ({
 }));
 
 // Mock Zabbix class
-const mockZabbixInstance = {
-  login: vi.fn().mockResolvedValue(),
-  call: vi.fn().mockResolvedValue({ result: [] }),
-  logout: vi.fn().mockResolvedValue(),
-};
-
 vi.mock('../lib/zabbix-promise.js', () => ({
   Zabbix: vi.fn().mockImplementation(() => ({
     login: mockZabbixInstance.login,
