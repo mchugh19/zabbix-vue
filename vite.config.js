@@ -2,8 +2,7 @@ import { defineConfig } from "vite";
 import { resolve } from 'path';
 import vue from "@vitejs/plugin-vue";
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
-import { renderSVG } from 'vite-plugin-render-svg'
-import eslint from 'vite-plugin-eslint';
+import eslint from 'vite-plugin-eslint2';
 
 const target = process.env.TARGET || "chrome";
 
@@ -33,12 +32,6 @@ export default defineConfig({
       manifest: generateManifest,
       watchFilePaths: ["package.json", "manifest.json"],
       browser: process.env.TARGET || "chrome",
-    }),
-    renderSVG({
-      pattern: 'images/*.svg',
-      urlPrefix: 'images/',
-      scales: [1],
-      outputOriginal: false
     }),
   ],
   define: {

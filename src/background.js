@@ -2,9 +2,9 @@
 
 import { Zabbix } from './lib/zabbix-promise.js';
 import browser from "webextension-polyfill";
-import { manifest } from 'virtual:render-svg'
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
+const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
 const DEBUG = false;
 const log = (...args) => DEBUG && log(...args);
@@ -358,7 +358,7 @@ async function sendBatchNotify(messages, serverName, displayName) {
         type: "basic",
         title: `${count} new problems on ${serverName}`,
         message: `${messages.slice(0, 3).map(m => m.hosts[0][displayName]).join(', ')}${count > 3 ? '...' : ''}`,
-        iconUrl: manifest["1"]["sev_" + highestSeverity],
+        iconUrl: icon("sev_" + highestSeverity),
       }
     );
   } else {
@@ -367,7 +367,7 @@ async function sendBatchNotify(messages, serverName, displayName) {
       `${count} new problems on ${serverName}`, 
       {
         body: `${messages.slice(0, 3).map(m => m.hosts[0][displayName]).join(', ')}${count > 3 ? '...' : ''}`,
-        icon: manifest["1"]["sev_" + highestSeverity],
+        icon: icon("sev_" + highestSeverity),
       }
     )
   }
@@ -384,7 +384,7 @@ async function sendNotify(message, displayName) {
         type: "basic",
         title: message.hosts[0][displayName],
         message: message.description,
-        iconUrl: manifest["1"]["sev_" + message.priority],
+        iconUrl: icon("sev_" + message.priority),
         
       }
     );
@@ -394,7 +394,7 @@ async function sendNotify(message, displayName) {
       message.hosts[0][displayName], 
       {
         body: message.description,
-        icon: manifest["1"]["sev_" + message.priority],
+        icon: icon("sev_" + message.priority),
       }
     )
   }
@@ -431,7 +431,7 @@ async function setBrowserIcon(severity) {
    * 5 disaster
    */
   //log('Setting icon for priority: ' + severity);
-  await browser.action.setIcon({ path: manifest["1"][severity]});
+  await browser.action.setIcon({ path: icon(severity)});
 }
 
 async function setActiveTriggersTable(triggerResults) {
