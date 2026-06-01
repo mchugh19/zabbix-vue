@@ -176,7 +176,24 @@ async function getServerTriggers(
     user,
     pass,
     apiToken,
-    version
+    version,
+    async function(newVersion) {
+      // Persist auto-detected version to extension settings
+      try {
+        const settings = await getSettings();
+        if (settings && settings.servers) {
+          for (var i in settings.servers) {
+            if (settings.servers[i].url === server) {
+              console.log("Updating stored version for " + server + " to " + newVersion);
+              settings.servers[i].version = newVersion;
+            }
+          }
+          await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+        }
+      } catch (e) {
+        console.log("Failed to persist auto-detected version: " + e.message);
+      }
+    }
   );
   let triggerResults = {};
   try {
