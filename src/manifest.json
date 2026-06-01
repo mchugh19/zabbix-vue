@@ -5,7 +5,7 @@
   "description": "__MSG_appDescription__",
   "author": "https://github.com/mchugh19/zabbix-vue",
   "icons": {
-    "128": "images/logo-78b982a7.png"
+    "128": "images/logo.png"
   },
   "default_locale": "en",
   "options_ui": {
@@ -14,7 +14,7 @@
   },
   "action": {
     "default_icon": {
-      "128": "images/unconfigured-cf9f2b44.png"
+      "128": "images/unconfigured.png"
     },
     "default_popup": "popup/popup.html"
   },
@@ -28,9 +28,7 @@
     "storage",
     "offscreen"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": [],
   "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self'"
   },

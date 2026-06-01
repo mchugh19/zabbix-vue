@@ -64,8 +64,8 @@ export var Zabbix = (function () {
           params: params,
         };
         if (this.version) {
-          let versionComp = this.version.split('.').slice(0,2).join('.')
-          if (versionComp && versionComp < 7.0) {
+          const [major, minor] = this.version.split('.').map(Number);
+          if (major < 7) {
             request["auth"] = this.auth;
           }
         }
@@ -94,9 +94,9 @@ export var Zabbix = (function () {
           password: this.password,
         };
         _this.auth = undefined;
-        let versionComp = this.version.split('.').slice(0,2).join('.')
+        const [major, minor] = this.version.split('.').map(Number);
         // API pre 6.0 needs user, 6.0+ username
-        if (versionComp && versionComp < 6.0) {
+        if (major < 6) {
           params["user"] = this.user;
         } else {
           params["username"] = this.user;
@@ -148,11 +148,15 @@ export var Zabbix = (function () {
         myHeaders.append("Content-Type", "application/json-rpc");
 
         try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 30000);
           const response = await fetch(url, {
             method: "POST",
             body: data,
             headers: myHeaders,
+            signal: controller.signal,
           });
+          clearTimeout(timeout);
           if (!response.ok) {
             throw new Error(`Response status: ${response.status}`);
           }
