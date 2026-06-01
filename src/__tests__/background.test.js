@@ -14,12 +14,15 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
     logout: vi.fn().mockResolvedValue(),
   };
 
-  // Constructor mock must be created here so vi.mock factory can reference it
-  const _MockZabbix = vi.fn(() => ({
-    login: _mockZabbixInstance.login,
-    call: _mockZabbixInstance.call,
-    logout: _mockZabbixInstance.logout,
-  }));
+  // Constructor mock must use `function` (not arrow) so it's valid with `new`.
+  // Vitest 4+ enforces this; arrow functions are not constructors in JS.
+  const _MockZabbix = vi.fn(function () {
+    return {
+      login: _mockZabbixInstance.login,
+      call: _mockZabbixInstance.call,
+      logout: _mockZabbixInstance.logout,
+    };
+  });
 
   return {
     mockBrowser: {
