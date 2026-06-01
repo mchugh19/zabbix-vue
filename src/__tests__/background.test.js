@@ -30,7 +30,7 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
       alarms: {
         get: vi.fn(),
         create: vi.fn(),
-        onAlarm: { addListener: vi.fn() },
+        onAlarm: { addListener: vi.fn(), removeListener: vi.fn() },
       },
       runtime: {
         onMessage: { addListener: vi.fn() },
@@ -54,22 +54,6 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
 
 vi.mock('webextension-polyfill', () => ({
   default: mockBrowser,
-}));
-
-// Mock virtual:render-svg (still imported by background.js on master)
-vi.mock('virtual:render-svg', () => ({
-  manifest: {
-    '1': {
-      'sev_-1': 'images/sev_-1.png',
-      'sev_0': 'images/sev_0.png',
-      'sev_1': 'images/sev_1.png',
-      'sev_2': 'images/sev_2.png',
-      'sev_3': 'images/sev_3.png',
-      'sev_4': 'images/sev_4.png',
-      'sev_5': 'images/sev_5.png',
-      'unconfigured': 'images/unconfigured.png',
-    },
-  },
 }));
 
 // Mock crypto.js
@@ -339,7 +323,8 @@ describe('background.js', () => {
         'user1',
         'pass1',
         'api-token-1',
-        '6.4.0'
+        '6.4.0',
+        expect.any(Function)
       );
     });
 

@@ -282,7 +282,7 @@ describe('Zabbix class', () => {
   // the retry-on-auth-failure logic. Change describe.skip → describe once
   // that PR is merged into master.
 
-  describe.skip('call() auth retry on version mismatch', () => {
+  describe('call() auth retry on version mismatch', () => {
     it('retries without auth after detecting upgraded server version', async () => {
       const onVersionChange = vi.fn();
 
@@ -525,7 +525,7 @@ describe('Zabbix class', () => {
     });
 
     // Requires PR #91 (fix/auth-version-auto-detect) — change it.skip → it once merged
-    it.skip('login → call with stale version → auto-heal → logout', async () => {
+    it('login → call with stale version → auto-heal → logout', async () => {
       const onVersionChange = vi.fn();
       const fetchSpy = mockFetch([
         jsonRpcOk('session-heal'),        // login (user.login succeeds because auth is undefined during login)
