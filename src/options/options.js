@@ -3,18 +3,47 @@ import options from "./options.vue";
 import i18n from "vue-plugin-webextension-i18n";
 import "vuetify/styles";
 import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
-import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
+import {
+  VAlert,
+  VApp,
+  VBtn,
+  VCard,
+  VCardTitle,
+  VCheckbox,
+  VCol,
+  VContainer,
+  VDataTable,
+  VFooter,
+  VForm,
+  VIcon,
+  VMain,
+  VRadio,
+  VRadioGroup,
+  VRow,
+  VSelect,
+  VSheet,
+  VSpacer,
+  VTextField,
+  VToolbar,
+  VToolbarTitle,
+} from 'vuetify/components'
+import { Ripple, Resize } from 'vuetify/directives'
+import { mdi } from 'vuetify/iconsets/mdi-svg'
+import { customAliases } from '../vuetify-icons'
 
 
 
 const  vuetify = createVuetify({
-  components,
-  directives,
+  components: {
+    VAlert, VApp, VBtn, VCard, VCardTitle, VCheckbox, VCol,
+    VContainer, VDataTable, VFooter, VForm, VIcon, VMain,
+    VRadio, VRadioGroup, VRow, VSelect, VSheet, VSpacer,
+    VTextField, VToolbar, VToolbarTitle,
+  },
+  directives: { Ripple, Resize },
   icons: {
     defaultSet: 'mdi',
-    aliases,
+    aliases: customAliases,
     sets: {
       mdi,
     },
