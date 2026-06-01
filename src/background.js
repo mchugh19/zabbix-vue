@@ -371,6 +371,10 @@ async function setActiveTriggersTable(triggerResults) {
    */
 
   //console.log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
+  if (!triggerResults) {
+    const stored = await browser.storage.local.get('triggerResults');
+    triggerResults = stored.triggerResults || {};
+  }
   const settings = await getSettings();
   let hasError = false;
 

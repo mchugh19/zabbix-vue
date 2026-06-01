@@ -899,20 +899,23 @@ describe('background.js', () => {
 
     it('handles submitPagination by updating sort config', async () => {
       const settings = makeSettings();
-      stubSettings(settings);
+      // submitPagination calls setActiveTriggersTable() without args.
+      // The function now falls back to reading triggerResults from storage.
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
 
-      // submitPagination calls setActiveTriggersTable() without args,
-      // which passes undefined triggerResults → Object.keys(undefined) throws.
-      // We catch that — the important assertion is that sort config was persisted BEFORE the crash.
-      try {
-        await handleMessage(
-          { method: 'submitPagination', sortBy: 'description', descending: 'ASC', index: 0 },
-          {},
-          vi.fn()
-        );
-      } catch (e) {
-        // Expected: setActiveTriggersTable() called without triggerResults
-      }
+      await handleMessage(
+        { method: 'submitPagination', sortBy: 'description', descending: 'ASC', index: 0 },
+        {},
+        vi.fn()
+      );
 
       // Verify the sort config was saved to storage
       const setCallArgs = mockBrowser.storage.local.set.mock.calls;
