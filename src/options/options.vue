@@ -184,7 +184,6 @@
 import { ref, onMounted } from 'vue';
 import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js';
 import { Zabbix } from '../lib/zabbix-promise.js';
-import browser from "webextension-polyfill";
 import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
 
 const i18n = browser.i18n.getMessage;
