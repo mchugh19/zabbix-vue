@@ -21,7 +21,7 @@ export default defineConfig({
   root: 'src',
   assetsInclude: ['*.mp3', '*.html'],
   build: {
-    minify: false,
+    minify: true,
     outDir: '../dist',
     emptyOutDir: true,
   },
