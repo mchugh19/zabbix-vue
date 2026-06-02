@@ -24,8 +24,8 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
     };
   });
 
-  return {
-    mockBrowser: {
+  // Expose browser globally — background.js uses the native global, not an import
+  const _mockBrowser = {
       storage: {
         local: { get: vi.fn(), set: vi.fn() },
         session: { get: vi.fn(), set: vi.fn() },
@@ -49,15 +49,17 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
       notifications: { create: vi.fn() },
       i18n: { getMessage: vi.fn((key) => key) },
       offscreen: { createDocument: vi.fn() },
-    },
+    };
+
+  globalThis.browser = _mockBrowser;
+
+  return {
+    mockBrowser: _mockBrowser,
     mockZabbixInstance: _mockZabbixInstance,
     MockZabbix: _MockZabbix,
   };
 });
 
-vi.mock('webextension-polyfill', () => ({
-  default: mockBrowser,
-}));
 
 // Mock crypto.js
 vi.mock('../lib/crypto.js', () => ({

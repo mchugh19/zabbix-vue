@@ -197,7 +197,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js';
-import browser from "webextension-polyfill";
 
 // Zabbix severity levels - replaces magic numbers 0-5
 const SEVERITY = Object.freeze({
