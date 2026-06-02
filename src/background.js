@@ -1,7 +1,7 @@
 "use strict";
 
 import { Zabbix } from './lib/zabbix-promise.js';
-import browser from "webextension-polyfill";
+
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
 const icon = (name) => `images/${name}.png`
