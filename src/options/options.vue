@@ -244,8 +244,8 @@ onMounted(async () => {
     zabbix_data = zabbix_data["ZabbixServers"];
     zabbix_data = JSON.parse(zabbix_data);
     for (let serverIndex in zabbix_data["servers"]) {
-      zabbix_data.servers[serverIndex].apiToken = decryptSettings(zabbix_data.servers[serverIndex].apiToken);
-      zabbix_data.servers[serverIndex].pass = decryptSettings(zabbix_data.servers[serverIndex].pass);
+      zabbix_data.servers[serverIndex].apiToken = await decryptSettings(zabbix_data.servers[serverIndex].apiToken);
+      zabbix_data.servers[serverIndex].pass = await decryptSettings(zabbix_data.servers[serverIndex].pass);
       // Add fields for options screen
       if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
         zabbix_data.servers[serverIndex].useToken = true;
@@ -370,7 +370,7 @@ async function save_data() {
     zabbixs.value["servers"] = savedServerSettings;
 
     // encrypt pass and api fields
-    const ZabbixServers = encryptSettingKeys(zabbixs.value);
+    const ZabbixServers = await encryptSettingKeys(zabbixs.value);
     await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
     console.log("Options calling reinitalize");
     browser.runtime.sendMessage({ method: "reinitalize" });

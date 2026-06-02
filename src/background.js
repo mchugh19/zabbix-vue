@@ -63,8 +63,8 @@ async function migrateOldSettings() {
   if (settings) {
     if (Object.keys(settings).includes('iv')) {
       log("Found previous encrypted settings. Migrating")
-      settings = decryptSettings(JSON.stringify(settings))
-      settings = encryptSettingKeys(JSON.parse(settings));
+      settings = await decryptSettings(JSON.stringify(settings))
+      settings = await encryptSettingKeys(JSON.parse(settings));
       await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
       log("Migration complete")
     } else {
@@ -268,9 +268,9 @@ async function getAllTriggers() {
     let server = settings["servers"][serverIndex].alias;
     let serverURL = settings["servers"][serverIndex].url;
     let user = settings["servers"][serverIndex].user;
-    let pass = decryptSettings(settings["servers"][serverIndex].pass);
+    let pass = await decryptSettings(settings["servers"][serverIndex].pass);
     let version = settings["servers"][serverIndex].version;
-    let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
+    let apiToken = await decryptSettings(settings["servers"][serverIndex].apiToken);
     let groups = settings["servers"][serverIndex].hostGroups;
     let hideAck = settings["servers"][serverIndex].hide;
     let hideMaintenance = settings["servers"][serverIndex].maintenance;
