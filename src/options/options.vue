@@ -181,23 +181,23 @@
 </template>
 
 <script setup>
-import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js'
-</script>
-
-<script>
+import { ref, onMounted } from 'vue';
+import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js';
 import { Zabbix } from '../lib/zabbix-promise.js';
 import browser from "webextension-polyfill";
-import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js'
+import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
 
+const i18n = browser.i18n.getMessage;
 
-const severitySelect = [
-  { name: browser.i18n.getMessage("notClassified"), priority: 0 },
-  { name: browser.i18n.getMessage("information"), priority: 1 },
-  { name: browser.i18n.getMessage("warning"), priority: 2 },
-  { name: browser.i18n.getMessage("average"), priority: 3 },
-  { name: browser.i18n.getMessage("high"), priority: 4 },
-  { name: browser.i18n.getMessage("disaster"), priority: 5 },
+const severitySelector = [
+  { name: i18n("notClassified"), priority: 0 },
+  { name: i18n("information"), priority: 1 },
+  { name: i18n("warning"), priority: 2 },
+  { name: i18n("average"), priority: 3 },
+  { name: i18n("high"), priority: 4 },
+  { name: i18n("disaster"), priority: 5 },
 ];
+
 const defaultServer = {
   alias: "New Server",
   url: "",
@@ -212,208 +212,210 @@ const defaultServer = {
   visiblePass: false,
   errorMsg: "",
   sortBy: [{ key: 'priority', order: 'desc' }],
+};
+
+// Reactive state
+const form = ref(null);
+
+const zabbixs = ref({
+  global: {
+    interval: 60,
+    notify: true,
+    sound: false,
+    displayName: "host",
+    formValid: true,
+  },
+  servers: [
+    defaultServer
+  ],
+});
+
+const intervalRules = [
+  (v) => !!v || i18n("required"),
+  (v) => v > 9 || i18n("lessSeconds"),
+];
+
+let debounceTimeout = null;
+
+// Lifecycle
+onMounted(async () => {
+  let zabbix_data = await browser.storage.local.get("ZabbixServers");
+  if (Object.keys(zabbix_data).length > 0) {
+    zabbix_data = zabbix_data["ZabbixServers"];
+    zabbix_data = JSON.parse(zabbix_data);
+    for (let serverIndex in zabbix_data["servers"]) {
+      zabbix_data.servers[serverIndex].apiToken = decryptSettings(zabbix_data.servers[serverIndex].apiToken);
+      zabbix_data.servers[serverIndex].pass = decryptSettings(zabbix_data.servers[serverIndex].pass);
+      // Add fields for options screen
+      if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
+        zabbix_data.servers[serverIndex].useToken = true;
+      } else {
+        zabbix_data.servers[serverIndex].useToken = false;
+      }
+      zabbix_data.servers[serverIndex].visiblePass = false;
+      zabbix_data.servers[serverIndex].hostGroupsList = [];
+    }
+    zabbixs.value = zabbix_data;
+  }
+});
+
+// Methods
+function serverAPI(val, index) {
+  /*
+   * Only run for the last update of the input field
+   * Query zabbix version api to confirm connectivity
+   */
+  if (debounceTimeout) {
+    // Reset timer on new data. Thus only run for latest input
+    clearTimeout(debounceTimeout);
+  }
+
+  debounceTimeout = setTimeout(async () => {
+    let url;
+    try {
+      url = new URL(val);
+    } catch (_) { // eslint-disable-line no-unused-vars
+      zabbixs.value.servers[index].errorMsg = i18n("requiredURL");
+      return false;
+    }
+    if (url.protocol === "http:" || url.protocol === "https:") {
+      //console.log('protocol is okay')
+    } else {
+      zabbixs.value.servers[index].errorMsg = i18n("requiredURL");
+      return false;
+    }
+
+    // Request host permission for this server before testing API
+    const origin = url.origin + "/*";
+    try {
+      const hasPermission = await browser.permissions.contains({ origins: [origin] });
+      if (!hasPermission) {
+        const granted = await browser.permissions.request({ origins: [origin] });
+        if (!granted) {
+          zabbixs.value.servers[index].errorMsg = "Host permission required";
+          return false;
+        }
+      }
+    } catch (e) {
+      console.log("Permission request failed: " + e);
+    }
+
+    // validate zabbix connection with query zabbix api version and save in storage
+    const zabbix = new Zabbix(val + "/api_jsonrpc.php", null, null);
+    zabbix
+      .call("apiinfo.version", {})
+      .then((value) => {
+        zabbixs.value.servers[index].version = value["result"];
+        zabbixs.value.servers[index].errorMsg = "";
+        form.value.validate();
+        return true;
+      })
+      .catch((err) => {
+        console.log(i18n("serverError") + ": " + err);
+        zabbixs.value.servers[index].errorMsg = i18n("serverError");
+        zabbixs.value.servers[index].version = "";
+        return false;
+      });
+
+    //console.log("url looks okay!");
+    zabbixs.value.servers[index].errorMsg = "";
+    return true;
+  }, 800);
 }
 
-export default {
-  data() {
-    return {
-      zabbixs: {
-        global: {
-          interval: 60,
-          notify: true,
-          sound: false,
-          displayName: "host",
-          formValid: true,
-        },
-        servers: [
-          defaultServer
-        ],
-      },
-      severitySelector: severitySelect,
-      intervalRules: [
-        (v) => !!v || this.$i18n("required"),
-        (v) => v > 9 || this.$i18n("lessSeconds"),
-      ],
-      timeout: 800,
-    };
-  },
-  async mounted() {
-    let zabbix_data;
-    zabbix_data = await browser.storage.local.get("ZabbixServers");
-    if (Object.keys(zabbix_data).length > 0) {
-      zabbix_data = zabbix_data["ZabbixServers"]
-      zabbix_data = JSON.parse(zabbix_data);
-      for (let serverIndex in zabbix_data["servers"]) {
-        zabbix_data.servers[serverIndex].apiToken = decryptSettings(zabbix_data.servers[serverIndex].apiToken)
-        zabbix_data.servers[serverIndex].pass = decryptSettings(zabbix_data.servers[serverIndex].pass)
-        // Add fields for options screen
-        if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
-          zabbix_data.servers[serverIndex].useToken = true;
-        } else {
-          zabbix_data.servers[serverIndex].useToken = false;
-        }
-        zabbix_data.servers[serverIndex].visiblePass = false;
-        zabbix_data.servers[serverIndex].hostGroupsList = [];
-      }
-      this.zabbixs = zabbix_data;
-    }
-  },
-  methods: {
-    serverAPI: function (val, index) {
-      /*
-       * Only run for the last update of the input field
-       * Query zabbix version api to confirm connectivity
-       */
-      if (this.timeout) {
-        // Reset timer on new data. Thus only run for latest input
-        clearTimeout(this.timeout);
-      }
+function addServer() {
+  zabbixs.value.servers.push(structuredClone(defaultServer));
+}
 
-      this.timeout = setTimeout(async () => {
-        let url;
-        try {
-          url = new URL(val);
-        } catch (_) { // eslint-disable-line no-unused-vars
-          this.zabbixs.servers[index].errorMsg = this.$i18n("requiredURL");
-          return false;
-        }
-        if (url.protocol === "http:" || url.protocol === "https:") {
-          //console.log('protocol is okay')
-        } else {
-          this.zabbixs.servers[index].errorMsg = this.$i18n("requiredURL");
-          return false;
-        }
+function removeServer(index) {
+  zabbixs.value.servers.splice(index, 1);
+}
 
-        // Request host permission for this server before testing API
-        const origin = url.origin + "/*";
+async function save_data() {
+  /*
+   * Save data to localstorage encrypted and close options window
+   * Message background.js to reload the new settings
+   */
+
+  if (form.value.validate()) {
+    // Request host permissions for each configured server URL
+    for (const server of zabbixs.value["servers"]) {
+      if (server.url) {
         try {
+          const url = new URL(server.url);
+          const origin = url.origin + "/*";
           const hasPermission = await browser.permissions.contains({ origins: [origin] });
           if (!hasPermission) {
             const granted = await browser.permissions.request({ origins: [origin] });
             if (!granted) {
-              this.zabbixs.servers[index].errorMsg = "Host permission required";
-              return false;
+              console.log("Permission denied for " + origin);
+              server.errorMsg = "Host permission required for " + url.origin;
+              return;
             }
           }
         } catch (e) {
-          console.log("Permission request failed: " + e);
+          console.log("Invalid server URL: " + server.url);
         }
-
-        // validate zabbix connection with query zabbix api version and save in storage
-        const zabbix = new Zabbix(val + "/api_jsonrpc.php", null, null);
-        zabbix
-          .call("apiinfo.version", {})
-          .then((value) => {
-            this.zabbixs.servers[index].version = value["result"];
-            this.zabbixs.servers[index].errorMsg = "";
-            this.$refs.form.validate();
-            return true;
-          })
-          .catch((err) => {
-            console.log(this.$i18n("serverError") + ": " + err);
-            this.zabbixs.servers[index].errorMsg = this.$i18n("serverError");
-            this.zabbixs.servers[index].version = "";
-            return false;
-          });
-
-        //console.log("url looks okay!");
-        this.zabbixs.servers[index].errorMsg = "";
-        return true;
-      }, 800);
-    },
-    addServer: function () {
-      this.zabbixs.servers.push(structuredClone(defaultServer));
-    },
-    removeServer: function (index) {
-      this.zabbixs.servers.splice(index, 1);
-    },
-    save_data: async function () {
-      /*
-       * Save data to localstorage encrypted and close options window
-       * Message background.js to reload the new settings
-       */
-
-      if (this.$refs.form.validate()) {
-        // Request host permissions for each configured server URL
-        for (const server of this.zabbixs["servers"]) {
-          if (server.url) {
-            try {
-              const url = new URL(server.url);
-              const origin = url.origin + "/*";
-              const hasPermission = await browser.permissions.contains({ origins: [origin] });
-              if (!hasPermission) {
-                const granted = await browser.permissions.request({ origins: [origin] });
-                if (!granted) {
-                  console.log("Permission denied for " + origin);
-                  server.errorMsg = "Host permission required for " + url.origin;
-                  return;
-                }
-              }
-            } catch (e) {
-              console.log("Invalid server URL: " + server.url);
-            }
-          }
-        }
-
-        // Do not save results of hostGroup lookups, password display, or errors
-        let savedServerSettings = this.zabbixs["servers"];
-        for (var i = 0; i < savedServerSettings.length; i++) {
-          savedServerSettings[i].errorMsg = "";
-          delete savedServerSettings[i].visiblePass;
-          delete savedServerSettings[i].useToken;
-          delete savedServerSettings[i].hostGroupsList;
-
-        }
-        this.zabbixs["servers"] = savedServerSettings;
-
-        // encrypt pass and api fields
-        const ZabbixServers =  encryptSettingKeys(this.zabbixs);
-        await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
-        console.log("Options calling reinitalize")
-        browser.runtime.sendMessage({ method: "reinitalize" });
-        
-        window.close();
-      } else {
-        console.log("submit problem");
       }
-    },
-    refreshGroups: function (server, user, pass, apiToken, version, index) {
-      /*
-       * Connect to Zabbix server using provided credentials
-       * Perform hostgroup.get lookup and popuplate the hostgroup list
-       */
+    }
 
-      this.zabbixs["servers"][index]["errorMsg"] = "";
-      const zabbix = new Zabbix(
-        server + "/api_jsonrpc.php",
-        user,
-        pass,
-        apiToken,
-        version
-      );
-      zabbix
-        .login()
-        .then(() => {
-          //console.log('Successfully logged in');
-          let result = zabbix.call("hostgroup.get", {
-            output: ["groupid", "name"],
-          });
-          return result;
-        })
-        .then((value) => {
-          this.zabbixs["servers"][index].hostGroupsList = value["result"];
-        })
-        .catch((err) => {
-          this.zabbixs["servers"][index].hostGroupsList = [];
-          this.zabbixs["servers"][index]["errorMsg"] = err.message;
-          console.log(this.$i18n("serverError") + ": " + err);
-        })
-        .finally(() => {
-          zabbix.logout();
-        });
-    },
-  },
-};
+    // Do not save results of hostGroup lookups, password display, or errors
+    let savedServerSettings = zabbixs.value["servers"];
+    for (let i = 0; i < savedServerSettings.length; i++) {
+      savedServerSettings[i].errorMsg = "";
+      delete savedServerSettings[i].visiblePass;
+      delete savedServerSettings[i].useToken;
+      delete savedServerSettings[i].hostGroupsList;
+    }
+    zabbixs.value["servers"] = savedServerSettings;
+
+    // encrypt pass and api fields
+    const ZabbixServers = encryptSettingKeys(zabbixs.value);
+    await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
+    console.log("Options calling reinitalize");
+    browser.runtime.sendMessage({ method: "reinitalize" });
+    
+    window.close();
+  } else {
+    console.log("submit problem");
+  }
+}
+
+function refreshGroups(server, user, pass, apiToken, version, index) {
+  /*
+   * Connect to Zabbix server using provided credentials
+   * Perform hostgroup.get lookup and populate the hostgroup list
+   */
+
+  zabbixs.value["servers"][index]["errorMsg"] = "";
+  const zabbix = new Zabbix(
+    server + "/api_jsonrpc.php",
+    user,
+    pass,
+    apiToken,
+    version
+  );
+  zabbix
+    .login()
+    .then(() => {
+      //console.log('Successfully logged in');
+      let result = zabbix.call("hostgroup.get", {
+        output: ["groupid", "name"],
+      });
+      return result;
+    })
+    .then((value) => {
+      zabbixs.value["servers"][index].hostGroupsList = value["result"];
+    })
+    .catch((err) => {
+      zabbixs.value["servers"][index].hostGroupsList = [];
+      zabbixs.value["servers"][index]["errorMsg"] = err.message;
+      console.log(i18n("serverError") + ": " + err);
+    })
+    .finally(() => {
+      zabbix.logout();
+    });
+}
 </script>
 
 <style></style>

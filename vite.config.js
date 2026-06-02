@@ -37,5 +37,7 @@ export default defineConfig({
   ],
   define: {
     __BROWSER__: JSON.stringify(target),
+    __VUE_OPTIONS_API__: false,
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
   },
 });

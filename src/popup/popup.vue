@@ -183,7 +183,7 @@
             v-if="serverObj.error"
             prominent
             type="error"
-            density=“compact”
+            density="compact"
           >
             {{ serverObj.errorMessage }}
             {{ serverObj.errorDetails }}
@@ -195,10 +195,8 @@
 </template>
 
 <script setup>
-import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js'
-</script>
-
-<script>
+import { ref, onMounted } from 'vue';
+import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js';
 import browser from "webextension-polyfill";
 
 // Zabbix severity levels - replaces magic numbers 0-5
@@ -212,7 +210,13 @@ const SEVERITY = Object.freeze({
   NONE: -1,
 });
 
+// Reactive state
+const triggerTableData = ref({
+  loading: true,
+  error: false,
+});
 
+// Data fetching
 async function getPopupData() {
   // Default to no servers defined
   let tableResults = {
@@ -225,16 +229,11 @@ async function getPopupData() {
     popupResults = popupResults["popupTable"]
     tableResults = popupResults;
   }
-  /*
-  triggerTable.data.error = true;
-  triggerTable.data.errorMessage = browser.i18n.getMessage("error");
-  */
   return tableResults;
 }
 
+// Display modifications to work around chrome issue 428044 (Tiny popup size)
 document.addEventListener("DOMContentLoaded", async function () {
-  // Display modifications to work around chrome issue 428044
-  // (Tiny popup size)
   setTimeout(() => {
     document.body.style.display = "block";
   }, 300);
@@ -248,191 +247,193 @@ function versionPart(version, index) {
   return parseInt(version.split(".")[index], 10) || 0;
 }
 
-export default {
-  data() {
-    return {
-      triggerTableData: {
-        "loading": true,
-        "error": false,
-      }
-    }
-  },
-  async mounted() {
-    this.triggerTableData = await getPopupData();
-  },
-  methods: {
-    priority_class: function (value) {
-      const PRIORITIES = {
-        [SEVERITY.NOT_CLASSIFIED]: "Cnotclassified",
-        [SEVERITY.INFORMATION]: "Cinformation",
-        [SEVERITY.WARNING]: "Cwarning",
-        [SEVERITY.AVERAGE]: "Caverage",
-        [SEVERITY.HIGH]: "Chigh",
-        [SEVERITY.DISASTER]: "Cdisaster",
-        9: "Cnormal",
-      };
-      return PRIORITIES[value];
-    },
-    priority_name_filter: function (value) {
-      const PRIORITY_NAMES = {
-        [SEVERITY.NOT_CLASSIFIED]: browser.i18n.getMessage("notClassified"),
-        [SEVERITY.INFORMATION]: browser.i18n.getMessage("information"),
-        [SEVERITY.WARNING]: browser.i18n.getMessage("warning"),
-        [SEVERITY.AVERAGE]: browser.i18n.getMessage("average"),
-        [SEVERITY.HIGH]: browser.i18n.getMessage("high"),
-        [SEVERITY.DISASTER]: browser.i18n.getMessage("disaster"),
-      };
-      return PRIORITY_NAMES[value];
-    },
-    date_filter: function (value) {
-      const curtime = new Date().getTime();
-      const diff = curtime - value * 1000;
+onMounted(async () => {
+  triggerTableData.value = await getPopupData();
+});
 
-      const seconds = parseInt(diff / 1000);
-      const minutes = parseInt(seconds / 60);
-      const hours = parseInt(minutes / 60);
-      const days = parseInt(hours / 24);
+// Methods (exposed to template automatically via <script setup>)
+function priority_class(value) {
+  const PRIORITIES = {
+    [SEVERITY.NOT_CLASSIFIED]: "Cnotclassified",
+    [SEVERITY.INFORMATION]: "Cinformation",
+    [SEVERITY.WARNING]: "Cwarning",
+    [SEVERITY.AVERAGE]: "Caverage",
+    [SEVERITY.HIGH]: "Chigh",
+    [SEVERITY.DISASTER]: "Cdisaster",
+    9: "Cnormal",
+  };
+  return PRIORITIES[value];
+}
 
-      let result = "";
-      if (days > 0) {
-        result += days + "d, ";
-      }
-      if (hours > 0) {
-        if (days < 1) {
-          result += (hours % 24) + "h, ";
-        } else {
-          result += (hours % 24) + "h";
-        }
-      }
-      if (days < 1) {
-        // Only show minutes if under a day
-        result += (minutes % 60) + "m";
-      }
+function priority_name_filter(value) {
+  const PRIORITY_NAMES = {
+    [SEVERITY.NOT_CLASSIFIED]: browser.i18n.getMessage("notClassified"),
+    [SEVERITY.INFORMATION]: browser.i18n.getMessage("information"),
+    [SEVERITY.WARNING]: browser.i18n.getMessage("warning"),
+    [SEVERITY.AVERAGE]: browser.i18n.getMessage("average"),
+    [SEVERITY.HIGH]: browser.i18n.getMessage("high"),
+    [SEVERITY.DISASTER]: browser.i18n.getMessage("disaster"),
+  };
+  return PRIORITY_NAMES[value];
+}
 
-      return result;
-    },
-    sortSave(value, serverIndex) {
-      browser.runtime.sendMessage({
-        method: "submitPagination",
-        index: serverIndex,
-        sortBy: value[0].key,
-        descending: value[0].order,
-      });
-    },
-    clickRow(item, serverIndex) {
-      if (this.triggerTableData.servers[serverIndex].expanded[0] === item) {
-        this.triggerTableData.servers[serverIndex].expanded = [];
-      } else {
-        this.triggerTableData.servers[serverIndex].expanded = [item];
-      }
-    },
-    hostDetails: function (url, version, hostid) {
-      window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
-    },
-    latestData: function (url, version, hostid) {
-      if (versionPart(version, 0) >= 7) {
-        window.open(
-          url +
-            "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&hostids%5B%5D=" +
-            hostid,
-          "_blank"
-        );
-      } else if (versionPart(version, 0) >= 5) {
-        window.open(
-          url +
-            "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&filter_hostids%5B%5D=" +
-            hostid,
-          "_blank"
-        );
-      } else {
-        window.open(
-          url +
-            "/latest.php?fullscreen=0&filter_set=1&show_without_data=1&hostids%5B%5D=" +
-            hostid,
-          "_blank"
-        );
-      }
-    },
-    hostGraphs: function (url, version, hostid) {
-      if (versionPart(version, 0) >= 5) {
-        window.open(
-          url +
-            "/zabbix.php?action=charts.view&filter_set=1&view_as=showgraph&filter_search_type=0&filter_hostids%5B0%5D=" +
-            hostid,
-          "_blank"
-        );
-      } else {
-        window.open(
-          url + "/charts.php?fullscreen=0&groupid=0&graphid=0&hostid=" + hostid,
-          "_blank"
-        );
-      }
-    },
-    problemDetails: function (url, version, triggerid) {
-      if (
-        versionPart(version, 0) >= 5 ||
-        (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
-      ) {
-        window.open(
-          url +
-            "/zabbix.php?show=1&show_timeline=1&action=problem.view&triggerids%5B%5D=" +
-            triggerid,
-          "_blank"
-        );
-      } else {
-        window.open(
-          url +
-            "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" +
-            triggerid,
-          "_blank"
-        );
-      }
-    },
-    hostDashboards: function (url, version, hostid) {
-      if (
-        versionPart(version, 0) > 5 ||
-        (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
-      ) {
-        window.open(
-          url + "/zabbix.php?action=host.dashboard.view&hostid=" + hostid,
-          "_blank"
-        );
-      } else {
-        window.open(url + "/host_screen.php?hostid=" + hostid, "_blank");
-      }
-      // TODO get url for pre 5.0
-    },
-    eventDetails: function (url, version, triggerid, eventid) {
-      window.open(
-        url + "/tr_events.php?triggerid=" + triggerid + "&eventid=" + eventid,
-        "_blank"
-      );
-    },
-    ackEvent: function (url, version, triggerid, eventid) {
-      if (versionPart(version, 0) >= 7) {
-        window.open(
-          url +
-            "/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=" +
-            eventid,
-          "_blank"
-        );
-      } else if (versionPart(version, 0) >= 5) {
-        window.open(
-          url +
-            "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +
-            eventid,
-          "_blank"
-        );
-      } else {
-        window.open(
-          url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid,
-          "_blank"
-        );
-      }
+function date_filter(value) {
+  const curtime = new Date().getTime();
+  const diff = curtime - value * 1000;
+
+  const seconds = parseInt(diff / 1000);
+  const minutes = parseInt(seconds / 60);
+  const hours = parseInt(minutes / 60);
+  const days = parseInt(hours / 24);
+
+  let result = "";
+  if (days > 0) {
+    result += days + "d, ";
+  }
+  if (hours > 0) {
+    if (days < 1) {
+      result += (hours % 24) + "h, ";
+    } else {
+      result += (hours % 24) + "h";
     }
   }
-};
+  if (days < 1) {
+    // Only show minutes if under a day
+    result += (minutes % 60) + "m";
+  }
+
+  return result;
+}
+
+function sortSave(value, serverIndex) {
+  browser.runtime.sendMessage({
+    method: "submitPagination",
+    index: serverIndex,
+    sortBy: value[0].key,
+    descending: value[0].order,
+  });
+}
+
+function clickRow(item, serverIndex) {
+  if (triggerTableData.value.servers[serverIndex].expanded[0] === item) {
+    triggerTableData.value.servers[serverIndex].expanded = [];
+  } else {
+    triggerTableData.value.servers[serverIndex].expanded = [item];
+  }
+}
+
+function hostDetails(url, version, hostid) {
+  window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
+}
+
+function latestData(url, version, hostid) {
+  if (versionPart(version, 0) >= 7) {
+    window.open(
+      url +
+        "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&hostids%5B%5D=" +
+        hostid,
+      "_blank"
+    );
+  } else if (versionPart(version, 0) >= 5) {
+    window.open(
+      url +
+        "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&filter_hostids%5B%5D=" +
+        hostid,
+      "_blank"
+    );
+  } else {
+    window.open(
+      url +
+        "/latest.php?fullscreen=0&filter_set=1&show_without_data=1&hostids%5B%5D=" +
+        hostid,
+      "_blank"
+    );
+  }
+}
+
+function hostGraphs(url, version, hostid) {
+  if (versionPart(version, 0) >= 5) {
+    window.open(
+      url +
+        "/zabbix.php?action=charts.view&filter_set=1&view_as=showgraph&filter_search_type=0&filter_hostids%5B0%5D=" +
+        hostid,
+      "_blank"
+    );
+  } else {
+    window.open(
+      url + "/charts.php?fullscreen=0&groupid=0&graphid=0&hostid=" + hostid,
+      "_blank"
+    );
+  }
+}
+
+function problemDetails(url, version, triggerid) {
+  if (
+    versionPart(version, 0) >= 5 ||
+    (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
+  ) {
+    window.open(
+      url +
+        "/zabbix.php?show=1&show_timeline=1&action=problem.view&triggerids%5B%5D=" +
+        triggerid,
+      "_blank"
+    );
+  } else {
+    window.open(
+      url +
+        "/zabbix.php?action=problem.view&filter_set=1&filter_triggerids%5B%5D=" +
+        triggerid,
+      "_blank"
+    );
+  }
+}
+
+function hostDashboards(url, version, hostid) {
+  if (
+    versionPart(version, 0) > 5 ||
+    (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
+  ) {
+    window.open(
+      url + "/zabbix.php?action=host.dashboard.view&hostid=" + hostid,
+      "_blank"
+    );
+  } else {
+    window.open(url + "/host_screen.php?hostid=" + hostid, "_blank");
+  }
+  // TODO get url for pre 5.0
+}
+
+function eventDetails(url, version, triggerid, eventid) {
+  window.open(
+    url + "/tr_events.php?triggerid=" + triggerid + "&eventid=" + eventid,
+    "_blank"
+  );
+}
+
+function ackEvent(url, version, triggerid, eventid) {
+  if (versionPart(version, 0) >= 7) {
+    window.open(
+      url +
+        "/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=" +
+        eventid,
+      "_blank"
+    );
+  } else if (versionPart(version, 0) >= 5) {
+    window.open(
+      url +
+        "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +
+        eventid,
+      "_blank"
+    );
+  } else {
+    window.open(
+      url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid,
+      "_blank"
+    );
+  }
+}
 </script>
+
 <style>
 tr.Cdisaster,
 div.Cdisaster {
