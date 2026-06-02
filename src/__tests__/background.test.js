@@ -63,6 +63,13 @@ vi.mock('webextension-polyfill', () => ({
 vi.mock('../lib/crypto.js', () => ({
   encryptSettingKeys: vi.fn((s) => s),
   decryptSettings: vi.fn((s) => s),
+  isLegacyFormat: vi.fn((data) => {
+    if (!data) return false;
+    try {
+      const parsed = JSON.parse(data);
+      return parsed.cipher === 'aes' && parsed.mode === 'ccm';
+    } catch { return false; }
+  }),
 }));
 
 // Mock Zabbix class — reference hoisted MockZabbix constructor
@@ -75,6 +82,7 @@ vi.mock('../lib/zabbix-promise.js', () => ({
 import {
   getSettings,
   migrateOldSettings,
+  migrateCryptoFormat,
   setAlarmState,
   initalize,
   getServerTriggers,
@@ -88,7 +96,7 @@ import {
 } from '../background.js';
 
 import { Zabbix } from '../lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
+import { encryptSettingKeys, decryptSettings, isLegacyFormat } from '../lib/crypto.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -277,6 +285,73 @@ describe('background.js', () => {
       await migrateOldSettings();
 
       expect(decryptSettings).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── migrateCryptoFormat ─────────────────────────────────────────────────
+
+  describe('migrateCryptoFormat()', () => {
+    it('re-encrypts servers with legacy sjcl-formatted fields', async () => {
+      const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
+      stubSettings({
+        global: { interval: 60 },
+        servers: [
+          { alias: 'Test', url: 'https://z.example.com', apiToken: legacyEncrypted, pass: legacyEncrypted },
+        ],
+      });
+
+      await migrateCryptoFormat();
+
+      // decryptSettings called for both apiToken and pass
+      expect(decryptSettings).toHaveBeenCalledTimes(2);
+      // encryptSettingKeys called to re-encrypt the whole settings
+      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
+      // saved back to storage
+      expect(mockBrowser.storage.local.set).toHaveBeenCalled();
+    });
+
+    it('does nothing when fields are already in v2 format', async () => {
+      const v2Encrypted = JSON.stringify({ v: 2, alg: 'AES-GCM', iv: 'abc', ct: 'xyz' });
+      stubSettings({
+        global: { interval: 60 },
+        servers: [
+          { alias: 'Test', url: 'https://z.example.com', apiToken: v2Encrypted, pass: v2Encrypted },
+        ],
+      });
+
+      await migrateCryptoFormat();
+
+      expect(decryptSettings).not.toHaveBeenCalled();
+      expect(encryptSettingKeys).not.toHaveBeenCalled();
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateCryptoFormat();
+
+      expect(decryptSettings).not.toHaveBeenCalled();
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('handles mixed servers — only migrates legacy ones', async () => {
+      const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
+      const v2Encrypted = JSON.stringify({ v: 2, alg: 'AES-GCM', iv: 'abc', ct: 'xyz' });
+      stubSettings({
+        global: { interval: 60 },
+        servers: [
+          { alias: 'Old', apiToken: '', pass: legacyEncrypted },
+          { alias: 'New', apiToken: v2Encrypted, pass: v2Encrypted },
+        ],
+      });
+
+      await migrateCryptoFormat();
+
+      // Only the legacy pass field triggers decryption
+      expect(decryptSettings).toHaveBeenCalledTimes(1);
+      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
+      expect(mockBrowser.storage.local.set).toHaveBeenCalled();
     });
   });
 

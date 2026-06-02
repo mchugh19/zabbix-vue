@@ -140,3 +140,19 @@ const decryptSettings = async (encryptedData) => {
 };
 
 export { encryptSettingKeys, decryptSettings };
+
+/**
+ * Check if an encrypted string is in the legacy sjcl format.
+ * Used by migration code to detect settings that need re-encryption.
+ */
+export function isLegacyFormat(encryptedData) {
+  if (!encryptedData || encryptedData === '""' || encryptedData === '') {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(encryptedData);
+    return parsed.cipher === 'aes' && parsed.mode === 'ccm';
+  } catch {
+    return false;
+  }
+}
