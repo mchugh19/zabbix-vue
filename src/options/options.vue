@@ -190,7 +190,7 @@ import browser from "webextension-polyfill";
 import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js'
 
 
-var severitySelect = [
+const severitySelect = [
   { name: browser.i18n.getMessage("notClassified"), priority: 0 },
   { name: browser.i18n.getMessage("information"), priority: 1 },
   { name: browser.i18n.getMessage("warning"), priority: 2 },
@@ -238,7 +238,7 @@ export default {
     };
   },
   async mounted() {
-    var zabbix_data;
+    let zabbix_data;
     zabbix_data = await browser.storage.local.get("ZabbixServers");
     if (Object.keys(zabbix_data).length > 0) {
       zabbix_data = zabbix_data["ZabbixServers"]
@@ -367,7 +367,7 @@ export default {
         this.zabbixs["servers"] = savedServerSettings;
 
         // encrypt pass and api fields
-        var ZabbixServers =  encryptSettingKeys(this.zabbixs);
+        const ZabbixServers =  encryptSettingKeys(this.zabbixs);
         await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
         console.log("Options calling reinitalize")
         browser.runtime.sendMessage({ method: "reinitalize" });

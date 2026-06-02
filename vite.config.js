@@ -22,6 +22,7 @@ export default defineConfig({
   assetsInclude: ['*.mp3', '*.html'],
   build: {
     minify: true,
+    target: target === 'firefox' ? 'firefox109' : 'chrome110',
     outDir: '../dist',
     emptyOutDir: true,
   },

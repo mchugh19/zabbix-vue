@@ -1,8 +1,8 @@
 import { sjcl } from './sjcl.js';
 
-var pass =  navigator.appName + navigator.language + navigator.platform;
-var salt = sjcl.codec.base64.fromBits(sjcl.hash.sha256.hash(navigator.appName));
-var decoderRing = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(pass, salt));
+const pass =  navigator.appName + navigator.language + navigator.platform;
+const salt = sjcl.codec.base64.fromBits(sjcl.hash.sha256.hash(navigator.appName));
+const decoderRing = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(pass, salt));
 
 const encryptSettingKeys = settings => {
     /*
@@ -18,7 +18,7 @@ const encryptSettingKeys = settings => {
 }
 
 const decryptSettings = encryptedData => {
-    var decrypted = sjcl.decrypt(decoderRing, encryptedData);
+    const decrypted = sjcl.decrypt(decoderRing, encryptedData);
     return decrypted;
 }
 
