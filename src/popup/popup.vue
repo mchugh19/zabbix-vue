@@ -240,6 +240,14 @@ document.addEventListener("DOMContentLoaded", async function () {
   }, 300);
 });
 
+/**
+ * Parse a major or minor version segment as a number for safe comparison.
+ * Avoids string comparison bugs where "10" < "7".
+ */
+function versionPart(version, index) {
+  return parseInt(version.split(".")[index], 10) || 0;
+}
+
 export default {
   data() {
     return {
@@ -322,14 +330,14 @@ export default {
       window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
     },
     latestData: function (url, version, hostid) {
-      if (version.split(".")[0] >= 7) {
+      if (versionPart(version, 0) >= 7) {
         window.open(
           url +
             "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&hostids%5B%5D=" +
             hostid,
           "_blank"
         );
-      } else if (version.split(".")[0] >= 5) {
+      } else if (versionPart(version, 0) >= 5) {
         window.open(
           url +
             "/zabbix.php?action=latest.view&filter_application=&filter_select=&filter_show_without_data=1&filter_set=1&filter_hostids%5B%5D=" +
@@ -346,7 +354,7 @@ export default {
       }
     },
     hostGraphs: function (url, version, hostid) {
-      if (version.split(".")[0] >= 5) {
+      if (versionPart(version, 0) >= 5) {
         window.open(
           url +
             "/zabbix.php?action=charts.view&filter_set=1&view_as=showgraph&filter_search_type=0&filter_hostids%5B0%5D=" +
@@ -362,8 +370,8 @@ export default {
     },
     problemDetails: function (url, version, triggerid) {
       if (
-        version.split(".")[0] >= 5 ||
-        (version.split(".")[0] == 5 && version.split(".")[1] >= 2)
+        versionPart(version, 0) >= 5 ||
+        (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
       ) {
         window.open(
           url +
@@ -382,8 +390,8 @@ export default {
     },
     hostDashboards: function (url, version, hostid) {
       if (
-        version.split(".")[0] > 5 ||
-        (version.split(".")[0] == 5 && version.split(".")[1] >= 2)
+        versionPart(version, 0) > 5 ||
+        (versionPart(version, 0) == 5 && versionPart(version, 1) >= 2)
       ) {
         window.open(
           url + "/zabbix.php?action=host.dashboard.view&hostid=" + hostid,
@@ -401,14 +409,14 @@ export default {
       );
     },
     ackEvent: function (url, version, triggerid, eventid) {
-      if (version.split(".")[0] >= 7) {
+      if (versionPart(version, 0) >= 7) {
         window.open(
           url +
             "/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=" +
             eventid,
           "_blank"
         );
-      } else if (version.split(".")[0] >= 5) {
+      } else if (versionPart(version, 0) >= 5) {
         window.open(
           url +
             "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +

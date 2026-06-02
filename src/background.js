@@ -7,7 +7,7 @@ import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
 const DEBUG = false;
-const log = (...args) => DEBUG && log(...args);
+const log = (...args) => DEBUG && console.log(...args);
 
 // Zabbix severity levels - replaces magic numbers 0-5
 const SEVERITY = Object.freeze({
