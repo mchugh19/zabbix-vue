@@ -1,8 +1,7 @@
 "use strict";
 
 import { Zabbix } from './lib/zabbix-promise.js';
-
-import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
+import { encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypto.js'
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
@@ -36,11 +35,13 @@ browser.runtime.onInstalled.addListener( async () => {
   log(`onInstalled()`);
 
   await migrateOldSettings();
+  await migrateCryptoFormat();
   await initalize();
 });
 browser.runtime.onStartup.addListener( async () => {
   log(`onStartup()`);
 
+  await migrateCryptoFormat();
   await initalize();
 });
 self.addEventListener("activate", (event) => {
@@ -63,8 +64,8 @@ async function migrateOldSettings() {
   if (settings) {
     if (Object.keys(settings).includes('iv')) {
       log("Found previous encrypted settings. Migrating")
-      settings = decryptSettings(JSON.stringify(settings))
-      settings = encryptSettingKeys(JSON.parse(settings));
+      settings = await decryptSettings(JSON.stringify(settings))
+      settings = await encryptSettingKeys(JSON.parse(settings));
       await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
       log("Migration complete")
     } else {
@@ -72,6 +73,37 @@ async function migrateOldSettings() {
     }
   } else {
     //log("no ZabbixServer keys")
+  }
+}
+
+async function migrateCryptoFormat() {
+  /*
+  * Detect legacy sjcl-encrypted fields (apiToken, pass) and re-encrypt
+  * with Web Crypto API. Runs on startup so users don't need to manually
+  * open settings to trigger the migration.
+  */
+  const settings = await getSettings();
+  if (!settings || !settings.servers) {
+    return;
+  }
+
+  let needsSave = false;
+  for (const server of settings.servers) {
+    if (isLegacyFormat(server.apiToken)) {
+      server.apiToken = await decryptSettings(server.apiToken);
+      needsSave = true;
+    }
+    if (isLegacyFormat(server.pass)) {
+      server.pass = await decryptSettings(server.pass);
+      needsSave = true;
+    }
+  }
+
+  if (needsSave) {
+    log("Migrating crypto format from sjcl to Web Crypto API");
+    const encrypted = await encryptSettingKeys(settings);
+    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(encrypted)});
+    log("Crypto format migration complete");
   }
 }
 
@@ -268,9 +300,9 @@ async function getAllTriggers() {
     let server = settings["servers"][serverIndex].alias;
     let serverURL = settings["servers"][serverIndex].url;
     let user = settings["servers"][serverIndex].user;
-    let pass = decryptSettings(settings["servers"][serverIndex].pass);
+    let pass = await decryptSettings(settings["servers"][serverIndex].pass);
     let version = settings["servers"][serverIndex].version;
-    let apiToken = decryptSettings(settings["servers"][serverIndex].apiToken);
+    let apiToken = await decryptSettings(settings["servers"][serverIndex].apiToken);
     let groups = settings["servers"][serverIndex].hostGroups;
     let hideAck = settings["servers"][serverIndex].hide;
     let hideMaintenance = settings["servers"][serverIndex].maintenance;
@@ -593,6 +625,7 @@ async function handleMessage(request, sender, sendResponse) {
 export {
   getSettings,
   migrateOldSettings,
+  migrateCryptoFormat,
   setAlarmState,
   initalize,
   getServerTriggers,
