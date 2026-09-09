@@ -168,7 +168,7 @@ function buildTriggerRequest(serverConfig) {
   /*
    * Build the trigger.get request object from server configuration
    */
-  const { hostGroups, hide, maintenance, minSeverity } = serverConfig;
+  const { hostGroups, hide, maintenance, minSeverity, showSuppressed } = serverConfig;
 
   const request = {
     expandDescription: 1,
@@ -194,6 +194,10 @@ function buildTriggerRequest(serverConfig) {
   }
   if (maintenance) {
     request.maintenance = false;
+  }
+  if (!showSuppressed) {
+    // Don't show manually suppressed problems
+    request.suppressed = 0;
   }
   if (hostGroups.length > 0) {
     request.groupids = hostGroups;
@@ -340,6 +344,7 @@ async function getAllTriggers() {
       hide: serverSettings.hide,
       maintenance: serverSettings.maintenance,
       minSeverity: serverSettings.minSeverity,
+      showSuppressed: serverSettings.showSuppressed,
     };
 
     const newTriggerData = await getServerTriggers(serverConfig);

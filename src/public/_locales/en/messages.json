@@ -74,6 +74,10 @@
     "message": "Ignore Hosts in Maintenance",
     "description": "Options screen label"
   },
+  "showSuppressed": {
+    "message": "Show Suppressed Problems",
+    "description": "Options screen label"
+  },
   "minSev": {
     "message": "Monitor Minimum Severity",
     "description": "Options screen label"

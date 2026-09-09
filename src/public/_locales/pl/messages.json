@@ -66,6 +66,10 @@
       "message": "Ignoruj hosty w konserwacji",
       "description": "Etykieta na ekranie opcji"
     },
+    "showSuppressed": {
+      "message": "Show Suppressed Problems",
+      "description": "Options screen label"
+    },
     "minSev": {
       "message": "Monitoruj minimalną powagę",
       "description": "Etykieta na ekranie opcji"

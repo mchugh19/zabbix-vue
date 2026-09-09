@@ -94,6 +94,11 @@
                 class="mb-0 pa-0"
                 :label="$i18n('ignoreHosts')"
               />
+              <v-checkbox
+                v-model="server.showSuppressed"
+                class="mb-0 pa-0"
+                :label="$i18n('showSuppressed')"
+              />
               <v-select
                 v-model="server.minSeverity"
                 :items="severitySelector"
@@ -205,6 +210,7 @@ const defaultServer = {
   apiToken: "",
   hide: false,
   maintenance: false,
+  showSuppressed: false,
   hostGroups: [],
   hostGroupsList: [],
   minSeverity: 0,

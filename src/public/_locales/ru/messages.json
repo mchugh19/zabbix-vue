@@ -66,6 +66,10 @@
     "message": "Не показывать хосты в обслуживании",
     "description": "Options screen label"
   },
+  "showSuppressed": {
+    "message": "Show Suppressed Problems",
+    "description": "Options screen label"
+  },
   "minSev": {
     "message": "Показывать с минимальной важностью",
     "description": "Options screen label"

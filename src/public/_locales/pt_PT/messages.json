@@ -66,6 +66,10 @@
     "message": "ignorar maquinas em mnutencao",
     "description": "etiqueta do ecra de opcoes"
   },
+  "showSuppressed": {
+    "message": "Show Suppressed Problems",
+    "description": "Options screen label"
+  },
   "minSev": {
     "message": "monitorizar severidade minima",
     "description": "etiqueta do ecra de opcoes"

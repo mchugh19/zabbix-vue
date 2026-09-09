@@ -428,6 +428,22 @@ describe('background.js', () => {
 
       expect(req.groupids).toEqual(['1', '5', '10']);
     });
+
+    it('sets suppressed=0 by default', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+      });
+
+      expect(req.suppressed).toBe(0);
+    });
+
+    it('does not set suppressed when showSuppressed is true', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: false, minSeverity: 0, showSuppressed: true,
+      });
+
+      expect(req).not.toHaveProperty('suppressed');
+    });
   });
 
   // ── getEffectiveSeverity ──────────────────────────────────────────────
