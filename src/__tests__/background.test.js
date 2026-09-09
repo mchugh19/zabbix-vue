@@ -90,6 +90,7 @@ import {
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
+  getEffectiveSeverity,
   getServerTriggers,
   getAllTriggers,
   sendNotify,
@@ -426,6 +427,43 @@ describe('background.js', () => {
       });
 
       expect(req.groupids).toEqual(['1', '5', '10']);
+    });
+  });
+
+  // ── getEffectiveSeverity ──────────────────────────────────────────────
+
+  describe('getEffectiveSeverity()', () => {
+    it('prefers event severity over trigger priority', () => {
+      const trigger = {
+        priority: '2',
+        lastEvent: { eventid: '100', acknowledged: '0', severity: '4' },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe(4);
+    });
+
+    it('falls back to trigger priority when event severity is missing', () => {
+      const trigger = {
+        priority: '3',
+        lastEvent: { eventid: '100', acknowledged: '0' },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe('3');
+    });
+
+    it('falls back to trigger priority when lastEvent is missing', () => {
+      const trigger = { priority: '5' };
+
+      expect(getEffectiveSeverity(trigger)).toBe('5');
+    });
+
+    it('handles null event severity', () => {
+      const trigger = {
+        priority: '2',
+        lastEvent: { eventid: '100', acknowledged: '0', severity: null },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe('2');
     });
   });
 
@@ -1111,6 +1149,24 @@ describe('background.js', () => {
       expect(registration.showNotification).toHaveBeenCalledWith(
         'hostname',
         expect.any(Object)
+      );
+    });
+
+    it('uses event severity for notification icon when manually changed', async () => {
+      const message = {
+        description: 'Disk usage critical',
+        priority: '2',
+        hosts: [{ name: 'web-server-01', host: 'web01' }],
+        lastEvent: { eventid: '100', acknowledged: '0', severity: '4' },
+      };
+
+      await sendNotify(message, 'name');
+
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'web-server-01',
+        expect.objectContaining({
+          icon: 'images/sev_4.png',
+        })
       );
     });
   });

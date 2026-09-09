@@ -202,6 +202,19 @@ function buildTriggerRequest(serverConfig) {
   return request;
 }
 
+function getEffectiveSeverity(trigger) {
+  /*
+   * Return the trigger's current severity, preferring the last event's
+   * severity (reflects manual changes in Zabbix) over the trigger's
+   * configured priority. Falls back to trigger priority when event
+   * severity is unavailable (older Zabbix versions).
+   */
+  const eventSeverity = trigger["lastEvent"] && trigger["lastEvent"]["severity"];
+  return eventSeverity !== undefined && eventSeverity !== null
+    ? Number(eventSeverity)
+    : trigger["priority"];
+}
+
 function makeVersionPersister(serverURL) {
   /*
    * Return a callback that persists an auto-detected Zabbix version
@@ -395,7 +408,7 @@ async function sendBatchNotify(messages, serverName, displayName) {
    * Create a single batched notification for multiple triggers
    */
   const count = messages.length;
-  const highestSeverity = Math.max(...messages.map(m => m.priority));
+  const highestSeverity = Math.max(...messages.map(m => getEffectiveSeverity(m)));
   
   if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
     await browser.notifications.create(
@@ -430,7 +443,7 @@ async function sendNotify(message, displayName) {
         type: "basic",
         title: message.hosts[0][displayName],
         message: message.description,
-        iconUrl: icon("sev_" + message.priority),
+        iconUrl: icon("sev_" + getEffectiveSeverity(message)),
         
       }
     );
@@ -440,7 +453,7 @@ async function sendNotify(message, displayName) {
       message.hosts[0][displayName], 
       {
         body: message.description,
-        icon: icon("sev_" + message.priority),
+        icon: icon("sev_" + getEffectiveSeverity(message)),
       }
     )
   }
@@ -549,13 +562,7 @@ async function setActiveTriggersTable(triggerResults) {
         "Generating trigger table for server: " + server
       );
       for (var t = 0; t < triggerResults[server].length; t++) {
-        // Prefer the event's current severity (reflects manual changes in Zabbix)
-        // over the trigger's configured priority. Fall back to trigger priority
-        // if the event severity is unavailable (older Zabbix versions).
-        const eventSeverity = triggerResults[server][t]["lastEvent"]["severity"];
-        let priority = eventSeverity !== undefined && eventSeverity !== null
-          ? Number(eventSeverity)
-          : triggerResults[server][t]["priority"];
+        const priority = getEffectiveSeverity(triggerResults[server][t]);
         // Set priority number if higher than current
         // Used to set browser icon
         if (priority > topSeverity) {
@@ -634,6 +641,7 @@ export {
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
+  getEffectiveSeverity,
   getServerTriggers,
   getAllTriggers,
   sendNotify,
