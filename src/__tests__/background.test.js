@@ -86,7 +86,7 @@ import {
   migrateOldSettings,
   migrateCryptoFormat,
   setAlarmState,
-  initalize,
+  initialize,
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
@@ -1312,13 +1312,13 @@ describe('background.js', () => {
     });
   });
 
-  // ── initalize ─────────────────────────────────────────────────────────
+  // ── initialize ─────────────────────────────────────────────────────────
 
-  describe('initalize()', () => {
+  describe('initialize()', () => {
     it('sets alarm interval from settings and calls getAllTriggers', async () => {
       const settings = makeSettings({ global: { interval: 180 } });
 
-      // initalize calls getSettings, then setAlarmState, then getAllTriggers
+      // initialize calls getSettings, then setAlarmState, then getAllTriggers
       // getAllTriggers also calls getSettings and storage.local.get('triggerResults')
       mockBrowser.storage.local.get.mockImplementation(async (key) => {
         if (key === ZABBIX_SERVERS_KEY) {
@@ -1332,7 +1332,7 @@ describe('background.js', () => {
       mockBrowser.alarms.get.mockResolvedValue(null);
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await initalize();
+      await initialize();
 
       expect(mockBrowser.alarms.create).toHaveBeenCalledWith('default-alarm', {
         delayInMinutes: 3,
@@ -1350,7 +1350,7 @@ describe('background.js', () => {
         if (key === ZABBIX_SERVERS_KEY) {
           callCount++;
           if (callCount === 1) {
-            // First call from initalize() — no global to trigger catch
+            // First call from initialize() — no global to trigger catch
             return { [ZABBIX_SERVERS_KEY]: JSON.stringify({ servers: [makeSettings().servers[0]] }) };
           }
           // Subsequent calls from getAllTriggers — full settings
@@ -1364,7 +1364,7 @@ describe('background.js', () => {
       mockBrowser.alarms.get.mockResolvedValue(null);
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await initalize();
+      await initialize();
 
       // Should fall back to 60 seconds = 1 minute
       expect(mockBrowser.alarms.create).toHaveBeenCalledWith('default-alarm', {
@@ -1376,7 +1376,7 @@ describe('background.js', () => {
     it('does nothing when settings are null', async () => {
       stubSettings(null);
 
-      await initalize();
+      await initialize();
 
       expect(mockBrowser.alarms.create).not.toHaveBeenCalled();
     });
