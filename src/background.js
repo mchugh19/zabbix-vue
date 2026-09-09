@@ -239,16 +239,27 @@ function makeVersionPersister(serverURL) {
 
 async function getSuppressedTriggerIds(zabbix, triggers) {
   /*
-   * Return a Set of trigger IDs whose problems are manually suppressed.
+   * Return a Set of trigger IDs whose current problem is manually suppressed.
    * trigger.get doesn't support suppressed filtering, so we use event.get
-   * (which does) to identify non-suppressed problem events.
+   * (which does) to check the suppression status of each trigger's current
+   * event. We query by event ID (not trigger ID) because a trigger can have
+   * multiple problem events — only the current one matters.
    */
-  const triggerIds = triggers.map(t => t.triggerid);
+  const eventToTrigger = new Map();
+  for (const t of triggers) {
+    const eventid = t.lastEvent && t.lastEvent.eventid;
+    if (eventid) {
+      eventToTrigger.set(eventid, t.triggerid);
+    }
+  }
+
+  if (eventToTrigger.size === 0) {
+    return new Set();
+  }
+
   const result = await zabbix.call("event.get", {
-    output: ["objectid"],
-    object: 0,  // trigger
-    objectids: triggerIds,
-    value: 1,   // problem state
+    output: ["eventid"],
+    eventids: [...eventToTrigger.keys()],
     suppressed: false,
   });
 
@@ -258,8 +269,14 @@ async function getSuppressedTriggerIds(zabbix, triggers) {
     return new Set();
   }
 
-  const visibleTriggerIds = new Set(result["result"].map(e => e.objectid));
-  return new Set(triggerIds.filter(id => !visibleTriggerIds.has(id)));
+  const visibleEventIds = new Set(result["result"].map(e => e.eventid));
+  const suppressedTriggerIds = new Set();
+  for (const [eventid, triggerid] of eventToTrigger) {
+    if (!visibleEventIds.has(eventid)) {
+      suppressedTriggerIds.add(triggerid);
+    }
+  }
+  return suppressedTriggerIds;
 }
 
 async function filterSuppressedTriggers(zabbix, triggers) {
