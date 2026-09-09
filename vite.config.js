@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { resolve } from 'path';
 import vue from "@vitejs/plugin-vue";
+import vuetify from 'vite-plugin-vuetify';
 import webExtension, { readJsonFile } from "vite-plugin-web-extension";
 import eslint from 'vite-plugin-eslint2';
 
@@ -28,6 +29,7 @@ export default defineConfig({
   },
   plugins: [
     vue(),
+    vuetify({ autoImport: true }),
     eslint(),
     webExtension({
       manifest: generateManifest,
