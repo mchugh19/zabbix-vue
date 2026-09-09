@@ -396,6 +396,14 @@ describe('background.js', () => {
       expect(req).not.toHaveProperty('groupids');
     });
 
+    it('requests severity in selectLastEvent', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+      });
+
+      expect(req.selectLastEvent).toContain('severity');
+    });
+
     it('sets withLastEventUnacknowledged when hide is true', () => {
       const req = buildTriggerRequest({
         hostGroups: [], hide: true, maintenance: false, minSeverity: 0,
@@ -1197,6 +1205,76 @@ describe('background.js', () => {
             }),
           ]),
           headers: expect.any(Array),
+        }),
+      });
+    });
+
+    it('uses event severity over trigger priority when manually changed', async () => {
+      const settings = makeSettings();
+      stubSettings(settings);
+
+      const triggerResults = {
+        'Zabbix Prod': [
+          {
+            triggerid: '1',
+            description: 'CPU high on web server',
+            priority: '2',  // trigger configured as Warning
+            lastchange: '1717100000',
+            hosts: [{ host: 'web01', name: 'Web Server 01', hostid: '10', maintenance_status: '0' }],
+            lastEvent: { eventid: '200', acknowledged: '0', severity: '4' },  // event changed to High
+          },
+        ],
+      };
+
+      await setActiveTriggersTable(triggerResults);
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.objectContaining({
+          servers: expect.arrayContaining([
+            expect.objectContaining({
+              triggers: expect.arrayContaining([
+                expect.objectContaining({
+                  triggerid: '1',
+                  priority: 4,
+                }),
+              ]),
+            }),
+          ]),
+        }),
+      });
+    });
+
+    it('falls back to trigger priority when event severity is missing', async () => {
+      const settings = makeSettings();
+      stubSettings(settings);
+
+      const triggerResults = {
+        'Zabbix Prod': [
+          {
+            triggerid: '1',
+            description: 'CPU high on web server',
+            priority: '3',
+            lastchange: '1717100000',
+            hosts: [{ host: 'web01', name: 'Web Server 01', hostid: '10', maintenance_status: '0' }],
+            lastEvent: { eventid: '200', acknowledged: '0' },  // no severity (older Zabbix)
+          },
+        ],
+      };
+
+      await setActiveTriggersTable(triggerResults);
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.objectContaining({
+          servers: expect.arrayContaining([
+            expect.objectContaining({
+              triggers: expect.arrayContaining([
+                expect.objectContaining({
+                  triggerid: '1',
+                  priority: '3',
+                }),
+              ]),
+            }),
+          ]),
         }),
       });
     });

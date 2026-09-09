@@ -174,7 +174,7 @@ function buildTriggerRequest(serverConfig) {
     expandDescription: 1,
     skipDependent: 1,
     selectHosts: ["host", "name", "hostid", "maintenance_status"],
-    selectLastEvent: ["eventid", "acknowledged"],
+    selectLastEvent: ["eventid", "acknowledged", "severity"],
     monitored: 1,
     min_severity: minSeverity,
     active: 1,
@@ -549,7 +549,13 @@ async function setActiveTriggersTable(triggerResults) {
         "Generating trigger table for server: " + server
       );
       for (var t = 0; t < triggerResults[server].length; t++) {
-        let priority = triggerResults[server][t]["priority"];
+        // Prefer the event's current severity (reflects manual changes in Zabbix)
+        // over the trigger's configured priority. Fall back to trigger priority
+        // if the event severity is unavailable (older Zabbix versions).
+        const eventSeverity = triggerResults[server][t]["lastEvent"]["severity"];
+        let priority = eventSeverity !== undefined && eventSeverity !== null
+          ? Number(eventSeverity)
+          : triggerResults[server][t]["priority"];
         // Set priority number if higher than current
         // Used to set browser icon
         if (priority > topSeverity) {
