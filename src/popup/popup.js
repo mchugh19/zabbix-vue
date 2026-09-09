@@ -1,17 +1,12 @@
 import { createApp } from 'vue';
 import popup from "./popup.vue";
 import i18n from "vue-plugin-webextension-i18n";
-import "vuetify/styles";
 import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 import { mdi } from 'vuetify/iconsets/mdi-svg'
 import { customAliases } from '../vuetify-icons'
 
 
 const  vuetify = createVuetify({
-  components,
-  directives,
   icons: {
     defaultSet: 'mdi',
     aliases: customAliases,
