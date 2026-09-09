@@ -149,38 +149,34 @@ async function initalize() {
   }
 }
 
-async function getServerTriggers(
-  server,
-  user,
-  pass,
-  apiToken,
-  version,
-  groups,
-  hideAck,
-  hideMaintenance,
-  minPriority
-) {
+async function clearPopupTableError() {
   /*
-   * Return data from zabbix trigger.get call to a specifc server
+   * Clear any stale error state from the popup table in session storage
    */
   let popupTable = await browser.storage.session.get("popupTable");
   popupTable = popupTable["popupTable"]
   if (popupTable && "error" in popupTable) {
-    log("Error found in popupTable. Clearning and refreshing triggers");
+    log("Error found in popupTable. Clearing and refreshing triggers");
     delete popupTable["error"];
     delete popupTable["errorMessage"];
     delete popupTable["errorDetails"];
     await browser.storage.session.set({"popupTable": popupTable});
   }
+}
 
-  //log("getServerTriggers for: " + JSON.stringify(server))
-  let requestObject = {
+function buildTriggerRequest(serverConfig) {
+  /*
+   * Build the trigger.get request object from server configuration
+   */
+  const { hostGroups, hide, maintenance, minSeverity } = serverConfig;
+
+  const request = {
     expandDescription: 1,
     skipDependent: 1,
     selectHosts: ["host", "name", "hostid", "maintenance_status"],
     selectLastEvent: ["eventid", "acknowledged"],
     monitored: 1,
-    min_severity: minPriority,
+    min_severity: minSeverity,
     active: 1,
     filter: {
       // Value: 0 = OK | 1 = PROBLEM | 2 = UNKNOWN
@@ -192,41 +188,63 @@ async function getServerTriggers(
     sortorder: "DESC",
   };
 
-  if (hideAck) {
+  if (hide) {
     // Don't show acknowledged
-    requestObject.withLastEventUnacknowledged = 1;
+    request.withLastEventUnacknowledged = 1;
   }
-  if (hideMaintenance) {
-    requestObject.maintenance = false;
+  if (maintenance) {
+    request.maintenance = false;
   }
-  if (groups.length > 0) {
-    requestObject.groupids = groups;
+  if (hostGroups.length > 0) {
+    request.groupids = hostGroups;
   }
 
+  return request;
+}
+
+function makeVersionPersister(serverURL) {
+  /*
+   * Return a callback that persists an auto-detected Zabbix version
+   */
+  return async function(newVersion) {
+    try {
+      const settings = await getSettings();
+      if (settings && settings.servers) {
+        for (const srv of settings.servers) {
+          if (srv.url === serverURL) {
+            console.log("Updating stored version for " + serverURL + " to " + newVersion);
+            srv.version = newVersion;
+          }
+        }
+        await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+      }
+    } catch (e) {
+      console.log("Failed to persist auto-detected version: " + e.message);
+    }
+  };
+}
+
+async function getServerTriggers(serverConfig) {
+  /*
+   * Return data from zabbix trigger.get call to a specific server
+   *
+   * serverConfig: { url, user, pass, apiToken, version, hostGroups,
+   *                 hide, maintenance, minSeverity }
+   */
+  await clearPopupTableError();
+
+  const { url, user, pass, apiToken, version } = serverConfig;
+  const requestObject = buildTriggerRequest(serverConfig);
+
   const zabbix = new Zabbix(
-    server + "/api_jsonrpc.php",
+    url + "/api_jsonrpc.php",
     user,
     pass,
     apiToken,
     version,
-    async function(newVersion) {
-      // Persist auto-detected version to extension settings
-      try {
-        const settings = await getSettings();
-        if (settings && settings.servers) {
-          for (var i in settings.servers) {
-            if (settings.servers[i].url === server) {
-              console.log("Updating stored version for " + server + " to " + newVersion);
-              settings.servers[i].version = newVersion;
-            }
-          }
-          await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
-        }
-      } catch (e) {
-        console.log("Failed to persist auto-detected version: " + e.message);
-      }
-    }
+    makeVersionPersister(url)
   );
+
   let triggerResults = {};
   try {
     await zabbix.login();
@@ -235,7 +253,7 @@ async function getServerTriggers(
     if ("result" in result) {
       triggerResults = result["result"];
     } else {
-      let errorMessage = "Error communicating with: " + server.toString();
+      let errorMessage = "Error communicating with: " + url.toString();
       log(errorMessage);
       let details = result.error.message + " " + result.error.data;
       log(details);
@@ -246,7 +264,7 @@ async function getServerTriggers(
       };
     }
   } catch (err) {
-    let errorMessage = "Error communicating with: " + server.toString();
+    let errorMessage = "Error communicating with: " + url.toString();
     console.error(errorMessage, err);
     log(err.message);
 
@@ -291,78 +309,59 @@ async function getAllTriggers() {
   if (!triggerResults) {
     triggerResults = {}
   }
-  //log("Current triggerResults: " + JSON.stringify(triggerResults));
   
   let serversChecked = [];
-  for (let serverIndex in settings["servers"]) {
+  for (const serverSettings of settings["servers"]) {
     let serverError = false;
-
-    let server = settings["servers"][serverIndex].alias;
-    let serverURL = settings["servers"][serverIndex].url;
-    let user = settings["servers"][serverIndex].user;
-    let pass = await decryptSettings(settings["servers"][serverIndex].pass);
-    let version = settings["servers"][serverIndex].version;
-    let apiToken = await decryptSettings(settings["servers"][serverIndex].apiToken);
-    let groups = settings["servers"][serverIndex].hostGroups;
-    let hideAck = settings["servers"][serverIndex].hide;
-    let hideMaintenance = settings["servers"][serverIndex].maintenance;
-    let minPriority = settings["servers"][serverIndex].minSeverity;
+    const server = serverSettings.alias;
     serversChecked.push(server);
-    //log("Found server: " + server);
-    let newTriggerData = {};
-    newTriggerData = await getServerTriggers(
-      serverURL,
-      user,
-      pass,
-      apiToken,
-      version,
-      groups,
-      hideAck,
-      hideMaintenance,
-      minPriority
-    );
 
-    // Zero out credentials from memory immediately after use
-    pass = null;
-    apiToken = null;
-    user = null;
+    // Decrypt credentials and build config object for getServerTriggers
+    const serverConfig = {
+      url: serverSettings.url,
+      user: serverSettings.user,
+      pass: await decryptSettings(serverSettings.pass),
+      apiToken: await decryptSettings(serverSettings.apiToken),
+      version: serverSettings.version,
+      hostGroups: serverSettings.hostGroups,
+      hide: serverSettings.hide,
+      maintenance: serverSettings.maintenance,
+      minSeverity: serverSettings.minSeverity,
+    };
 
-    //log("New trigger data for server: " + server + " : " + JSON.stringify(newTriggerData));
+    const newTriggerData = await getServerTriggers(serverConfig);
+
+    // Zero out credentials from config immediately after use
+    serverConfig.pass = null;
+    serverConfig.apiToken = null;
+    serverConfig.user = null;
+
     if ("error" in newTriggerData) {
-      // Error state already set. Break out of function
       serverError = true;
     } else {
-      // Check if new triggers are different from existing
-      // Find triggerid values that are in new results but previous
-      let oldTriggers = triggerResults[server] || [];
-      let triggerDiff = newTriggerData.filter(function (obj) {
-        return !oldTriggers.some(function (obj2) {
-          return obj.triggerid == obj2.triggerid;
-        });
-      });
+      // Find triggers that are new since last poll
+      const oldTriggers = triggerResults[server] || [];
+      const triggerDiff = newTriggerData.filter((trigger) =>
+        !oldTriggers.some((old) => trigger.triggerid == old.triggerid)
+      );
+
       if (settings["global"]["notify"]) {
-        // Notify popup for new triggers - batch to prevent spam
         if (triggerDiff.length === 1) {
           await sendNotify(triggerDiff[0], settings.global.displayName);
         } else if (triggerDiff.length > 1) {
           await sendBatchNotify(triggerDiff, server, settings.global.displayName);
         }
       }
-      // Play sounds
-      if (triggerDiff && triggerDiff.length) {
+      if (triggerDiff.length) {
         playSounds(settings);
       }
     }
-    // Record new trigger list
+
     triggerResults[server] = newTriggerData;
-    //log('triggerResults for server '+ JSON.stringify(server)+ ": " + JSON.stringify(triggerResults[server]));
     if (!serverError) {
-      // When not erroring, update trigger count
       triggerCount += triggerResults[server].length;
     }
   }
-
-  // all server checks now complete
 
   // Remove trigger.get data for old servers
   for (let trigServer in triggerResults) {
@@ -382,11 +381,9 @@ async function getAllTriggers() {
   await browser.storage.local.set({"triggerResults": triggerResults});
 
   if (triggerCount > 0) {
-    // Set bage for the number of active triggers
     browser.action.setBadgeBackgroundColor({ color: "#888888" });
     browser.action.setBadgeText({ text: triggerCount.toString() });
   } else {
-    // Clear badge as there are no active triggers
     browser.action.setBadgeText({ text: "" });
   }
 
@@ -628,6 +625,9 @@ export {
   migrateCryptoFormat,
   setAlarmState,
   initalize,
+  clearPopupTableError,
+  buildTriggerRequest,
+  makeVersionPersister,
   getServerTriggers,
   getAllTriggers,
   sendNotify,

@@ -87,6 +87,9 @@ import {
   migrateCryptoFormat,
   setAlarmState,
   initalize,
+  clearPopupTableError,
+  buildTriggerRequest,
+  makeVersionPersister,
   getServerTriggers,
   getAllTriggers,
   sendNotify,
@@ -357,9 +360,82 @@ describe('background.js', () => {
     });
   });
 
+  // ── clearPopupTableError ─────────────────────────────────────────────
+
+  describe('clearPopupTableError()', () => {
+    it('clears error fields from popupTable', async () => {
+      stubPopupTable({ error: true, errorMessage: 'old error', errorDetails: 'details', servers: [] });
+
+      await clearPopupTableError();
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.not.objectContaining({ error: true }),
+      });
+    });
+
+    it('does nothing when popupTable has no error', async () => {
+      stubPopupTable({ servers: [] });
+
+      await clearPopupTableError();
+
+      expect(mockBrowser.storage.session.set).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── buildTriggerRequest ─────────────────────────────────────────────
+
+  describe('buildTriggerRequest()', () => {
+    it('builds base request with minSeverity', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: false, minSeverity: 3,
+      });
+
+      expect(req.min_severity).toBe(3);
+      expect(req.expandDescription).toBe(1);
+      expect(req).not.toHaveProperty('withLastEventUnacknowledged');
+      expect(req).not.toHaveProperty('groupids');
+    });
+
+    it('sets withLastEventUnacknowledged when hide is true', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: true, maintenance: false, minSeverity: 0,
+      });
+
+      expect(req.withLastEventUnacknowledged).toBe(1);
+    });
+
+    it('sets maintenance=false when maintenance is true', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: true, minSeverity: 0,
+      });
+
+      expect(req.maintenance).toBe(false);
+    });
+
+    it('sets groupids when hostGroups are provided', () => {
+      const req = buildTriggerRequest({
+        hostGroups: ['1', '5', '10'], hide: false, maintenance: false, minSeverity: 0,
+      });
+
+      expect(req.groupids).toEqual(['1', '5', '10']);
+    });
+  });
+
   // ── getServerTriggers ─────────────────────────────────────────────────
 
   describe('getServerTriggers()', () => {
+    const defaultConfig = {
+      url: 'https://zabbix.example.com',
+      user: 'admin',
+      pass: 'pass',
+      apiToken: '',
+      version: '7.0.0',
+      hostGroups: [],
+      hide: false,
+      maintenance: false,
+      minSeverity: 0,
+    };
+
     beforeEach(() => {
       stubPopupTable({});
     });
@@ -371,10 +447,7 @@ describe('background.js', () => {
       ];
       mockZabbixInstance.call.mockResolvedValue({ result: triggers });
 
-      const result = await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 0
-      );
+      const result = await getServerTriggers(defaultConfig);
 
       expect(result).toEqual(triggers);
       expect(mockZabbixInstance.login).toHaveBeenCalled();
@@ -393,10 +466,15 @@ describe('background.js', () => {
     it('constructs Zabbix client with correct parameters', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zbx.local', 'user1', 'pass1', 'api-token-1', '6.4.0',
-        [], false, false, 2
-      );
+      await getServerTriggers({
+        ...defaultConfig,
+        url: 'https://zbx.local',
+        user: 'user1',
+        pass: 'pass1',
+        apiToken: 'api-token-1',
+        version: '6.4.0',
+        minSeverity: 2,
+      });
 
       expect(Zabbix).toHaveBeenCalledWith(
         'https://zbx.local/api_jsonrpc.php',
@@ -413,10 +491,7 @@ describe('background.js', () => {
         error: { message: 'Invalid params', data: 'No permissions' },
       });
 
-      const result = await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 0
-      );
+      const result = await getServerTriggers(defaultConfig);
 
       expect(result).toHaveProperty('error', true);
       expect(result).toHaveProperty('errorMessage');
@@ -426,22 +501,16 @@ describe('background.js', () => {
     it('returns error object on network failure', async () => {
       mockZabbixInstance.login.mockRejectedValue(new Error('Network timeout'));
 
-      const result = await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 0
-      );
+      const result = await getServerTriggers(defaultConfig);
 
       expect(result).toHaveProperty('error', true);
       expect(result.errorDetails).toBe('Network timeout');
     });
 
-    it('sets withLastEventUnacknowledged when hideAck is true', async () => {
+    it('sets withLastEventUnacknowledged when hide is true', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], true, false, 0
-      );
+      await getServerTriggers({ ...defaultConfig, hide: true });
 
       expect(mockZabbixInstance.call).toHaveBeenCalledWith(
         'trigger.get',
@@ -449,13 +518,10 @@ describe('background.js', () => {
       );
     });
 
-    it('sets maintenance=false when hideMaintenance is true', async () => {
+    it('sets maintenance=false when maintenance is true', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, true, 0
-      );
+      await getServerTriggers({ ...defaultConfig, maintenance: true });
 
       expect(mockZabbixInstance.call).toHaveBeenCalledWith(
         'trigger.get',
@@ -463,13 +529,10 @@ describe('background.js', () => {
       );
     });
 
-    it('sets groupids when groups are provided', async () => {
+    it('sets groupids when hostGroups are provided', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        ['1', '5', '10'], false, false, 0
-      );
+      await getServerTriggers({ ...defaultConfig, hostGroups: ['1', '5', '10'] });
 
       expect(mockZabbixInstance.call).toHaveBeenCalledWith(
         'trigger.get',
@@ -477,25 +540,19 @@ describe('background.js', () => {
       );
     });
 
-    it('does not set groupids when groups is empty', async () => {
+    it('does not set groupids when hostGroups is empty', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 0
-      );
+      await getServerTriggers(defaultConfig);
 
       const callArgs = mockZabbixInstance.call.mock.calls[0][1];
       expect(callArgs).not.toHaveProperty('groupids');
     });
 
-    it('passes min_severity from minPriority parameter', async () => {
+    it('passes min_severity from minSeverity', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 3
-      );
+      await getServerTriggers({ ...defaultConfig, minSeverity: 3 });
 
       expect(mockZabbixInstance.call).toHaveBeenCalledWith(
         'trigger.get',
@@ -507,10 +564,7 @@ describe('background.js', () => {
       stubPopupTable({ error: true, errorMessage: 'old error', servers: [] });
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
-      await getServerTriggers(
-        'https://zabbix.example.com', 'admin', 'pass', '', '7.0.0',
-        [], false, false, 0
-      );
+      await getServerTriggers(defaultConfig);
 
       // Should have called session.set to clear the error
       expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
@@ -627,6 +681,134 @@ describe('background.js', () => {
       );
     });
 
+    it('batches notification when multiple new triggers arrive on one server', async () => {
+      const settings = makeSettings();
+      const oldTriggers = [
+        {
+          triggerid: '1', description: 'Existing', priority: '3',
+          hosts: [{ host: 'srv', name: 'Srv', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '0' },
+        },
+      ];
+      const newTriggers = [
+        ...oldTriggers,
+        {
+          triggerid: '2', description: 'New one', priority: '4',
+          lastchange: '1717200000',
+          hosts: [{ host: 'web1', name: 'Web 1', hostid: '11', maintenance_status: '0' }],
+          lastEvent: { eventid: '101', acknowledged: '0' },
+        },
+        {
+          triggerid: '3', description: 'Another new', priority: '5',
+          lastchange: '1717200001',
+          hosts: [{ host: 'web2', name: 'Web 2', hostid: '12', maintenance_status: '0' }],
+          lastEvent: { eventid: '102', acknowledged: '0' },
+        },
+      ];
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: { 'Zabbix Prod': oldTriggers } };
+        }
+        return {};
+      });
+
+      mockZabbixInstance.call.mockResolvedValue({ result: newTriggers });
+
+      await getAllTriggers();
+
+      // Should use batched notification (2 new triggers), not individual
+      expect(registration.showNotification).toHaveBeenCalledTimes(1);
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        expect.stringContaining('2 new problems'),
+        expect.objectContaining({
+          icon: 'images/sev_5.png', // highest severity among new triggers
+        })
+      );
+    });
+
+    it('sends separate batch notifications per server', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Prod', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+          {
+            alias: 'Staging', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} }; // no previous triggers — all are new
+        }
+        return {};
+      });
+
+      let callCount = 0;
+      mockZabbixInstance.call.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          // Prod: 3 new triggers → batch
+          return {
+            result: [
+              {
+                triggerid: '1', description: 'T1', priority: '3', lastchange: '1',
+                hosts: [{ host: 'h1', name: 'H1', hostid: '1', maintenance_status: '0' }],
+                lastEvent: { eventid: '1', acknowledged: '0' },
+              },
+              {
+                triggerid: '2', description: 'T2', priority: '4', lastchange: '2',
+                hosts: [{ host: 'h2', name: 'H2', hostid: '2', maintenance_status: '0' }],
+                lastEvent: { eventid: '2', acknowledged: '0' },
+              },
+              {
+                triggerid: '3', description: 'T3', priority: '2', lastchange: '3',
+                hosts: [{ host: 'h3', name: 'H3', hostid: '3', maintenance_status: '0' }],
+                lastEvent: { eventid: '3', acknowledged: '0' },
+              },
+            ],
+          };
+        }
+        // Staging: 1 new trigger → individual notify
+        return {
+          result: [
+            {
+              triggerid: '10', description: 'Stg alert', priority: '5', lastchange: '4',
+              hosts: [{ host: 's1', name: 'Stg 1', hostid: '10', maintenance_status: '0' }],
+              lastEvent: { eventid: '10', acknowledged: '0' },
+            },
+          ],
+        };
+      });
+
+      await getAllTriggers();
+
+      // 2 notifications total: one batch (Prod, 3 triggers) + one individual (Staging)
+      expect(registration.showNotification).toHaveBeenCalledTimes(2);
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        expect.stringContaining('3 new problems on Prod'),
+        expect.any(Object)
+      );
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'Stg 1',
+        expect.objectContaining({ body: 'Stg alert' })
+      );
+    });
+
     it('does not send notifications when notify is disabled', async () => {
       const settings = makeSettings({ global: { notify: false } });
 
@@ -735,6 +917,141 @@ describe('background.js', () => {
 
       // Badge should show 1 (only from the successful server)
       expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+    });
+
+    it('aggregates trigger count across multiple successful servers', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Prod', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+          {
+            alias: 'Staging', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      // Both servers succeed — first returns 2 triggers, second returns 1
+      let callCount = 0;
+      mockZabbixInstance.call.mockImplementation(async () => {
+        callCount++;
+        if (callCount === 1) {
+          return {
+            result: [
+              {
+                triggerid: '1', description: 'CPU high', priority: '4',
+                lastchange: '1717100000',
+                hosts: [{ host: 'web1', name: 'Web 1', hostid: '10', maintenance_status: '0' }],
+                lastEvent: { eventid: '100', acknowledged: '0' },
+              },
+              {
+                triggerid: '2', description: 'Disk full', priority: '3',
+                lastchange: '1717100001',
+                hosts: [{ host: 'web2', name: 'Web 2', hostid: '11', maintenance_status: '0' }],
+                lastEvent: { eventid: '101', acknowledged: '0' },
+              },
+            ],
+          };
+        }
+        return {
+          result: [
+            {
+              triggerid: '10', description: 'Memory low', priority: '2',
+              lastchange: '1717100002',
+              hosts: [{ host: 'stg1', name: 'Staging 1', hostid: '20', maintenance_status: '0' }],
+              lastEvent: { eventid: '200', acknowledged: '0' },
+            },
+          ],
+        };
+      });
+
+      await getAllTriggers();
+
+      // Badge should show 3 (2 from Prod + 1 from Staging)
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '3' });
+      expect(mockBrowser.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#888888' });
+    });
+
+    it('first server fails, second succeeds — only counts successful triggers', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Server Fail', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+          {
+            alias: 'Server OK', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      // First server fails on login, second succeeds with 2 triggers
+      let loginCount = 0;
+      mockZabbixInstance.login.mockImplementation(async () => {
+        loginCount++;
+        if (loginCount === 1) throw new Error('Auth failed');
+      });
+      mockZabbixInstance.call.mockResolvedValue({
+        result: [
+          {
+            triggerid: '5', description: 'Latency spike', priority: '4',
+            lastchange: '1717100000',
+            hosts: [{ host: 'app1', name: 'App 1', hostid: '30', maintenance_status: '0' }],
+            lastEvent: { eventid: '300', acknowledged: '0' },
+          },
+          {
+            triggerid: '6', description: 'Queue backlog', priority: '3',
+            lastchange: '1717100001',
+            hosts: [{ host: 'app2', name: 'App 2', hostid: '31', maintenance_status: '0' }],
+            lastEvent: { eventid: '301', acknowledged: '0' },
+          },
+        ],
+      });
+
+      await getAllTriggers();
+
+      // Badge should show 2 (only from the second server)
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '2' });
+
+      // triggerResults should include error for first server and data for second
+      const setCall = mockBrowser.storage.local.set.mock.calls.find(
+        (c) => c[0].triggerResults !== undefined
+      );
+      expect(setCall).toBeDefined();
+      // Error servers are stripped from persisted triggerResults
+      expect(setCall[0].triggerResults).not.toHaveProperty('Server Fail');
+      expect(setCall[0].triggerResults).toHaveProperty('Server OK');
     });
   });
 
