@@ -7,7 +7,6 @@
     "message": "Zabbix Vue",
     "description": "Уведомления о проблемах из заббикса в браузере"
   },
-
   "notClassified": {
     "message": "Не классифицированно",
     "description": "Уровень важности"
@@ -32,8 +31,6 @@
     "message": "Черезвычайный",
     "description": "Уровень важности"
   },
-
-
   "serverSettings": {
     "message": "Настройки сервера",
     "description": "Options screen label"
@@ -65,6 +62,22 @@
   "ignoreHosts": {
     "message": "Не показывать хосты в обслуживании",
     "description": "Options screen label"
+  },
+  "showSuppressed": {
+    "message": "Показывать подавленные проблемы",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "Подавленная проблема",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Подтверждено",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "На обслуживании",
+    "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
     "message": "Показывать с минимальной важностью",
@@ -106,7 +119,6 @@
     "message": "Добавить сервер",
     "description": "Options screen button"
   },
-
   "required": {
     "message": "Настройка обязательна",
     "description": "Options screen validation message"
@@ -127,7 +139,6 @@
     "message": "Проверьте настройки сервера в параметрах расширения",
     "description": "Configuration error message"
   },
-
   "headerSystem": {
     "message": "Сервер",
     "description": "Popup headers"
@@ -144,7 +155,6 @@
     "message": "Возраст",
     "description": "Popup headers"
   },
-
   "hostDetails": {
     "message": "Детали хоста",
     "description": "Popup button"
@@ -189,5 +199,4 @@
     "message": "Ошибка расширения",
     "description": "Popup error"
   }
-
 }

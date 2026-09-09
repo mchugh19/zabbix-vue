@@ -7,7 +7,6 @@
     "message": "Monitor Zabbix problems from your browser",
     "description": "Description in extension store"
   },
-
   "notClassified": {
     "message": "Not Classified",
     "description": "Zabbix severity"
@@ -32,8 +31,6 @@
     "message": "Disaster",
     "description": "Zabbix severity"
   },
-
-
   "serverSettings": {
     "message": "Server Settings",
     "description": "Options screen label"
@@ -73,6 +70,22 @@
   "ignoreHosts": {
     "message": "Ignore Hosts in Maintenance",
     "description": "Options screen label"
+  },
+  "showSuppressed": {
+    "message": "Show Suppressed Problems",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "Suppressed problem",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Acknowledged",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "In maintenance",
+    "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
     "message": "Monitor Minimum Severity",
@@ -118,7 +131,6 @@
     "message": "ADD SERVER",
     "description": "Options screen button"
   },
-
   "required": {
     "message": "Item is required",
     "description": "Options screen validation message"
@@ -139,7 +151,6 @@
     "message": "Check server configuration in extension options",
     "description": "Configuration error message"
   },
-
   "headerSystem": {
     "message": "System",
     "description": "Popup headers"
@@ -156,7 +167,6 @@
     "message": "Age",
     "description": "Popup headers"
   },
-
   "hostDetails": {
     "message": "Host Details",
     "description": "Popup button"
@@ -205,5 +215,4 @@
     "message": "Plugin Error",
     "description": "Popup error"
   }
-
 }

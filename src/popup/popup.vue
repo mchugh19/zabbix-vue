@@ -72,13 +72,14 @@
                   {{ item.description }}
                 </v-sheet>
                 <v-sheet class="ma-0 pa-0" :class="priority_class(item.priority)">
-                  <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" />
-                  <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" />
+                  <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" :title="$i18n('acknowledgedProblem')" />
+                  <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" :title="$i18n('maintenanceProblem')" />
+                  <v-icon v-if="item.suppressed" class="opacity-40" size="small" :icon="mdiEyeOff" :title="$i18n('suppressedProblem')" />
                 </v-sheet>
               </v-sheet>
             </td>
             <td> {{ priority_name_filter(item.priority) }}</td>
-            <td> {{ date_filter(item.age) }}</td>
+            <td class="text-no-wrap"> {{ date_filter(item.age) }}</td>
           </tr>
         </template>
         <template v-slot:expanded-row="{ columns, item }">
@@ -196,7 +197,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js';
+import { mdiMagnify, mdiFlagVariant, mdiWrench, mdiEyeOff } from '@mdi/js';
 
 // Zabbix severity levels - replaces magic numbers 0-5
 const SEVERITY = Object.freeze({

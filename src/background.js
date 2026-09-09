@@ -237,16 +237,66 @@ function makeVersionPersister(serverURL) {
   };
 }
 
+async function getSuppressedTriggerIds(zabbix, triggers) {
+  /*
+   * Return a Set of trigger IDs whose current problem is manually suppressed.
+   * trigger.get doesn't support suppressed filtering, so we use event.get
+   * (which does) to check the suppression status of each trigger's current
+   * event. We query by event ID (not trigger ID) because a trigger can have
+   * multiple problem events — only the current one matters.
+   */
+  const eventToTrigger = new Map();
+  for (const t of triggers) {
+    const eventid = t.lastEvent && t.lastEvent.eventid;
+    if (eventid) {
+      eventToTrigger.set(eventid, t.triggerid);
+    }
+  }
+
+  if (eventToTrigger.size === 0) {
+    return new Set();
+  }
+
+  const result = await zabbix.call("event.get", {
+    output: ["eventid"],
+    eventids: [...eventToTrigger.keys()],
+    suppressed: false,
+  });
+
+  if (!("result" in result)) {
+    // If event.get fails, assume nothing is suppressed rather than hiding everything
+    console.error("Failed to get suppressed triggers:", result.error);
+    return new Set();
+  }
+
+  const visibleEventIds = new Set(result["result"].map(e => e.eventid));
+  const suppressedTriggerIds = new Set();
+  for (const [eventid, triggerid] of eventToTrigger) {
+    if (!visibleEventIds.has(eventid)) {
+      suppressedTriggerIds.add(triggerid);
+    }
+  }
+  return suppressedTriggerIds;
+}
+
+async function filterSuppressedTriggers(zabbix, triggers) {
+  /*
+   * Filter out triggers whose problems are manually suppressed.
+   */
+  const suppressedIds = await getSuppressedTriggerIds(zabbix, triggers);
+  return triggers.filter(t => !suppressedIds.has(t.triggerid));
+}
+
 async function getServerTriggers(serverConfig) {
   /*
    * Return data from zabbix trigger.get call to a specific server
    *
    * serverConfig: { url, user, pass, apiToken, version, hostGroups,
-   *                 hide, maintenance, minSeverity }
+   *                 hide, maintenance, minSeverity, showSuppressed }
    */
   await clearPopupTableError();
 
-  const { url, user, pass, apiToken, version } = serverConfig;
+  const { url, user, pass, apiToken, version, showSuppressed } = serverConfig;
   const requestObject = buildTriggerRequest(serverConfig);
 
   const zabbix = new Zabbix(
@@ -265,6 +315,19 @@ async function getServerTriggers(serverConfig) {
 
     if ("result" in result) {
       triggerResults = result["result"];
+      // trigger.get doesn't support suppressed filtering, so identify
+      // suppressed problems via event.get
+      if (triggerResults.length > 0) {
+        const suppressedIds = await getSuppressedTriggerIds(zabbix, triggerResults);
+        if (showSuppressed) {
+          // Mark suppressed triggers so the popup can show an indicator
+          for (const trigger of triggerResults) {
+            trigger["suppressed"] = suppressedIds.has(trigger["triggerid"]);
+          }
+        } else {
+          triggerResults = triggerResults.filter(t => !suppressedIds.has(t["triggerid"]));
+        }
+      }
     } else {
       let errorMessage = "Error communicating with: " + url.toString();
       log(errorMessage);
@@ -340,6 +403,7 @@ async function getAllTriggers() {
       hide: serverSettings.hide,
       maintenance: serverSettings.maintenance,
       minSeverity: serverSettings.minSeverity,
+      showSuppressed: serverSettings.showSuppressed,
     };
 
     const newTriggerData = await getServerTriggers(serverConfig);
@@ -578,6 +642,7 @@ async function setActiveTriggersTable(triggerResults) {
           eventid: triggerResults[server][t]["lastEvent"]["eventid"],
           acknowledged: Number(triggerResults[server][t]["lastEvent"]["acknowledged"]),
           maintenance_status: Number(triggerResults[server][t]["hosts"][0]["maintenance_status"]),
+          suppressed: Boolean(triggerResults[server][t]["suppressed"]),
         });
       }
       serverObject["triggers"] = triggerTable;
@@ -642,6 +707,8 @@ export {
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  getSuppressedTriggerIds,
+  filterSuppressedTriggers,
   getServerTriggers,
   getAllTriggers,
   sendNotify,

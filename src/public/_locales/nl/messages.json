@@ -7,7 +7,6 @@
     "message": "Zabbix Vue",
     "description": "Monitor Zabbix problemen vanuit je browser"
   },
-
   "notClassified": {
     "message": "Niet geclassificeerd",
     "description": "Zabbix ernst"
@@ -32,8 +31,6 @@
     "message": "Ramp",
     "description": "Zabbix ernst"
   },
-
-
   "serverSettings": {
     "message": "Server Instellingen",
     "description": "Opties scherm label"
@@ -65,6 +62,22 @@
   "ignoreHosts": {
     "message": "Negeer Hosts in Onderhoud",
     "description": "Opties scherm label"
+  },
+  "showSuppressed": {
+    "message": "Toon onderdrukte problemen",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "Onderdrukt probleem",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Bevestigd",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "In onderhoud",
+    "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
     "message": "Monitor Minimum Ernst",
@@ -106,7 +119,6 @@
     "message": "SERVER TOEVOEGEN",
     "description": "Opties scherm knop"
   },
-
   "required": {
     "message": "Item is verplicht",
     "description": "Opties scherm validatie bericht"
@@ -127,7 +139,6 @@
     "message": "Controleer de serverconfiguratie in extensie opties",
     "description": "Configuratie foutmelding"
   },
-
   "headerSystem": {
     "message": "Systeem",
     "description": "Popup headers"
@@ -144,7 +155,6 @@
     "message": "Leeftijd",
     "description": "Popup headers"
   },
-
   "hostDetails": {
     "message": "Host Details",
     "description": "Popup button"
@@ -189,5 +199,4 @@
     "message": "Plugin Error",
     "description": "Popup error"
   }
-
 }
