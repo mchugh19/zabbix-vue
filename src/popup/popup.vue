@@ -478,7 +478,7 @@ div.Cnormal {
 body {
   min-width: 800px;
 }
-.v-table--density-compact {
+.v-table.v-table--density-compact {
   --v-table-header-height: 20px;
   --v-table-row-height: 20px;
 }
