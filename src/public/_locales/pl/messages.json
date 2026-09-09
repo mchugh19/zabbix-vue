@@ -67,7 +67,7 @@
       "description": "Etykieta na ekranie opcji"
     },
     "showSuppressed": {
-      "message": "Show Suppressed Problems",
+      "message": "Pokaż stłumione problemy",
       "description": "Options screen label"
     },
     "minSev": {

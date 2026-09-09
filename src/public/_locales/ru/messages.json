@@ -67,7 +67,7 @@
     "description": "Options screen label"
   },
   "showSuppressed": {
-    "message": "Show Suppressed Problems",
+    "message": "Показывать подавленные проблемы",
     "description": "Options screen label"
   },
   "minSev": {

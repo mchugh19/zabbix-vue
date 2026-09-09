@@ -67,7 +67,7 @@
     "description": "Opties scherm label"
   },
   "showSuppressed": {
-    "message": "Show Suppressed Problems",
+    "message": "Toon onderdrukte problemen",
     "description": "Options screen label"
   },
   "minSev": {

@@ -67,7 +67,7 @@
     "description": "etiqueta do ecra de opcoes"
   },
   "showSuppressed": {
-    "message": "Show Suppressed Problems",
+    "message": "mostrar problemas suprimidos",
     "description": "Options screen label"
   },
   "minSev": {
