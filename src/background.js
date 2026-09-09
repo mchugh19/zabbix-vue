@@ -22,7 +22,7 @@ const SEVERITY = Object.freeze({
 browser.runtime.onMessage.addListener(handleMessage);
 const handleAlarm = (alarm) => {
   if (alarm?.name === 'default-alarm') {
-    initalize();
+    initialize();
   }
 };
 
@@ -36,13 +36,13 @@ browser.runtime.onInstalled.addListener( async () => {
 
   await migrateOldSettings();
   await migrateCryptoFormat();
-  await initalize();
+  await initialize();
 });
 browser.runtime.onStartup.addListener( async () => {
   log(`onStartup()`);
 
   await migrateCryptoFormat();
-  await initalize();
+  await initialize();
 });
 self.addEventListener("activate", (event) => {
   log("activated for " + JSON.stringify(event))
@@ -121,7 +121,7 @@ async function setAlarmState(interval) {
 }
 
 
-async function initalize() {
+async function initialize() {
   /*
    * Set Zabbix poll alarm, listeners, and activate polling
    */
@@ -598,10 +598,10 @@ async function setActiveTriggersTable(triggerResults) {
 // eslint-disable-next-line no-unused-vars
 async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
-    case "reinitalize": {
+    case "reinitialize": {
       log("Background triggered reinialize")
       // Sent by options to alert to config changes in order to refresh
-      await initalize();
+      await initialize();
       break;
     }
     case "submitPagination": {
@@ -627,7 +627,7 @@ export {
   migrateOldSettings,
   migrateCryptoFormat,
   setAlarmState,
-  initalize,
+  initialize,
   getServerTriggers,
   getAllTriggers,
   sendNotify,

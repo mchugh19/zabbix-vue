@@ -371,8 +371,8 @@ async function save_data() {
     // encrypt pass and api fields
     const ZabbixServers = await encryptSettingKeys(zabbixs.value);
     await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
-    console.log("Options calling reinitalize");
-    browser.runtime.sendMessage({ method: "reinitalize" });
+    console.log("Options calling reinitialize");
+    browser.runtime.sendMessage({ method: "reinitialize" });
     
     window.close();
   } else {
