@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import options from "./options.vue";
 import i18n from "vue-plugin-webextension-i18n";
+import "vuetify/styles";
 import { createVuetify } from 'vuetify';
 import { mdi } from 'vuetify/iconsets/mdi-svg'
 import { customAliases } from '../vuetify-icons'
