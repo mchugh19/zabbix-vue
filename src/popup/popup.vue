@@ -79,7 +79,7 @@
               </v-sheet>
             </td>
             <td> {{ priority_name_filter(item.priority) }}</td>
-            <td> {{ date_filter(item.age) }}</td>
+            <td class="text-no-wrap"> {{ date_filter(item.age) }}</td>
           </tr>
         </template>
         <template v-slot:expanded-row="{ columns, item }">
