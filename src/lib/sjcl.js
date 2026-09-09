@@ -860,8 +860,8 @@ sjcl.misc.hmac.prototype.digest = function () {
 };
 sjcl.misc.pbkdf2 = function (a, b, c, d, e) {
   c = c || 1e4;
-  if (0 > d || 0 > c)
-    throw new sjcl.exception.invalid("invalid params to pbkdf2");
+  if (0 > d || 1e4 > c)
+    throw new sjcl.exception.invalid("invalid params to pbkdf2: iteration count must be at least 10000");
   "string" === typeof a && (a = sjcl.codec.utf8String.toBits(a));
   "string" === typeof b && (b = sjcl.codec.utf8String.toBits(b));
   e = e || sjcl.misc.hmac;
