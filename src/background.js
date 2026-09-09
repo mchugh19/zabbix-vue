@@ -237,9 +237,9 @@ function makeVersionPersister(serverURL) {
   };
 }
 
-async function filterSuppressedTriggers(zabbix, triggers) {
+async function getSuppressedTriggerIds(zabbix, triggers) {
   /*
-   * Filter out triggers whose problems are manually suppressed.
+   * Return a Set of trigger IDs whose problems are manually suppressed.
    * trigger.get doesn't support suppressed filtering, so we use event.get
    * (which does) to identify non-suppressed problem events.
    */
@@ -253,13 +253,21 @@ async function filterSuppressedTriggers(zabbix, triggers) {
   });
 
   if (!("result" in result)) {
-    // If event.get fails, return unfiltered triggers rather than hiding everything
-    console.error("Failed to filter suppressed triggers:", result.error);
-    return triggers;
+    // If event.get fails, assume nothing is suppressed rather than hiding everything
+    console.error("Failed to get suppressed triggers:", result.error);
+    return new Set();
   }
 
   const visibleTriggerIds = new Set(result["result"].map(e => e.objectid));
-  return triggers.filter(t => visibleTriggerIds.has(t.triggerid));
+  return new Set(triggerIds.filter(id => !visibleTriggerIds.has(id)));
+}
+
+async function filterSuppressedTriggers(zabbix, triggers) {
+  /*
+   * Filter out triggers whose problems are manually suppressed.
+   */
+  const suppressedIds = await getSuppressedTriggerIds(zabbix, triggers);
+  return triggers.filter(t => !suppressedIds.has(t.triggerid));
 }
 
 async function getServerTriggers(serverConfig) {
@@ -290,10 +298,18 @@ async function getServerTriggers(serverConfig) {
 
     if ("result" in result) {
       triggerResults = result["result"];
-      // trigger.get doesn't support suppressed filtering, so filter client-side
-      // via event.get when suppressed problems should be hidden
-      if (!showSuppressed && triggerResults.length > 0) {
-        triggerResults = await filterSuppressedTriggers(zabbix, triggerResults);
+      // trigger.get doesn't support suppressed filtering, so identify
+      // suppressed problems via event.get
+      if (triggerResults.length > 0) {
+        const suppressedIds = await getSuppressedTriggerIds(zabbix, triggerResults);
+        if (showSuppressed) {
+          // Mark suppressed triggers so the popup can show an indicator
+          for (const trigger of triggerResults) {
+            trigger["suppressed"] = suppressedIds.has(trigger["triggerid"]);
+          }
+        } else {
+          triggerResults = triggerResults.filter(t => !suppressedIds.has(t["triggerid"]));
+        }
       }
     } else {
       let errorMessage = "Error communicating with: " + url.toString();
@@ -609,6 +625,7 @@ async function setActiveTriggersTable(triggerResults) {
           eventid: triggerResults[server][t]["lastEvent"]["eventid"],
           acknowledged: Number(triggerResults[server][t]["lastEvent"]["acknowledged"]),
           maintenance_status: Number(triggerResults[server][t]["hosts"][0]["maintenance_status"]),
+          suppressed: Boolean(triggerResults[server][t]["suppressed"]),
         });
       }
       serverObject["triggers"] = triggerTable;
@@ -673,6 +690,7 @@ export {
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  getSuppressedTriggerIds,
   filterSuppressedTriggers,
   getServerTriggers,
   getAllTriggers,

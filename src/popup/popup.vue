@@ -74,6 +74,7 @@
                 <v-sheet class="ma-0 pa-0" :class="priority_class(item.priority)">
                   <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" />
                   <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" />
+                  <v-icon v-if="item.suppressed" class="opacity-40" size="small" :icon="mdiEyeOff" :title="$t('suppressedProblem')" />
                 </v-sheet>
               </v-sheet>
             </td>
@@ -196,7 +197,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { mdiMagnify, mdiFlagVariant, mdiWrench } from '@mdi/js';
+import { mdiMagnify, mdiFlagVariant, mdiWrench, mdiEyeOff } from '@mdi/js';
 
 // Zabbix severity levels - replaces magic numbers 0-5
 const SEVERITY = Object.freeze({

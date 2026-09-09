@@ -78,6 +78,10 @@
     "message": "Show Suppressed Problems",
     "description": "Options screen label"
   },
+  "suppressedProblem": {
+    "message": "Suppressed problem",
+    "description": "Tooltip for suppressed problem icon"
+  },
   "minSev": {
     "message": "Monitor Minimum Severity",
     "description": "Options screen label"

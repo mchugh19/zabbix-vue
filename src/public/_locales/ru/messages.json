@@ -70,6 +70,10 @@
     "message": "Показывать подавленные проблемы",
     "description": "Options screen label"
   },
+  "suppressedProblem": {
+    "message": "Подавленная проблема",
+    "description": "Tooltip for suppressed problem icon"
+  },
   "minSev": {
     "message": "Показывать с минимальной важностью",
     "description": "Options screen label"

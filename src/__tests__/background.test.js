@@ -91,6 +91,7 @@ import {
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  getSuppressedTriggerIds,
   filterSuppressedTriggers,
   getServerTriggers,
   getAllTriggers,
@@ -458,10 +459,31 @@ describe('background.js', () => {
     });
   });
 
-  // ── filterSuppressedTriggers ──────────────────────────────────────────
+  // ── getSuppressedTriggerIds ─────────────────────────────────────────
 
-  describe('filterSuppressedTriggers()', () => {
-    it('keeps triggers with non-suppressed events', async () => {
+  describe('getSuppressedTriggerIds()', () => {
+    it('returns IDs of suppressed triggers', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'T1' },
+        { triggerid: '2', description: 'T2' },
+      ];
+      mockZabbixInstance.call.mockResolvedValue({
+        result: [{ eventid: 'e1', objectid: '1' }],  // trigger 2 suppressed
+      });
+
+      const result = await getSuppressedTriggerIds(mockZabbixInstance, triggers);
+
+      expect(result).toEqual(new Set(['2']));
+      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
+        'event.get',
+        expect.objectContaining({
+          suppressed: false,
+          objectids: ['1', '2'],
+        })
+      );
+    });
+
+    it('returns empty set when nothing is suppressed', async () => {
       const triggers = [
         { triggerid: '1', description: 'T1' },
         { triggerid: '2', description: 'T2' },
@@ -473,18 +495,26 @@ describe('background.js', () => {
         ],
       });
 
-      const result = await filterSuppressedTriggers(mockZabbixInstance, triggers);
+      const result = await getSuppressedTriggerIds(mockZabbixInstance, triggers);
 
-      expect(result).toEqual(triggers);
-      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
-        'event.get',
-        expect.objectContaining({
-          suppressed: false,
-          objectids: ['1', '2'],
-        })
-      );
+      expect(result).toEqual(new Set());
     });
 
+    it('returns empty set when event.get fails', async () => {
+      const triggers = [{ triggerid: '1', description: 'T1' }];
+      mockZabbixInstance.call.mockResolvedValue({
+        error: { message: 'API error', data: '' },
+      });
+
+      const result = await getSuppressedTriggerIds(mockZabbixInstance, triggers);
+
+      expect(result).toEqual(new Set());
+    });
+  });
+
+  // ── filterSuppressedTriggers ──────────────────────────────────────────
+
+  describe('filterSuppressedTriggers()', () => {
     it('removes triggers with suppressed events', async () => {
       const triggers = [
         { triggerid: '1', description: 'T1' },
@@ -499,10 +529,16 @@ describe('background.js', () => {
       expect(result).toEqual([triggers[0]]);
     });
 
-    it('returns unfiltered triggers when event.get fails', async () => {
-      const triggers = [{ triggerid: '1', description: 'T1' }];
+    it('keeps all triggers when none are suppressed', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'T1' },
+        { triggerid: '2', description: 'T2' },
+      ];
       mockZabbixInstance.call.mockResolvedValue({
-        error: { message: 'API error', data: '' },
+        result: [
+          { eventid: 'e1', objectid: '1' },
+          { eventid: 'e2', objectid: '2' },
+        ],
       });
 
       const result = await filterSuppressedTriggers(mockZabbixInstance, triggers);
@@ -609,19 +645,21 @@ describe('background.js', () => {
       );
     });
 
-    it('does not filter suppressed triggers when showSuppressed is true', async () => {
+    it('marks suppressed triggers when showSuppressed is true', async () => {
       const triggers = [
         { triggerid: '1', description: 'CPU high', priority: '3' },
         { triggerid: '2', description: 'Disk full', priority: '4' },
       ];
-      stubZabbixCalls(triggers, ['2']);  // trigger 2 is suppressed, but should be kept
+      stubZabbixCalls(triggers, ['2']);  // trigger 2 is suppressed
 
       const result = await getServerTriggers({ ...defaultConfig, showSuppressed: true });
 
-      expect(result).toEqual(triggers);
-      expect(mockZabbixInstance.call).not.toHaveBeenCalledWith(
+      expect(result).toHaveLength(2);
+      expect(result[0].suppressed).toBe(false);
+      expect(result[1].suppressed).toBe(true);
+      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
         'event.get',
-        expect.anything()
+        expect.objectContaining({ suppressed: false })
       );
     });
 
@@ -1396,6 +1434,43 @@ describe('background.js', () => {
             }),
           ]),
           headers: expect.any(Array),
+        }),
+      });
+    });
+
+    it('passes suppressed flag through to popup table', async () => {
+      const settings = makeSettings();
+      stubSettings(settings);
+
+      const triggerResults = {
+        'Zabbix Prod': [
+          {
+            triggerid: '1', description: 'Normal', priority: '3', lastchange: '1',
+            hosts: [{ host: 'h', name: 'H', hostid: '1', maintenance_status: '0' }],
+            lastEvent: { eventid: '1', acknowledged: '0' },
+            suppressed: false,
+          },
+          {
+            triggerid: '2', description: 'Suppressed', priority: '4', lastchange: '2',
+            hosts: [{ host: 'h2', name: 'H2', hostid: '2', maintenance_status: '0' }],
+            lastEvent: { eventid: '2', acknowledged: '0' },
+            suppressed: true,
+          },
+        ],
+      };
+
+      await setActiveTriggersTable(triggerResults);
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.objectContaining({
+          servers: expect.arrayContaining([
+            expect.objectContaining({
+              triggers: expect.arrayContaining([
+                expect.objectContaining({ triggerid: '1', suppressed: false }),
+                expect.objectContaining({ triggerid: '2', suppressed: true }),
+              ]),
+            }),
+          ]),
         }),
       });
     });
