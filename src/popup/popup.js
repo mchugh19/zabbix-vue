@@ -3,15 +3,25 @@ import popup from "./popup.vue";
 import i18n from "vue-plugin-webextension-i18n";
 import "vuetify/styles";
 import { createVuetify } from 'vuetify';
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import { VAlert } from 'vuetify/components/VAlert'
+import { VApp } from 'vuetify/components/VApp'
+import { VBtn } from 'vuetify/components/VBtn'
+import { VCard } from 'vuetify/components/VCard'
+import { VCol, VContainer, VRow } from 'vuetify/components/VGrid'
+import { VDataTable } from 'vuetify/components/VDataTable'
+import { VIcon } from 'vuetify/components/VIcon'
+import { VSheet } from 'vuetify/components/VSheet'
+import { VTextField } from 'vuetify/components/VTextField'
 import { mdi } from 'vuetify/iconsets/mdi-svg'
 import { customAliases } from '../vuetify-icons'
 
 
-const  vuetify = createVuetify({
-  components,
-  directives,
+const vuetify = createVuetify({
+  components: {
+    VAlert, VApp, VBtn, VCard,
+    VCol, VContainer, VRow,
+    VDataTable, VIcon, VSheet, VTextField,
+  },
   icons: {
     defaultSet: 'mdi',
     aliases: customAliases,
