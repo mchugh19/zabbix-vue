@@ -91,6 +91,7 @@ import {
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  filterSuppressedTriggers,
   getServerTriggers,
   getAllTriggers,
   sendNotify,
@@ -148,6 +149,26 @@ function stubPopupTable(popupTable) {
   });
 }
 
+/**
+ * Configure mockZabbixInstance.call to handle trigger.get and event.get.
+ * triggers: array returned for trigger.get
+ * suppressedTriggerIds: trigger IDs to exclude from event.get results (suppressed)
+ */
+function stubZabbixCalls(triggers, suppressedTriggerIds = []) {
+  const events = triggers
+    .filter(t => !suppressedTriggerIds.includes(t.triggerid))
+    .map(t => ({ eventid: `e${t.triggerid}`, objectid: t.triggerid }));
+  mockZabbixInstance.call.mockImplementation(async (method) => {
+    if (method === 'trigger.get') {
+      return { result: triggers };
+    }
+    if (method === 'event.get') {
+      return { result: events };
+    }
+    return { result: [] };
+  });
+}
+
 /** Configure mockBrowser.storage.local.get to return triggerResults */
 function stubTriggerResults(triggerResults) {
   // local.get is also used for settings, so we need a smarter mock
@@ -168,7 +189,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Restore default mock implementations
   mockZabbixInstance.login.mockResolvedValue();
-  mockZabbixInstance.call.mockResolvedValue({ result: [] });
+  // Default: trigger.get returns [], event.get returns events for requested objectids
+  // (i.e. nothing suppressed). Tests can override with stubZabbixCalls().
+  mockZabbixInstance.call.mockImplementation(async (method, params) => {
+    if (method === 'event.get' && params && params.objectids) {
+      return { result: params.objectids.map(id => ({ eventid: `e${id}`, objectid: id })) };
+    }
+    return { result: [] };
+  });
   mockZabbixInstance.logout.mockResolvedValue();
   // Default: empty popupTable in session storage
   stubPopupTable({});
@@ -428,21 +456,58 @@ describe('background.js', () => {
 
       expect(req.groupids).toEqual(['1', '5', '10']);
     });
+  });
 
-    it('sets suppressed=0 by default', () => {
-      const req = buildTriggerRequest({
-        hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+  // ── filterSuppressedTriggers ──────────────────────────────────────────
+
+  describe('filterSuppressedTriggers()', () => {
+    it('keeps triggers with non-suppressed events', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'T1' },
+        { triggerid: '2', description: 'T2' },
+      ];
+      mockZabbixInstance.call.mockResolvedValue({
+        result: [
+          { eventid: 'e1', objectid: '1' },
+          { eventid: 'e2', objectid: '2' },
+        ],
       });
 
-      expect(req.suppressed).toBe(0);
+      const result = await filterSuppressedTriggers(mockZabbixInstance, triggers);
+
+      expect(result).toEqual(triggers);
+      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
+        'event.get',
+        expect.objectContaining({
+          suppressed: false,
+          objectids: ['1', '2'],
+        })
+      );
     });
 
-    it('does not set suppressed when showSuppressed is true', () => {
-      const req = buildTriggerRequest({
-        hostGroups: [], hide: false, maintenance: false, minSeverity: 0, showSuppressed: true,
+    it('removes triggers with suppressed events', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'T1' },
+        { triggerid: '2', description: 'T2' },
+      ];
+      mockZabbixInstance.call.mockResolvedValue({
+        result: [{ eventid: 'e1', objectid: '1' }],  // trigger 2 suppressed
       });
 
-      expect(req).not.toHaveProperty('suppressed');
+      const result = await filterSuppressedTriggers(mockZabbixInstance, triggers);
+
+      expect(result).toEqual([triggers[0]]);
+    });
+
+    it('returns unfiltered triggers when event.get fails', async () => {
+      const triggers = [{ triggerid: '1', description: 'T1' }];
+      mockZabbixInstance.call.mockResolvedValue({
+        error: { message: 'API error', data: '' },
+      });
+
+      const result = await filterSuppressedTriggers(mockZabbixInstance, triggers);
+
+      expect(result).toEqual(triggers);
     });
   });
 
@@ -507,7 +572,7 @@ describe('background.js', () => {
         { triggerid: '1', description: 'CPU high', priority: '3' },
         { triggerid: '2', description: 'Disk full', priority: '4' },
       ];
-      mockZabbixInstance.call.mockResolvedValue({ result: triggers });
+      stubZabbixCalls(triggers);
 
       const result = await getServerTriggers(defaultConfig);
 
@@ -523,6 +588,57 @@ describe('background.js', () => {
         })
       );
       expect(mockZabbixInstance.logout).toHaveBeenCalled();
+    });
+
+    it('filters out suppressed triggers by default', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'CPU high', priority: '3' },
+        { triggerid: '2', description: 'Disk full', priority: '4' },
+      ];
+      stubZabbixCalls(triggers, ['2']);  // trigger 2 is suppressed
+
+      const result = await getServerTriggers(defaultConfig);
+
+      expect(result).toEqual([triggers[0]]);
+      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
+        'event.get',
+        expect.objectContaining({
+          suppressed: false,
+          objectids: ['1', '2'],
+        })
+      );
+    });
+
+    it('does not filter suppressed triggers when showSuppressed is true', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'CPU high', priority: '3' },
+        { triggerid: '2', description: 'Disk full', priority: '4' },
+      ];
+      stubZabbixCalls(triggers, ['2']);  // trigger 2 is suppressed, but should be kept
+
+      const result = await getServerTriggers({ ...defaultConfig, showSuppressed: true });
+
+      expect(result).toEqual(triggers);
+      expect(mockZabbixInstance.call).not.toHaveBeenCalledWith(
+        'event.get',
+        expect.anything()
+      );
+    });
+
+    it('returns unfiltered triggers when event.get fails', async () => {
+      const triggers = [
+        { triggerid: '1', description: 'CPU high', priority: '3' },
+      ];
+      mockZabbixInstance.call.mockImplementation(async (method) => {
+        if (method === 'trigger.get') {
+          return { result: triggers };
+        }
+        return { error: { message: 'API error', data: '' } };
+      });
+
+      const result = await getServerTriggers(defaultConfig);
+
+      expect(result).toEqual(triggers);
     });
 
     it('constructs Zabbix client with correct parameters', async () => {
@@ -673,7 +789,7 @@ describe('background.js', () => {
           lastEvent: { eventid: '100', acknowledged: '0' },
         },
       ];
-      mockZabbixInstance.call.mockResolvedValue({ result: triggers });
+      stubZabbixCalls(triggers);
 
       await getAllTriggers();
 
@@ -730,7 +846,7 @@ describe('background.js', () => {
         return {};
       });
 
-      mockZabbixInstance.call.mockResolvedValue({ result: newTriggers });
+      stubZabbixCalls(newTriggers);
 
       await getAllTriggers();
 
@@ -778,7 +894,7 @@ describe('background.js', () => {
         return {};
       });
 
-      mockZabbixInstance.call.mockResolvedValue({ result: newTriggers });
+      stubZabbixCalls(newTriggers);
 
       await getAllTriggers();
 
@@ -820,10 +936,14 @@ describe('background.js', () => {
         return {};
       });
 
-      let callCount = 0;
-      mockZabbixInstance.call.mockImplementation(async () => {
-        callCount++;
-        if (callCount === 1) {
+      let triggerGetCount = 0;
+      mockZabbixInstance.call.mockImplementation(async (method, params) => {
+        if (method === 'event.get') {
+          // Nothing suppressed — return events for all requested triggers
+          return { result: params.objectids.map(id => ({ eventid: `e${id}`, objectid: id })) };
+        }
+        triggerGetCount++;
+        if (triggerGetCount === 1) {
           // Prod: 3 new triggers → batch
           return {
             result: [
@@ -892,7 +1012,7 @@ describe('background.js', () => {
           lastEvent: { eventid: '100', acknowledged: '0' },
         },
       ];
-      mockZabbixInstance.call.mockResolvedValue({ result: triggers });
+      stubZabbixCalls(triggers);
 
       await getAllTriggers();
 
@@ -964,16 +1084,14 @@ describe('background.js', () => {
         callCount++;
         if (callCount === 2) throw new Error('Connection refused');
       });
-      mockZabbixInstance.call.mockResolvedValue({
-        result: [
-          {
-            triggerid: '1', description: 'Test', priority: '3',
-            lastchange: '1717100000',
-            hosts: [{ host: 'srv', name: 'Srv', hostid: '10', maintenance_status: '0' }],
-            lastEvent: { eventid: '100', acknowledged: '0' },
-          },
-        ],
-      });
+      stubZabbixCalls([
+        {
+          triggerid: '1', description: 'Test', priority: '3',
+          lastchange: '1717100000',
+          hosts: [{ host: 'srv', name: 'Srv', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '0' },
+        },
+      ]);
 
       await getAllTriggers();
 
@@ -1010,10 +1128,13 @@ describe('background.js', () => {
       });
 
       // Both servers succeed — first returns 2 triggers, second returns 1
-      let callCount = 0;
-      mockZabbixInstance.call.mockImplementation(async () => {
-        callCount++;
-        if (callCount === 1) {
+      let triggerGetCount = 0;
+      mockZabbixInstance.call.mockImplementation(async (method, params) => {
+        if (method === 'event.get') {
+          return { result: params.objectids.map(id => ({ eventid: `e${id}`, objectid: id })) };
+        }
+        triggerGetCount++;
+        if (triggerGetCount === 1) {
           return {
             result: [
               {
@@ -1084,22 +1205,20 @@ describe('background.js', () => {
         loginCount++;
         if (loginCount === 1) throw new Error('Auth failed');
       });
-      mockZabbixInstance.call.mockResolvedValue({
-        result: [
-          {
-            triggerid: '5', description: 'Latency spike', priority: '4',
-            lastchange: '1717100000',
-            hosts: [{ host: 'app1', name: 'App 1', hostid: '30', maintenance_status: '0' }],
-            lastEvent: { eventid: '300', acknowledged: '0' },
-          },
-          {
-            triggerid: '6', description: 'Queue backlog', priority: '3',
-            lastchange: '1717100001',
-            hosts: [{ host: 'app2', name: 'App 2', hostid: '31', maintenance_status: '0' }],
-            lastEvent: { eventid: '301', acknowledged: '0' },
-          },
-        ],
-      });
+      stubZabbixCalls([
+        {
+          triggerid: '5', description: 'Latency spike', priority: '4',
+          lastchange: '1717100000',
+          hosts: [{ host: 'app1', name: 'App 1', hostid: '30', maintenance_status: '0' }],
+          lastEvent: { eventid: '300', acknowledged: '0' },
+        },
+        {
+          triggerid: '6', description: 'Queue backlog', priority: '3',
+          lastchange: '1717100001',
+          hosts: [{ host: 'app2', name: 'App 2', hostid: '31', maintenance_status: '0' }],
+          lastEvent: { eventid: '301', acknowledged: '0' },
+        },
+      ]);
 
       await getAllTriggers();
 
