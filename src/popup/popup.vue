@@ -72,8 +72,8 @@
                   {{ item.description }}
                 </v-sheet>
                 <v-sheet class="ma-0 pa-0" :class="priority_class(item.priority)">
-                  <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" />
-                  <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" />
+                  <v-icon v-if="item.acknowledged" class="opacity-40" size="small" :icon="mdiFlagVariant" :title="$i18n('acknowledgedProblem')" />
+                  <v-icon v-if="item.maintenance_status" class="opacity-40" size="small" :icon="mdiWrench" :title="$i18n('maintenanceProblem')" />
                   <v-icon v-if="item.suppressed" class="opacity-40" size="small" :icon="mdiEyeOff" :title="$i18n('suppressedProblem')" />
                 </v-sheet>
               </v-sheet>

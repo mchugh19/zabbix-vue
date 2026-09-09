@@ -7,7 +7,6 @@
     "message": "Zabbix Vue",
     "description": "Monitor Zabbix problemas no seu browser"
   },
-
   "notClassified": {
     "message": "Nao classificada",
     "description": "Severidade Zabbix"
@@ -32,8 +31,6 @@
     "message": "Desastre",
     "description": "Severidade Zabbix"
   },
-
-
   "serverSettings": {
     "message": "Configuracoes do servidor",
     "description": "etiqueta do ecra de opcoes"
@@ -73,6 +70,14 @@
   "suppressedProblem": {
     "message": "problema suprimido",
     "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Reconhecido",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "Em manutenção",
+    "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
     "message": "monitorizar severidade minima",
@@ -114,7 +119,6 @@
     "message": "adicionar servidor",
     "description": "botao do ecra de opcoes"
   },
-
   "required": {
     "message": "Item obrigatorio",
     "description": "mensagem de validacao do ecra de opcoes"
@@ -135,7 +139,6 @@
     "message": "verificar as configuracoes do servidor nas opcoes extra",
     "description": "mensagem de erro nas configuracoes"
   },
-
   "headerSystem": {
     "message": "Sistema",
     "description": "cabecalho popup"
@@ -152,7 +155,6 @@
     "message": "Idade",
     "description": "cabecalho popup"
   },
-
   "hostDetails": {
     "message": "detalhes da maquina",
     "description": "botao popup"
