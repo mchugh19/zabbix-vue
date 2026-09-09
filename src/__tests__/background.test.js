@@ -90,6 +90,7 @@ import {
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
+  getEffectiveSeverity,
   getServerTriggers,
   getAllTriggers,
   sendNotify,
@@ -396,6 +397,14 @@ describe('background.js', () => {
       expect(req).not.toHaveProperty('groupids');
     });
 
+    it('requests severity in selectLastEvent', () => {
+      const req = buildTriggerRequest({
+        hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+      });
+
+      expect(req.selectLastEvent).toContain('severity');
+    });
+
     it('sets withLastEventUnacknowledged when hide is true', () => {
       const req = buildTriggerRequest({
         hostGroups: [], hide: true, maintenance: false, minSeverity: 0,
@@ -418,6 +427,43 @@ describe('background.js', () => {
       });
 
       expect(req.groupids).toEqual(['1', '5', '10']);
+    });
+  });
+
+  // ── getEffectiveSeverity ──────────────────────────────────────────────
+
+  describe('getEffectiveSeverity()', () => {
+    it('prefers event severity over trigger priority', () => {
+      const trigger = {
+        priority: '2',
+        lastEvent: { eventid: '100', acknowledged: '0', severity: '4' },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe(4);
+    });
+
+    it('falls back to trigger priority when event severity is missing', () => {
+      const trigger = {
+        priority: '3',
+        lastEvent: { eventid: '100', acknowledged: '0' },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe('3');
+    });
+
+    it('falls back to trigger priority when lastEvent is missing', () => {
+      const trigger = { priority: '5' };
+
+      expect(getEffectiveSeverity(trigger)).toBe('5');
+    });
+
+    it('handles null event severity', () => {
+      const trigger = {
+        priority: '2',
+        lastEvent: { eventid: '100', acknowledged: '0', severity: null },
+      };
+
+      expect(getEffectiveSeverity(trigger)).toBe('2');
     });
   });
 
@@ -1105,6 +1151,24 @@ describe('background.js', () => {
         expect.any(Object)
       );
     });
+
+    it('uses event severity for notification icon when manually changed', async () => {
+      const message = {
+        description: 'Disk usage critical',
+        priority: '2',
+        hosts: [{ name: 'web-server-01', host: 'web01' }],
+        lastEvent: { eventid: '100', acknowledged: '0', severity: '4' },
+      };
+
+      await sendNotify(message, 'name');
+
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'web-server-01',
+        expect.objectContaining({
+          icon: 'images/sev_4.png',
+        })
+      );
+    });
   });
 
   // ── playSounds ────────────────────────────────────────────────────────
@@ -1197,6 +1261,76 @@ describe('background.js', () => {
             }),
           ]),
           headers: expect.any(Array),
+        }),
+      });
+    });
+
+    it('uses event severity over trigger priority when manually changed', async () => {
+      const settings = makeSettings();
+      stubSettings(settings);
+
+      const triggerResults = {
+        'Zabbix Prod': [
+          {
+            triggerid: '1',
+            description: 'CPU high on web server',
+            priority: '2',  // trigger configured as Warning
+            lastchange: '1717100000',
+            hosts: [{ host: 'web01', name: 'Web Server 01', hostid: '10', maintenance_status: '0' }],
+            lastEvent: { eventid: '200', acknowledged: '0', severity: '4' },  // event changed to High
+          },
+        ],
+      };
+
+      await setActiveTriggersTable(triggerResults);
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.objectContaining({
+          servers: expect.arrayContaining([
+            expect.objectContaining({
+              triggers: expect.arrayContaining([
+                expect.objectContaining({
+                  triggerid: '1',
+                  priority: 4,
+                }),
+              ]),
+            }),
+          ]),
+        }),
+      });
+    });
+
+    it('falls back to trigger priority when event severity is missing', async () => {
+      const settings = makeSettings();
+      stubSettings(settings);
+
+      const triggerResults = {
+        'Zabbix Prod': [
+          {
+            triggerid: '1',
+            description: 'CPU high on web server',
+            priority: '3',
+            lastchange: '1717100000',
+            hosts: [{ host: 'web01', name: 'Web Server 01', hostid: '10', maintenance_status: '0' }],
+            lastEvent: { eventid: '200', acknowledged: '0' },  // no severity (older Zabbix)
+          },
+        ],
+      };
+
+      await setActiveTriggersTable(triggerResults);
+
+      expect(mockBrowser.storage.session.set).toHaveBeenCalledWith({
+        popupTable: expect.objectContaining({
+          servers: expect.arrayContaining([
+            expect.objectContaining({
+              triggers: expect.arrayContaining([
+                expect.objectContaining({
+                  triggerid: '1',
+                  priority: '3',
+                }),
+              ]),
+            }),
+          ]),
         }),
       });
     });
