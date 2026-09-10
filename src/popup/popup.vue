@@ -84,7 +84,7 @@
         </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
-            <td :colspan="columns.length">
+            <td :colspan="columns.length" class="expanded-cell">
               <div class="expanded-actions">
               <v-btn
                 size="small"
@@ -497,7 +497,7 @@ body {
  * the 800px popup without wrapping or scrolling. */
 .expanded-actions {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     flex-wrap: nowrap;
     align-items: center;
 }
@@ -505,7 +505,12 @@ body {
     flex: 1 1 auto;
     letter-spacing: normal;
     text-indent: 0;
-    --v-btn-size: 0.65rem;
+    --v-btn-size: 0.7rem;
+}
+/* Reclaim side padding in the expanded row so the larger labels still fit */
+td.expanded-cell {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
