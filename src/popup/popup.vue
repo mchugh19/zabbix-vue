@@ -84,10 +84,11 @@
         </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
-            <td :colspan="columns.length">
+            <td :colspan="columns.length" class="expanded-cell">
+              <div class="expanded-actions">
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   hostDetails(serverObj.url, serverObj.version, item.hostid)
@@ -97,7 +98,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="latestData(serverObj.url, serverObj.version, item.hostid)"
               >
@@ -105,7 +106,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="hostGraphs(serverObj.url, serverObj.version, item.hostid)"
               >
@@ -113,7 +114,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   hostDashboards(serverObj.url, serverObj.version, item.hostid)
@@ -123,7 +124,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   problemDetails(serverObj.url, serverObj.version, item.triggerid)
@@ -133,7 +134,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   eventDetails(
@@ -161,6 +162,7 @@
               >
                 {{ $i18n("ackEvent") }}
               </v-btn>
+              </div>
             </td>
           </tr>
         </template>
@@ -488,6 +490,30 @@ body {
 }
 .v-btn--size-small {
     --v-btn-size: 0.73rem;
+}
+/* Expanded-row action buttons: single row, natural widths like the original design.
+ * Vuetify's default button letter-spacing wastes ~90px across the seven
+ * buttons, so neutralize it and use a slightly smaller label size to fit
+ * the 800px popup without wrapping or scrolling. */
+.expanded-actions {
+    display: flex;
+    gap: 2px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+.expanded-actions .v-btn {
+    flex: 1 1 auto;
+    letter-spacing: normal;
+    text-indent: 0;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    --v-btn-size: 0.75rem;
+    --v-btn-height: 18px;
+}
+/* Reclaim side padding in the expanded row so the larger labels still fit */
+td.expanded-cell {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
