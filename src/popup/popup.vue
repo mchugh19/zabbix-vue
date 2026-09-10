@@ -84,7 +84,7 @@
         </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
-            <td :colspan="columns.length">
+            <td :colspan="columns.length" class="text-no-wrap">
               <v-btn
                 size="small"
                 class="pa-0 px-1 ma-0 mr-1"
