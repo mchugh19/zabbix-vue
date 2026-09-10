@@ -491,14 +491,15 @@ body {
 .v-btn--size-small {
     --v-btn-size: 0.73rem;
 }
-/* Expanded-row action buttons: single row, sized to share the width evenly */
+/* Expanded-row action buttons: single row, natural widths like the original design */
 .expanded-actions {
     display: flex;
     gap: 4px;
+    flex-wrap: nowrap;
+    align-items: center;
 }
 .expanded-actions .v-btn {
-    flex: 1 1 0;
-    min-width: 0;
+    flex: 0 0 auto;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
