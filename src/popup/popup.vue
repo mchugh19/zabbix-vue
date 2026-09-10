@@ -506,6 +506,7 @@ body {
     letter-spacing: normal;
     text-indent: 0;
     --v-btn-size: 0.7rem;
+    --v-btn-height: 17px;
 }
 /* Reclaim side padding in the expanded row so the larger labels still fit */
 td.expanded-cell {
