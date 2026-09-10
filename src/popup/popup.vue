@@ -502,7 +502,7 @@ body {
     align-items: center;
 }
 .expanded-actions .v-btn {
-    flex: 0 1 auto;
+    flex: 1 1 auto;
     letter-spacing: normal;
     text-indent: 0;
     --v-btn-size: 0.65rem;
