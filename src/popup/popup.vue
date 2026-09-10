@@ -505,13 +505,15 @@ body {
     flex: 1 1 auto;
     letter-spacing: normal;
     text-indent: 0;
-    --v-btn-size: 0.7rem;
-    --v-btn-height: 17px;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    --v-btn-size: 0.75rem;
+    --v-btn-height: 18px;
 }
 /* Reclaim side padding in the expanded row so the larger labels still fit */
 td.expanded-cell {
-    padding-left: 8px !important;
-    padding-right: 8px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
