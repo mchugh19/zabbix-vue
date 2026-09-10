@@ -491,7 +491,10 @@ body {
 .v-btn--size-small {
     --v-btn-size: 0.73rem;
 }
-/* Expanded-row action buttons: single row, natural widths like the original design */
+/* Expanded-row action buttons: single row, natural widths like the original design.
+ * Vuetify's default button letter-spacing wastes ~90px across the seven
+ * buttons, so neutralize it and use a slightly smaller label size to fit
+ * the 800px popup without wrapping or scrolling. */
 .expanded-actions {
     display: flex;
     gap: 4px;
@@ -499,7 +502,10 @@ body {
     align-items: center;
 }
 .expanded-actions .v-btn {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    letter-spacing: normal;
+    text-indent: 0;
+    --v-btn-size: 0.65rem;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
