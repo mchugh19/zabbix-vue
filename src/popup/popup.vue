@@ -84,10 +84,11 @@
         </template>
         <template v-slot:expanded-row="{ columns, item }">
           <tr>
-            <td :colspan="columns.length" class="text-no-wrap">
+            <td :colspan="columns.length">
+              <div class="expanded-actions">
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   hostDetails(serverObj.url, serverObj.version, item.hostid)
@@ -97,7 +98,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="latestData(serverObj.url, serverObj.version, item.hostid)"
               >
@@ -105,7 +106,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="hostGraphs(serverObj.url, serverObj.version, item.hostid)"
               >
@@ -113,7 +114,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   hostDashboards(serverObj.url, serverObj.version, item.hostid)
@@ -123,7 +124,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   problemDetails(serverObj.url, serverObj.version, item.triggerid)
@@ -133,7 +134,7 @@
               </v-btn>
               <v-btn
                 size="small"
-                class="pa-0 px-1 ma-0 mr-1"
+                class="pa-0 px-1 ma-0"
                 color="teal-lighten-3"
                 @click="
                   eventDetails(
@@ -161,6 +162,7 @@
               >
                 {{ $i18n("ackEvent") }}
               </v-btn>
+              </div>
             </td>
           </tr>
         </template>
@@ -488,6 +490,15 @@ body {
 }
 .v-btn--size-small {
     --v-btn-size: 0.73rem;
+}
+/* Expanded-row action buttons: single row, sized to share the width evenly */
+.expanded-actions {
+    display: flex;
+    gap: 4px;
+}
+.expanded-actions .v-btn {
+    flex: 1 1 0;
+    min-width: 0;
 }
 .v-input--density-compact {
   --v-input-padding-top: 0px;
