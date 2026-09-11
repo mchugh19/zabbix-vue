@@ -167,6 +167,10 @@
     "message": "Графики хоста",
     "description": "Popup button"
   },
+  "hostDashboards": {
+    "message": "Панели узла сети",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Детали проблемы",
     "description": "Popup button"

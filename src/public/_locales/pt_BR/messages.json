@@ -167,6 +167,10 @@
     "message": "grafico das maquinas",
     "description": "botao popup"
   },
+  "hostDashboards": {
+    "message": "Dashboard do host",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "detalhes do problema",
     "description": "botao popup"

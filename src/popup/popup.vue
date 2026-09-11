@@ -474,7 +474,11 @@ body {
 .expanded-actions {
     display: flex;
     gap: 2px;
-    flex-wrap: nowrap;
+    /* Wrap as a fallback for locales whose labels overflow the 800px
+     * popup (measured: ru/pl/pt exceed the single-row budget).
+     * English still renders as one row; wrapping only triggers when
+     * the buttons cannot fit, avoiding a horizontal scrollbar. */
+    flex-wrap: wrap;
     align-items: center;
 }
 .expanded-actions .v-btn {

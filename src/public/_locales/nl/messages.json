@@ -84,7 +84,7 @@
     "description": "Opties scherm label"
   },
   "monGroups": {
-    "message": "Monitor Hostgroups",
+    "message": "Hostgroepen",
     "description": "Opties scherm label"
   },
   "generalSettings": {
@@ -92,7 +92,7 @@
     "description": "Opties scherm label"
   },
   "updateInterval": {
-    "message": "Update Interval",
+    "message": "Interval bijwerken",
     "description": "Opties scherm label"
   },
   "notify": {
@@ -167,16 +167,20 @@
     "message": "Host Grafieken",
     "description": "Popup button"
   },
+  "hostDashboards": {
+    "message": "Host dashboards",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Probleem Details",
     "description": "Popup button"
   },
   "eventDetails": {
-    "message": "Event Details",
+    "message": "Details evenement",
     "description": "Popup button"
   },
   "ackEvent": {
-    "message": "Ack Event",
+    "message": "Bevestigen",
     "description": "Popup button"
   },
   "filter": {
