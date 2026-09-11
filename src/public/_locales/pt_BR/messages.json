@@ -12,15 +12,15 @@
     "description": "Severidade Zabbix"
   },
   "information": {
-    "message": "Informacao",
+    "message": "Informação",
     "description": "Severidade Zabbix"
   },
   "warning": {
-    "message": "Aviso",
+    "message": "Atenção",
     "description": "Severidade Zabbix"
   },
   "average": {
-    "message": "Media",
+    "message": "Média",
     "description": "Severidade Zabbix"
   },
   "high": {
@@ -40,7 +40,7 @@
     "description": "etiqueta do ecra de opcoes"
   },
   "alias": {
-    "message": "Alias",
+    "message": "Apelido",
     "description": "etiqueta do ecra de opcoes"
   },
   "URL": {
@@ -68,7 +68,7 @@
     "description": "Options screen label"
   },
   "suppressedProblem": {
-    "message": "problema suprimido",
+    "message": "Suprimido",
     "description": "Tooltip for suppressed problem icon"
   },
   "acknowledgedProblem": {
@@ -84,7 +84,7 @@
     "description": "etiqueta do ecra de opcoes"
   },
   "monGroups": {
-    "message": "monitorizar grupo de maquinas",
+    "message": "Grupos de hosts",
     "description": "etiqueta do ecra de opcoes"
   },
   "generalSettings": {
@@ -92,7 +92,7 @@
     "description": "etiqueta do ecra de opcoes"
   },
   "updateInterval": {
-    "message": "intervalo de actualizacao",
+    "message": "Intervalo de atualização",
     "description": "etiqueta do ecra de opcoes"
   },
   "notify": {
@@ -104,15 +104,15 @@
     "description": "etiqueta do ecra de opcoes"
   },
   "displayHost": {
-    "message": "nome da maquina",
+    "message": "Nome do host",
     "description": "etiqueta do ecra de opcoes"
   },
   "displayName": {
-    "message": "nome visivel",
+    "message": "Nome visível",
     "description": "etiqueta do ecra de opcoes"
   },
   "save": {
-    "message": "guardar",
+    "message": "Salvar",
     "description": "botao do ecra de opcoes"
   },
   "addServer": {
@@ -144,7 +144,7 @@
     "description": "cabecalho popup"
   },
   "headerDescription": {
-    "message": "Descricao",
+    "message": "Descrição",
     "description": "cabecalho popup"
   },
   "headerPriority": {
@@ -160,11 +160,11 @@
     "description": "botao popup"
   },
   "latestData": {
-    "message": "ultima informacao",
+    "message": "Dados recentes",
     "description": "botao popup"
   },
   "hostGraphs": {
-    "message": "grafico das maquinas",
+    "message": "Gráficos",
     "description": "botao popup"
   },
   "hostDashboards": {
@@ -180,15 +180,15 @@
     "description": "botao popup"
   },
   "ackEvent": {
-    "message": "evento de confirmacao",
+    "message": "Reconhecer",
     "description": "botao popup"
   },
   "filter": {
-    "message": "filtro",
+    "message": "Filtrar",
     "description": "identificacao popup"
   },
   "noProb": {
-    "message": "nao ha problemas",
+    "message": "Sem problemas",
     "description": "mensagem popup"
   },
   "noResults": {
