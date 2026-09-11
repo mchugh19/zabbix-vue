@@ -168,7 +168,7 @@
     "description": "botao popup"
   },
   "hostDashboards": {
-    "message": "dashboards da maquina",
+    "message": "Dashboard do host",
     "description": "Popup button"
   },
   "problemDetails": {

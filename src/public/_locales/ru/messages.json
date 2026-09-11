@@ -168,7 +168,7 @@
     "description": "Popup button"
   },
   "hostDashboards": {
-    "message": "Дашборды хоста",
+    "message": "Панели узла сети",
     "description": "Popup button"
   },
   "problemDetails": {
