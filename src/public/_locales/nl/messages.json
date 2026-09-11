@@ -167,6 +167,10 @@
     "message": "Host Grafieken",
     "description": "Popup button"
   },
+  "hostDashboards": {
+    "message": "Host dashboards",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Probleem Details",
     "description": "Popup button"

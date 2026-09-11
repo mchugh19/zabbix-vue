@@ -167,6 +167,10 @@
     "message": "Wykresy hosta",
     "description": "Przycisk Powiadomienia"
   },
+  "hostDashboards": {
+    "message": "Dashboardy hosta",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Szczegóły problemu",
     "description": "Przycisk Powiadomienia"

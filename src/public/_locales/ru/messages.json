@@ -167,6 +167,10 @@
     "message": "Графики хоста",
     "description": "Popup button"
   },
+  "hostDashboards": {
+    "message": "Дашборды хоста",
+    "description": "Popup button"
+  },
   "problemDetails": {
     "message": "Детали проблемы",
     "description": "Popup button"
