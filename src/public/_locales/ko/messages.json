@@ -1,0 +1,94 @@
+{
+  "notClassified": {
+    "message": "미분류",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "정보",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "경고",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "가벼운 장애",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "중증 장애",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "심각한 장애",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "서버",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "로그인 이름",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "억제됨",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "장애대응 완료",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "메인터넌스 중",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "호스트 그룹",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "갱신 간격",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "호스트 명",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "표시명",
+    "description": "Options screen label"
+  },
+  "addServer": {
+    "message": "추가",
+    "description": "Options screen button"
+  },
+  "headerDescription": {
+    "message": "설명",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "경과시간",
+    "description": "Popup headers"
+  },
+  "latestData": {
+    "message": "최근 데이터",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "그래프",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "이벤트 세부 내용",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "인지",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "필터",
+    "description": "Popup label"
+  }
+}
