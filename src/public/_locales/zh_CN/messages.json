@@ -1,0 +1,114 @@
+{
+  "notClassified": {
+    "message": "未分类",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "信息",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "告警",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "一般严重",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "严重",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "灾难",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "服务器",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "别名",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "抑制",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "已确认",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "维修中",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "主机群组",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "更新间隔",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "主机名称",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "可见的名称",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "添加",
+    "description": "Options screen button"
+  },
+  "headerSystem": {
+    "message": "系统",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "描述",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "总时长",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "主机",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "最新数据",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "图形",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "主机仪表板",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "事件详情",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "确认",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "条件检索",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "无问题",
+    "description": "Popup message"
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "notClassified": {
+    "message": "Nicht klassifiziert",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Warnung",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Durchschnitt",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Hoch",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Desaster",
+    "description": "Zabbix severity"
+  },
+  "suppressedProblem": {
+    "message": "Unterdrückt",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Bestätigt",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "In Wartung",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Hostgruppen",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Aktualisierungsintervall",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Name des Hosts",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Sichtbarer Name",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Speichern",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "Hinzufügen",
+    "description": "Options screen button"
+  },
+  "headerDescription": {
+    "message": "Beschreibung",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Alter",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "Host",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Aktuelle Daten",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Diagramme",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Ereignisdetails",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Bestätigen",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtern",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Keine Probleme",
+    "description": "Popup message"
+  }
+}

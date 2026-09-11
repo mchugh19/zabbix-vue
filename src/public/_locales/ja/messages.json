@@ -1,0 +1,114 @@
+{
+  "notClassified": {
+    "message": "未分類",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "情報",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "警告",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "軽度の障害",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "重度の障害",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "致命的な障害",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "サーバー",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "エイリアス",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "抑制",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "確認済",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "メンテナンス中",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "ホストグループ",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "監視間隔",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "ホスト名",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "表示名",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "保存",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "追加",
+    "description": "Options screen button"
+  },
+  "headerSystem": {
+    "message": "システム",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "説明",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "経過時間",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "ホスト",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "最新データ",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "グラフ",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "ホストダッシュボード",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "イベント詳細",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "障害確認",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "フィルター",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "障害なし",
+    "description": "Popup message"
+  }
+}

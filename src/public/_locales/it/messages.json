@@ -1,0 +1,86 @@
+{
+  "notClassified": {
+    "message": "Non classificato",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Informazioni",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Bassa",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Media",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Alta",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Disastro",
+    "description": "Zabbix severity"
+  },
+  "suppressedProblem": {
+    "message": "Soppresso",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Confermato",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "In manutenzione",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Gruppo host",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Intervallo di aggiornamento",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Nome host",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Nome visibile",
+    "description": "Options screen label"
+  },
+  "addServer": {
+    "message": "Aggiungi",
+    "description": "Options screen button"
+  },
+  "headerDescription": {
+    "message": "Descrizione",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Età",
+    "description": "Popup headers"
+  },
+  "latestData": {
+    "message": "Ultimi dati",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Grafici",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Dettagli evento",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Prendi visione",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtro",
+    "description": "Popup label"
+  }
+}

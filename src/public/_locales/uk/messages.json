@@ -1,0 +1,102 @@
+{
+  "notClassified": {
+    "message": "Не класифіковано",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Інформація",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Попередження",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Середня",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Висока",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Критична",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "Сервер",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "Аліас",
+    "description": "Options screen label"
+  },
+  "acknowledgedProblem": {
+    "message": "Підтверджено",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "В періоді сервісу",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Групи вузлів мережі",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Інтервал оновлення",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Ім'я вузла мережі",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Видиме ім'я",
+    "description": "Options screen label"
+  },
+  "addServer": {
+    "message": "Додати",
+    "description": "Options screen button"
+  },
+  "headerDescription": {
+    "message": "Опис",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Вік",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "Вузел мережі",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Останні дані",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Графіки",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "Панелі вузлів",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Подробиці події",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Підтвердити",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Фільтр",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Немає проблем",
+    "description": "Popup message"
+  }
+}

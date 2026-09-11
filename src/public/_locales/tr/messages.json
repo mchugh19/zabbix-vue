@@ -1,0 +1,90 @@
+{
+  "notClassified": {
+    "message": "Sınıflandırılmamış",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Bilgi",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Uyarı",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Ortalama",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Yüksek",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Felaket",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "Sunucu",
+    "description": "Options screen label"
+  },
+  "alias": {
+    "message": "Rumuz",
+    "description": "Options screen label"
+  },
+  "acknowledgedProblem": {
+    "message": "Onaylandı",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "Bakımda",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Ana makine grupları",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Güncelleme zaman aralığı",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Ana makine adı",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Görünen isim",
+    "description": "Options screen label"
+  },
+  "addServer": {
+    "message": "Ekle",
+    "description": "Options screen button"
+  },
+  "headerDescription": {
+    "message": "Açıklama",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Yaş",
+    "description": "Popup headers"
+  },
+  "latestData": {
+    "message": "En Son Veriler",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Grafikler",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Olay detayları",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Onay",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtre",
+    "description": "Popup label"
+  }
+}
