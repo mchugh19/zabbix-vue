@@ -1,0 +1,106 @@
+{
+  "notClassified": {
+    "message": "Neurčeno",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Informace",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Upozornění",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Střední",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Závažný",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Kritický",
+    "description": "Zabbix severity"
+  },
+  "suppressedProblem": {
+    "message": "Potlačeno",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Přijato",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "Probíhá údržba",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Skupina hostů",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Interval aktualizací",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Název hosta",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Zobrazované jméno",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Uložit",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "Přidat",
+    "description": "Options screen button"
+  },
+  "headerSystem": {
+    "message": "Systém",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "Popis",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Stáří",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "Host",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Poslední hodnoty",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Grafy",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "Dashboard hosta",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Detaily události",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Přijmout",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtr",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Žádné problémy",
+    "description": "Popup message"
+  }
+}
