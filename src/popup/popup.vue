@@ -200,6 +200,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { mdiMagnify, mdiFlagVariant, mdiWrench, mdiEyeOff } from '@mdi/js';
+import { versionPart, ackEventUrl } from '../lib/zabbix-urls.js';
 
 // Zabbix severity levels - replaces magic numbers 0-5
 const SEVERITY = Object.freeze({
@@ -241,13 +242,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }, 300);
 });
 
-/**
- * Parse a major or minor version segment as a number for safe comparison.
- * Avoids string comparison bugs where "10" < "7".
- */
-function versionPart(version, index) {
-  return parseInt(version.split(".")[index], 10) || 0;
-}
+// versionPart imported from ../lib/zabbix-urls.js (unit-tested there)
 
 onMounted(async () => {
   triggerTableData.value = await getPopupData();
@@ -413,26 +408,7 @@ function eventDetails(url, version, triggerid, eventid) {
 }
 
 function ackEvent(url, version, triggerid, eventid) {
-  if (versionPart(version, 0) >= 7) {
-    window.open(
-      url +
-        "/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=" +
-        eventid,
-      "_blank"
-    );
-  } else if (versionPart(version, 0) >= 5) {
-    window.open(
-      url +
-        "/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=" +
-        eventid,
-      "_blank"
-    );
-  } else {
-    window.open(
-      url + "/zabbix.php?action=acknowledge.edit&eventids[]=" + eventid,
-      "_blank"
-    );
-  }
+  window.open(ackEventUrl(url, version, eventid), "_blank");
 }
 </script>
 
