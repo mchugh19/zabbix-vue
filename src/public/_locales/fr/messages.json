@@ -1,0 +1,102 @@
+{
+  "notClassified": {
+    "message": "Non classé",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Avertissement",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Moyen",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Haut",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Désastre",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "Serveur",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "Supprimé",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Acquitté",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "En maintenance",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Groupes d'hôtes",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Intervalle d'actualisation",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Nom de l'hôte",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Nom visible",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Enregistrer",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "Ajouter",
+    "description": "Options screen button"
+  },
+  "headerSystem": {
+    "message": "Système",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Âge",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "Hôte",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Dernières données",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Graphiques",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "Tableaux de bord d'hôte",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Détails de l'événement",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Acquittement",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtre",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "Pas de problème",
+    "description": "Popup message"
+  }
+}

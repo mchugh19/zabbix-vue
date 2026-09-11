@@ -1,0 +1,110 @@
+{
+  "notClassified": {
+    "message": "No clasificada",
+    "description": "Zabbix severity"
+  },
+  "information": {
+    "message": "Informativa",
+    "description": "Zabbix severity"
+  },
+  "warning": {
+    "message": "Advertencia",
+    "description": "Zabbix severity"
+  },
+  "average": {
+    "message": "Promedio",
+    "description": "Zabbix severity"
+  },
+  "high": {
+    "message": "Alta",
+    "description": "Zabbix severity"
+  },
+  "disaster": {
+    "message": "Crítica",
+    "description": "Zabbix severity"
+  },
+  "server": {
+    "message": "Servidor",
+    "description": "Options screen label"
+  },
+  "suppressedProblem": {
+    "message": "Suprimido",
+    "description": "Tooltip for suppressed problem icon"
+  },
+  "acknowledgedProblem": {
+    "message": "Reconocida",
+    "description": "Tooltip for acknowledged problem icon"
+  },
+  "maintenanceProblem": {
+    "message": "En mantenimiento",
+    "description": "Tooltip for maintenance problem icon"
+  },
+  "monGroups": {
+    "message": "Grupos de equipos",
+    "description": "Options screen label"
+  },
+  "updateInterval": {
+    "message": "Intervalo de actualización",
+    "description": "Options screen label"
+  },
+  "displayHost": {
+    "message": "Nombre de equipo",
+    "description": "Options screen label"
+  },
+  "displayName": {
+    "message": "Nombre visible",
+    "description": "Options screen label"
+  },
+  "save": {
+    "message": "Guardar",
+    "description": "Options screen button"
+  },
+  "addServer": {
+    "message": "Agregar",
+    "description": "Options screen button"
+  },
+  "headerSystem": {
+    "message": "Sistema",
+    "description": "Popup headers"
+  },
+  "headerDescription": {
+    "message": "Descripción",
+    "description": "Popup headers"
+  },
+  "headerAge": {
+    "message": "Edad",
+    "description": "Popup headers"
+  },
+  "hostDetails": {
+    "message": "Equipo",
+    "description": "Popup button"
+  },
+  "latestData": {
+    "message": "Datos más recientes",
+    "description": "Popup button"
+  },
+  "hostGraphs": {
+    "message": "Gráficos",
+    "description": "Popup button"
+  },
+  "hostDashboards": {
+    "message": "Tableros del equipo",
+    "description": "Popup button"
+  },
+  "eventDetails": {
+    "message": "Detalles del evento",
+    "description": "Popup button"
+  },
+  "ackEvent": {
+    "message": "Reconocer",
+    "description": "Popup button"
+  },
+  "filter": {
+    "message": "Filtro",
+    "description": "Popup label"
+  },
+  "noProb": {
+    "message": "No hay problemas",
+    "description": "Popup message"
+  }
+}
