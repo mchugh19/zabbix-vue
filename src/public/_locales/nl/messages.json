@@ -28,7 +28,7 @@
     "description": "Zabbix ernst"
   },
   "disaster": {
-    "message": "Ramp",
+    "message": "Catastrofe",
     "description": "Zabbix ernst"
   },
   "serverSettings": {
@@ -160,11 +160,11 @@
     "description": "Popup button"
   },
   "latestData": {
-    "message": "Laatste Data",
+    "message": "Laatste data",
     "description": "Popup button"
   },
   "hostGraphs": {
-    "message": "Host Grafieken",
+    "message": "Grafieken",
     "description": "Popup button"
   },
   "hostDashboards": {

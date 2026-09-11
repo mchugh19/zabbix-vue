@@ -16,7 +16,7 @@
     "description": "Powaga ostrzeżnia"
   },
   "warning": {
-    "message": "Ostrzeżnie",
+    "message": "Ostrzeżenie",
     "description": "Powaga ostrzeżnia"
   },
   "average": {
@@ -28,7 +28,7 @@
     "description": "Powaga ostrzeżnia"
   },
   "disaster": {
-    "message": "Katastrofalny",
+    "message": "Katastrofa",
     "description": "Powaga ostrzeżnia"
   },
   "serverSettings": {
@@ -68,15 +68,15 @@
     "description": "Options screen label"
   },
   "suppressedProblem": {
-    "message": "Stłumiony problem",
+    "message": "Stłumiony",
     "description": "Tooltip for suppressed problem icon"
   },
   "acknowledgedProblem": {
-    "message": "Potwierdzony",
+    "message": "Potwierdzone",
     "description": "Tooltip for acknowledged problem icon"
   },
   "maintenanceProblem": {
-    "message": "W konserwacji",
+    "message": "W utrzymaniu",
     "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
@@ -84,7 +84,7 @@
     "description": "Etykieta na ekranie opcji"
   },
   "monGroups": {
-    "message": "Monitoruj grupy hostów",
+    "message": "Grupy hostów",
     "description": "Etykieta na ekranie opcji"
   },
   "generalSettings": {
@@ -92,7 +92,7 @@
     "description": "Etykieta na ekranie opcji"
   },
   "updateInterval": {
-    "message": "Interwal odswierzeń",
+    "message": "Interwał aktualizacji",
     "description": "Etykieta na ekranie opcji"
   },
   "notify": {
@@ -104,11 +104,11 @@
     "description": "Etykieta na ekranie opcji"
   },
   "displayHost": {
-    "message": "Nazwa Hosta",
+    "message": "Nazwa hosta",
     "description": "Etykieta na ekranie opcji"
   },
   "displayName": {
-    "message": "Widoczna Nazwa",
+    "message": "Widoczna nazwa",
     "description": "Etykieta na ekranie opcji"
   },
   "save": {
@@ -160,11 +160,11 @@
     "description": "Przycisk Powiadomienia"
   },
   "latestData": {
-    "message": "Najnowsze dane",
+    "message": "Ostatnie dane",
     "description": "Przycisk Powiadomienia"
   },
   "hostGraphs": {
-    "message": "Wykresy hosta",
+    "message": "Wykresy",
     "description": "Przycisk Powiadomienia"
   },
   "hostDashboards": {
@@ -180,7 +180,7 @@
     "description": "Przycisk Powiadomienia"
   },
   "ackEvent": {
-    "message": "Potwierdź zdarzenie",
+    "message": "Potwierdzenie",
     "description": "Przycisk Powiadomienia"
   },
   "filter": {
@@ -188,7 +188,7 @@
     "description": "Etykieta Powiadomienia"
   },
   "noProb": {
-    "message": "Brak Problemów",
+    "message": "Bez problemów",
     "description": "Widomosc Powiadomienia"
   },
   "noResults": {

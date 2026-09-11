@@ -20,15 +20,15 @@
     "description": "Уровень важности"
   },
   "average": {
-    "message": "Средний",
+    "message": "Средняя",
     "description": "Уровень важности"
   },
   "high": {
-    "message": "Высокий",
+    "message": "Высокая",
     "description": "ZУровень важности"
   },
   "disaster": {
-    "message": "Черезвычайный",
+    "message": "Чрезвычайная",
     "description": "Уровень важности"
   },
   "serverSettings": {
@@ -40,11 +40,11 @@
     "description": "Options screen label"
   },
   "alias": {
-    "message": "Выводимое имя",
+    "message": "Псевдоним",
     "description": "Options screen label"
   },
   "URL": {
-    "message": "Адрес URL",
+    "message": "URL",
     "description": "Options screen label"
   },
   "zabbixUser": {
@@ -68,7 +68,7 @@
     "description": "Options screen label"
   },
   "suppressedProblem": {
-    "message": "Подавленная проблема",
+    "message": "Подавлено",
     "description": "Tooltip for suppressed problem icon"
   },
   "acknowledgedProblem": {
@@ -76,7 +76,7 @@
     "description": "Tooltip for acknowledged problem icon"
   },
   "maintenanceProblem": {
-    "message": "На обслуживании",
+    "message": "В обслуживании",
     "description": "Tooltip for maintenance problem icon"
   },
   "minSev": {
@@ -84,7 +84,7 @@
     "description": "Options screen label"
   },
   "monGroups": {
-    "message": "Показывать эти группы хостов",
+    "message": "Группы узлов сети",
     "description": "Options screen label"
   },
   "generalSettings": {
@@ -104,11 +104,11 @@
     "description": "Options screen label"
   },
   "displayHost": {
-    "message": "Имя хоста",
+    "message": "Имя узла сети",
     "description": "Options screen label"
   },
   "displayName": {
-    "message": "Отображаемое имя",
+    "message": "Видимое имя",
     "description": "Options screen label"
   },
   "save": {
@@ -140,7 +140,7 @@
     "description": "Configuration error message"
   },
   "headerSystem": {
-    "message": "Сервер",
+    "message": "Системный",
     "description": "Popup headers"
   },
   "headerDescription": {
@@ -164,7 +164,7 @@
     "description": "Popup button"
   },
   "hostGraphs": {
-    "message": "Графики хоста",
+    "message": "Графики",
     "description": "Popup button"
   },
   "hostDashboards": {
@@ -188,7 +188,7 @@
     "description": "Popup label"
   },
   "noProb": {
-    "message": "Проблем нет",
+    "message": "Проблемы отсутствуют",
     "description": "Popup message"
   },
   "noResults": {
