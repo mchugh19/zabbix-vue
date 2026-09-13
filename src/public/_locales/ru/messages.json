@@ -202,5 +202,13 @@
   "error": {
     "message": "Ошибка расширения",
     "description": "Popup error"
+  },
+  "authTypePassword": {
+    "message": "Имя пользователя и пароль",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API токен",
+    "description": "Options screen authentication type option"
   }
 }

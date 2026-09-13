@@ -202,5 +202,9 @@
   "error": {
     "message": "Plugin Error",
     "description": "Popup error"
+  },
+  "authTypeToken": {
+    "message": "API-token",
+    "description": "Options screen authentication type option"
   }
 }

@@ -102,5 +102,13 @@
   "noProb": {
     "message": "Žádné problémy",
     "description": "Popup message"
+  },
+  "authTypePassword": {
+    "message": "Jméno uživatele a heslo",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API token",
+    "description": "Options screen authentication type option"
   }
 }

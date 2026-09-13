@@ -110,5 +110,13 @@
   "noProb": {
     "message": "障害なし",
     "description": "Popup message"
+  },
+  "authTypePassword": {
+    "message": "ユーザー名とパスワード",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "APIトークン",
+    "description": "Options screen authentication type option"
   }
 }

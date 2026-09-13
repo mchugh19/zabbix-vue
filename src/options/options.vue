@@ -43,15 +43,17 @@
                 @update:modelValue="serverAPI($event, index)"
               />
 
-              <v-checkbox
-                v-model="server.useToken"
-                class="mb-0 pa-0"
-                :label="$i18n('useToken')"
+              <v-select
+                v-model="server.authType"
+                :label="$i18n('authType')"
+                :items="authTypeItems"
+                item-title="title"
+                item-value="value"
               />
 
               <v-text-field
                 v-model="server.apiToken"
-                v-if="server.useToken"
+                v-if="server.authType === 'token'"
                 :label="$i18n('zabbixToken')"
                 :rules="[(v) => !!v || $i18n('required')]"
                 required
@@ -59,14 +61,14 @@
 
               <v-text-field
                 v-model="server.user"
-                v-if="!server.useToken"
+                v-if="server.authType === 'password'"
                 :label="$i18n('zabbixUser')"
                 :rules="[(v) => !!v || $i18n('required')]"
                 required
               />
               <v-text-field
                 v-model="server.pass"
-                v-if="!server.useToken"
+                v-if="server.authType === 'password'"
                 :label="$i18n('zabbixPass')"
                 required
                 :type="server.visiblePass ? 'text' : 'password'"
@@ -83,6 +85,13 @@
                 />
               </template>
               </v-text-field>
+
+              <div
+                v-if="server.authType === 'guest'"
+                class="text-caption mb-2"
+              >
+                {{ $i18n('guestHint') }}
+              </div>
 
               <v-checkbox
                 v-model="server.hide"
@@ -205,6 +214,7 @@ const severitySelector = [
 const defaultServer = {
   alias: "New Server",
   url: "",
+  authType: "password",
   user: "",
   pass: "",
   apiToken: "",
@@ -240,6 +250,12 @@ const intervalRules = [
   (v) => v > 9 || i18n("lessSeconds"),
 ];
 
+const authTypeItems = [
+  { value: "password", title: i18n("authTypePassword") },
+  { value: "token", title: i18n("authTypeToken") },
+  { value: "guest", title: i18n("authTypeGuest") },
+];
+
 let debounceTimeout = null;
 
 // Lifecycle
@@ -252,10 +268,13 @@ onMounted(async () => {
       zabbix_data.servers[serverIndex].apiToken = await decryptSettings(zabbix_data.servers[serverIndex].apiToken);
       zabbix_data.servers[serverIndex].pass = await decryptSettings(zabbix_data.servers[serverIndex].pass);
       // Add fields for options screen
-      if (zabbix_data.servers[serverIndex].apiToken.length > 0) {
-        zabbix_data.servers[serverIndex].useToken = true;
+      const storedAuthType = zabbix_data.servers[serverIndex].authType;
+      if (["password", "token", "guest"].includes(storedAuthType)) {
+        zabbix_data.servers[serverIndex].authType = storedAuthType;
       } else {
-        zabbix_data.servers[serverIndex].useToken = false;
+        // Fallback for settings that missed the background migration
+        zabbix_data.servers[serverIndex].authType =
+          zabbix_data.servers[serverIndex].apiToken.length > 0 ? "token" : "password";
       }
       zabbix_data.servers[serverIndex].visiblePass = false;
       zabbix_data.servers[serverIndex].hostGroupsList = [];
@@ -369,8 +388,13 @@ async function save_data() {
     for (let i = 0; i < savedServerSettings.length; i++) {
       savedServerSettings[i].errorMsg = "";
       delete savedServerSettings[i].visiblePass;
-      delete savedServerSettings[i].useToken;
       delete savedServerSettings[i].hostGroupsList;
+      if (savedServerSettings[i].authType === "guest") {
+        // Guest needs no stored credentials; drop anything stale
+        savedServerSettings[i].user = "";
+        savedServerSettings[i].pass = "";
+        savedServerSettings[i].apiToken = "";
+      }
     }
     zabbixs.value["servers"] = savedServerSettings;
 

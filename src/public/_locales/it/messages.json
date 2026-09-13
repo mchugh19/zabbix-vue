@@ -82,5 +82,9 @@
   "filter": {
     "message": "Filtro",
     "description": "Popup label"
+  },
+  "authTypeToken": {
+    "message": "Token API",
+    "description": "Options screen authentication type option"
   }
 }
