@@ -156,6 +156,21 @@ describe('Zabbix class', () => {
 
       await expect(z.login()).rejects.toThrow();
     });
+
+    it('logs in as guest with an empty password', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk('guest-session-token')]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      // background.js maps authType 'guest' to user 'guest' with empty password/token
+      const z = new Zabbix('http://z/api', 'guest', '', '', '7.0.0');
+      await z.login();
+
+      const body = sentBody(fetchSpy, 0);
+      expect(body.method).toBe('user.login');
+      expect(body.params).toHaveProperty('username', 'guest');
+      expect(body.params).toHaveProperty('password', '');
+      expect(z.auth).toBe('guest-session-token');
+    });
   });
 
   // ── call() — auth body parameter ──────────────────────────────────────────

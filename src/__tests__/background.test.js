@@ -85,6 +85,7 @@ import {
   getSettings,
   migrateOldSettings,
   migrateCryptoFormat,
+  migrateAuthType,
   setAlarmState,
   initialize,
   clearPopupTableError,
@@ -392,6 +393,69 @@ describe('background.js', () => {
     });
   });
 
+  // ── migrateAuthType ─────────────────────────────────────────────────────
+
+  describe('migrateAuthType()', () => {
+    beforeEach(() => {
+      // Identity decrypt: the migrateOldSettings tests leak a mockReturnValue
+      // into decryptSettings (clearAllMocks/restoreAllMocks don't undo it)
+      decryptSettings.mockImplementation((s) => s);
+    });
+
+    it("derives 'token' when the stored apiToken is non-empty", async () => {
+      stubSettings(makeSettings({
+        servers: [{ alias: 'T', url: 'https://z.example.com', apiToken: 'tok123', pass: '' }],
+      }));
+
+      await migrateAuthType();
+
+      expect(decryptSettings).toHaveBeenCalledWith('tok123');
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].authType).toBe('token');
+    });
+
+    it("derives 'password' when the stored apiToken is empty", async () => {
+      stubSettings(makeSettings({
+        servers: [{ alias: 'P', url: 'https://z.example.com', apiToken: '', pass: 'enc' }],
+      }));
+
+      await migrateAuthType();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].authType).toBe('password');
+    });
+
+    it('leaves servers with a valid authType untouched', async () => {
+      stubSettings(makeSettings({
+        servers: [{ alias: 'G', url: 'https://z.example.com', authType: 'guest', apiToken: '', pass: '' }],
+      }));
+
+      await migrateAuthType();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('re-derives when authType is present but invalid', async () => {
+      stubSettings(makeSettings({
+        servers: [{ alias: 'X', url: 'https://z.example.com', authType: 'bogus', apiToken: '', pass: 'enc' }],
+      }));
+
+      await migrateAuthType();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].authType).toBe('password');
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateAuthType();
+
+      expect(decryptSettings).not.toHaveBeenCalled();
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+  });
+
   // ── clearPopupTableError ─────────────────────────────────────────────
 
   describe('clearPopupTableError()', () => {
@@ -666,6 +730,36 @@ describe('background.js', () => {
         })
       );
       expect(mockZabbixInstance.logout).toHaveBeenCalled();
+    });
+
+    it('builds the API client with guest credentials when authType is guest', async () => {
+      stubZabbixCalls([]);
+
+      await getServerTriggers({ ...defaultConfig, authType: 'guest', user: '', pass: '', apiToken: '' });
+
+      expect(Zabbix).toHaveBeenCalledWith(
+        'https://zabbix.example.com/api_jsonrpc.php',
+        'guest',
+        '',
+        '',
+        '7.0.0',
+        expect.any(Function)
+      );
+    });
+
+    it('passes through stored credentials when authType is password', async () => {
+      stubZabbixCalls([]);
+
+      await getServerTriggers({ ...defaultConfig, authType: 'password' });
+
+      expect(Zabbix).toHaveBeenCalledWith(
+        'https://zabbix.example.com/api_jsonrpc.php',
+        'admin',
+        'pass',
+        '',
+        '7.0.0',
+        expect.any(Function)
+      );
     });
 
     it('filters out suppressed triggers by default', async () => {

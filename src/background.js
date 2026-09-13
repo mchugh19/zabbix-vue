@@ -36,12 +36,14 @@ browser.runtime.onInstalled.addListener( async () => {
 
   await migrateOldSettings();
   await migrateCryptoFormat();
+  await migrateAuthType();
   await initialize();
 });
 browser.runtime.onStartup.addListener( async () => {
   log(`onStartup()`);
 
   await migrateCryptoFormat();
+  await migrateAuthType();
   await initialize();
 });
 self.addEventListener("activate", (event) => {
@@ -104,6 +106,44 @@ async function migrateCryptoFormat() {
     const encrypted = await encryptSettingKeys(settings);
     await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(encrypted)});
     log("Crypto format migration complete");
+  }
+}
+
+const AUTH_TYPES = ["password", "token", "guest"];
+
+async function migrateAuthType() {
+  /*
+  * Persist an explicit authType per server ('password', 'token' or 'guest').
+  * Previously the auth type was derived at load time (non-empty apiToken
+  * means token auth). Runs on install/startup; idempotent — servers already
+  * carrying a valid authType are left untouched.
+  */
+  const settings = await getSettings();
+  if (!settings || !settings.servers) {
+    return;
+  }
+
+  let needsSave = false;
+  for (const server of settings.servers) {
+    if (AUTH_TYPES.includes(server.authType)) {
+      continue;
+    }
+    // An "empty" apiToken is still a non-empty encrypted blob, so decrypt
+    // to test it. Save without re-encrypting to avoid double-wrapping fields.
+    let apiToken = "";
+    try {
+      apiToken = await decryptSettings(server.apiToken);
+    } catch (_) { // eslint-disable-line no-unused-vars
+      apiToken = "";
+    }
+    server.authType = apiToken ? "token" : "password";
+    needsSave = true;
+  }
+
+  if (needsSave) {
+    log("Migrating servers to explicit authType");
+    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+    log("authType migration complete");
   }
 }
 
@@ -291,19 +331,22 @@ async function getServerTriggers(serverConfig) {
   /*
    * Return data from zabbix trigger.get call to a specific server
    *
-   * serverConfig: { url, user, pass, apiToken, version, hostGroups,
+   * serverConfig: { url, user, pass, apiToken, authType, version, hostGroups,
    *                 hide, maintenance, minSeverity, showSuppressed }
    */
   await clearPopupTableError();
 
-  const { url, user, pass, apiToken, version, showSuppressed } = serverConfig;
+  const { url, user, pass, apiToken, authType, version, showSuppressed } = serverConfig;
   const requestObject = buildTriggerRequest(serverConfig);
 
+  // Guest auth logs in as the "guest" user with an empty password —
+  // the same user.login call the Zabbix frontend's "Sign in as guest" makes.
+  const isGuest = authType === "guest";
   const zabbix = new Zabbix(
     url + "/api_jsonrpc.php",
-    user,
-    pass,
-    apiToken,
+    isGuest ? "guest" : user,
+    isGuest ? "" : pass,
+    isGuest ? "" : apiToken,
     version,
     makeVersionPersister(url)
   );
@@ -393,11 +436,15 @@ async function getAllTriggers() {
     serversChecked.push(server);
 
     // Decrypt credentials and build config object for getServerTriggers
+    const apiToken = await decryptSettings(serverSettings.apiToken);
     const serverConfig = {
       url: serverSettings.url,
       user: serverSettings.user,
       pass: await decryptSettings(serverSettings.pass),
-      apiToken: await decryptSettings(serverSettings.apiToken),
+      apiToken: apiToken,
+      authType: AUTH_TYPES.includes(serverSettings.authType)
+        ? serverSettings.authType
+        : (apiToken ? "token" : "password"),
       version: serverSettings.version,
       hostGroups: serverSettings.hostGroups,
       hide: serverSettings.hide,
@@ -701,6 +748,7 @@ export {
   getSettings,
   migrateOldSettings,
   migrateCryptoFormat,
+  migrateAuthType,
   setAlarmState,
   initialize,
   clearPopupTableError,

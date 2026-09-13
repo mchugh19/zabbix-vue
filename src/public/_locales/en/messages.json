@@ -49,7 +49,27 @@
   },
   "useToken": {
     "message": "Use Token auth",
+    "description": "Options screen label (legacy, superseded by authType)"
+  },
+  "authType": {
+    "message": "Authentication type",
     "description": "Options screen label"
+  },
+  "authTypePassword": {
+    "message": "Username and password",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API token",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeGuest": {
+    "message": "Guest",
+    "description": "Options screen authentication type option"
+  },
+  "guestHint": {
+    "message": "Logs in as the guest user with no password. The Zabbix server must have the guest account enabled.",
+    "description": "Options screen guest auth hint"
   },
   "zabbixToken": {
     "message": "Zabbix API Token",
