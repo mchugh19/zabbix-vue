@@ -108,6 +108,16 @@
                 class="mb-0 pa-0"
                 :label="$i18n('showSuppressed')"
               />
+              <v-checkbox
+                v-model="server.notify"
+                class="mb-0 pa-0"
+                :label="$i18n('notify')"
+              />
+              <v-checkbox
+                v-model="server.sound"
+                class="mb-0 pa-0"
+                :label="$i18n('sound')"
+              />
               <v-select
                 v-model="server.minSeverity"
                 :items="severitySelector"
@@ -221,6 +231,8 @@ const defaultServer = {
   hide: false,
   maintenance: false,
   showSuppressed: false,
+  notify: true,
+  sound: true,
   hostGroups: [],
   hostGroupsList: [],
   minSeverity: 0,

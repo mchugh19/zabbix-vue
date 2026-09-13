@@ -1213,6 +1213,95 @@ describe('background.js', () => {
       expect(registration.showNotification).not.toHaveBeenCalled();
     });
 
+    it('suppresses notifications only for the server with notify disabled', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Prod', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            notify: true, sortBy: [],
+          },
+          {
+            alias: 'Staging', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            notify: false, sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} }; // no previous triggers — all are new
+        }
+        return {};
+      });
+
+      let triggerGetCount = 0;
+      mockZabbixInstance.call.mockImplementation(async (method, params) => {
+        if (method === 'event.get') {
+          return { result: params.eventids.map(id => ({ eventid: id })) };
+        }
+        triggerGetCount++;
+        const desc = triggerGetCount === 1 ? 'Prod alert' : 'Stg alert';
+        const host = triggerGetCount === 1 ? 'Prod 1' : 'Stg 1';
+        return {
+          result: [
+            {
+              triggerid: String(triggerGetCount), description: desc,
+              priority: '4', lastchange: '1',
+              hosts: [{ host: 'h', name: host, hostid: '1', maintenance_status: '0' }],
+              lastEvent: { eventid: String(triggerGetCount), acknowledged: '0' },
+            },
+          ],
+        };
+      });
+
+      await getAllTriggers();
+
+      // Only Prod's notification fires; Staging's is suppressed per server
+      expect(registration.showNotification).toHaveBeenCalledTimes(1);
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'Prod 1',
+        expect.objectContaining({ body: 'Prod alert' })
+      );
+    });
+
+    it('still notifies when the per-server notify key is absent (legacy configs)', async () => {
+      const settings = makeSettings(); // default server has no notify key
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      const triggers = [
+        {
+          triggerid: '1', description: 'Legacy server alert', priority: '3',
+          lastchange: '1717100000',
+          hosts: [{ host: 'srv', name: 'Srv', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '0' },
+        },
+      ];
+      stubZabbixCalls(triggers);
+
+      await getAllTriggers();
+
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'Srv',
+        expect.objectContaining({ body: 'Legacy server alert' })
+      );
+    });
+
     it('removes stale server data not in current config', async () => {
       const settings = makeSettings();
 
@@ -1505,9 +1594,8 @@ describe('background.js', () => {
 
   describe('playSounds()', () => {
     it('creates offscreen document for Chrome when sound enabled', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       mockBrowser.offscreen.hasDocument.mockResolvedValue(false);
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: true });
 
       expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1518,17 +1606,34 @@ describe('background.js', () => {
     });
 
     it('does nothing when sound is disabled', async () => {
-      const settings = makeSettings({ global: { sound: false } });
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: false });
 
       expect(mockBrowser.offscreen.createDocument).not.toHaveBeenCalled();
     });
 
+    it('does nothing when per-server sound is disabled', async () => {
+      await playSounds({ alias: 'Staging', sound: false });
+
+      expect(mockBrowser.offscreen.createDocument).not.toHaveBeenCalled();
+    });
+
+    it('plays sound when the per-server sound key is absent (legacy configs)', async () => {
+      mockBrowser.offscreen.hasDocument.mockResolvedValue(false);
+      const server = { alias: 'Legacy' };
+      await playSounds(server);
+
+      expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reasons: ['AUDIO_PLAYBACK'],
+          justification: 'notification',
+        })
+      );
+    });
+
     it('closes a stale offscreen document before creating a new one', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       mockBrowser.offscreen.hasDocument.mockResolvedValue(true);
 
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: true });
 
       expect(mockBrowser.offscreen.closeDocument).toHaveBeenCalled();
       expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
@@ -1541,13 +1646,12 @@ describe('background.js', () => {
     });
 
     it('still creates the document when hasDocument is unavailable (Chrome <116)', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       // Feature-detect fallback: closeDocument throws when no document is open
       const origHasDocument = mockBrowser.offscreen.hasDocument;
       mockBrowser.offscreen.hasDocument = undefined;
       mockBrowser.offscreen.closeDocument.mockRejectedValue(new Error('No offscreen document'));
       try {
-        await playSounds(settings);
+        await playSounds({ alias: 'Zabbix Prod', sound: true });
 
         expect(mockBrowser.offscreen.createDocument).toHaveBeenCalled();
       } finally {

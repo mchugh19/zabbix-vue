@@ -500,7 +500,7 @@ async function getAllTriggers() {
         !oldTriggers.some((old) => trigger.triggerid == old.triggerid)
       );
 
-      if (settings["global"]["notify"]) {
+      if (settings["global"]["notify"] && serverSettings.notify !== false) {
         if (triggerDiff.length === 1) {
           await sendNotify(triggerDiff[0], serverSettings, settings.global.displayName);
         } else if (triggerDiff.length > 1) {
@@ -508,7 +508,7 @@ async function getAllTriggers() {
         }
       }
       if (triggerDiff.length) {
-        playSounds(settings);
+        playSounds(settings, serverSettings);
       }
     }
 
@@ -608,13 +608,13 @@ async function sendNotify(message, server, displayName) {
 // document, so concurrent alerts must not interleave close/create calls.
 let soundChain = Promise.resolve();
 
-function playSounds(settings) {
-  soundChain = soundChain.then(() => playAlertSound(settings)).catch(log);
+function playSounds(serverSettings) {
+  soundChain = soundChain.then(() => playAlertSound(serverSettings)).catch(log);
   return soundChain;
 }
 
-async function playAlertSound(settings) {
-  if (!settings["global"]["sound"]) {
+async function playAlertSound(serverSettings) {
+  if (!serverSettings || serverSettings.sound === false) {
     return;
   }
   if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
