@@ -96,6 +96,7 @@ import {
   migrateOldSettings,
   migrateCryptoFormat,
   migrateAuthType,
+  migrateNotifySoundToServer,
   setAlarmState,
   initialize,
   clearPopupTableError,
@@ -128,9 +129,7 @@ function makeSettings(overrides = {}) {
   return {
     global: {
       interval: 120,
-      notify: true,
       displayName: 'name',
-      sound: false,
       ...overrides.global,
     },
     servers: overrides.servers || [
@@ -145,6 +144,8 @@ function makeSettings(overrides = {}) {
         hide: false,
         maintenance: false,
         minSeverity: 0,
+        notify: true,
+        sound: true,
         sortBy: [{ key: 'priority', order: 'DESC' }],
       },
     ],
@@ -472,6 +473,74 @@ describe('background.js', () => {
       await migrateAuthType();
 
       expect(decryptSettings).not.toHaveBeenCalled();
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── migrateNotifySoundToServer ──────────────────────────────────────────
+
+  describe('migrateNotifySoundToServer()', () => {
+    it('copies global values into servers lacking the keys and removes the global keys', async () => {
+      const settings = makeSettings({
+        global: { interval: 120, notify: false, sound: true, displayName: 'name' },
+        servers: [{ alias: 'Legacy', url: 'https://z.example.com' }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(false);
+      expect(saved.servers[0].sound).toBe(true);
+      expect(saved.global.notify).toBeUndefined();
+      expect(saved.global.sound).toBeUndefined();
+      // unrelated global keys survive
+      expect(saved.global.interval).toBe(120);
+    });
+
+    it('leaves servers with explicit per-server keys untouched', async () => {
+      const settings = makeSettings({
+        global: { interval: 120, notify: false, sound: true },
+        servers: [{ alias: 'Explicit', url: 'https://z.example.com', notify: true, sound: false }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(true);
+      expect(saved.servers[0].sound).toBe(false);
+      expect(saved.global.notify).toBeUndefined();
+      expect(saved.global.sound).toBeUndefined();
+    });
+
+    it('defaults sensibly when the global keys are absent', async () => {
+      const settings = makeSettings({
+        global: { interval: 120 },
+        servers: [{ alias: 'NoGlobal', url: 'https://z.example.com' }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(true);
+      expect(saved.servers[0].sound).toBe(false);
+    });
+
+    it('is a no-op once migrated (idempotent)', async () => {
+      stubSettings(makeSettings());
+
+      await migrateNotifySoundToServer();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateNotifySoundToServer();
+
       expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
     });
   });
@@ -1186,7 +1255,8 @@ describe('background.js', () => {
     });
 
     it('does not send notifications when notify is disabled', async () => {
-      const settings = makeSettings({ global: { notify: false } });
+      const settings = makeSettings();
+      settings.servers[0].notify = false;
 
       mockBrowser.storage.local.get.mockImplementation(async (key) => {
         if (key === ZABBIX_SERVERS_KEY) {
@@ -1211,6 +1281,95 @@ describe('background.js', () => {
       await getAllTriggers();
 
       expect(registration.showNotification).not.toHaveBeenCalled();
+    });
+
+    it('suppresses notifications only for the server with notify disabled', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Prod', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            notify: true, sortBy: [],
+          },
+          {
+            alias: 'Staging', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            notify: false, sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} }; // no previous triggers — all are new
+        }
+        return {};
+      });
+
+      let triggerGetCount = 0;
+      mockZabbixInstance.call.mockImplementation(async (method, params) => {
+        if (method === 'event.get') {
+          return { result: params.eventids.map(id => ({ eventid: id })) };
+        }
+        triggerGetCount++;
+        const desc = triggerGetCount === 1 ? 'Prod alert' : 'Stg alert';
+        const host = triggerGetCount === 1 ? 'Prod 1' : 'Stg 1';
+        return {
+          result: [
+            {
+              triggerid: String(triggerGetCount), description: desc,
+              priority: '4', lastchange: '1',
+              hosts: [{ host: 'h', name: host, hostid: '1', maintenance_status: '0' }],
+              lastEvent: { eventid: String(triggerGetCount), acknowledged: '0' },
+            },
+          ],
+        };
+      });
+
+      await getAllTriggers();
+
+      // Only Prod's notification fires; Staging's is suppressed per server
+      expect(registration.showNotification).toHaveBeenCalledTimes(1);
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'Prod 1',
+        expect.objectContaining({ body: 'Prod alert' })
+      );
+    });
+
+    it('still notifies when the per-server notify key is absent (legacy configs)', async () => {
+      const settings = makeSettings(); // default server has no notify key
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      const triggers = [
+        {
+          triggerid: '1', description: 'Legacy server alert', priority: '3',
+          lastchange: '1717100000',
+          hosts: [{ host: 'srv', name: 'Srv', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '0' },
+        },
+      ];
+      stubZabbixCalls(triggers);
+
+      await getAllTriggers();
+
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'Srv',
+        expect.objectContaining({ body: 'Legacy server alert' })
+      );
     });
 
     it('removes stale server data not in current config', async () => {
@@ -1505,9 +1664,8 @@ describe('background.js', () => {
 
   describe('playSounds()', () => {
     it('creates offscreen document for Chrome when sound enabled', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       mockBrowser.offscreen.hasDocument.mockResolvedValue(false);
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: true });
 
       expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1518,17 +1676,34 @@ describe('background.js', () => {
     });
 
     it('does nothing when sound is disabled', async () => {
-      const settings = makeSettings({ global: { sound: false } });
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: false });
 
       expect(mockBrowser.offscreen.createDocument).not.toHaveBeenCalled();
     });
 
+    it('does nothing when per-server sound is disabled', async () => {
+      await playSounds({ alias: 'Staging', sound: false });
+
+      expect(mockBrowser.offscreen.createDocument).not.toHaveBeenCalled();
+    });
+
+    it('plays sound when the per-server sound key is absent (legacy configs)', async () => {
+      mockBrowser.offscreen.hasDocument.mockResolvedValue(false);
+      const server = { alias: 'Legacy' };
+      await playSounds(server);
+
+      expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reasons: ['AUDIO_PLAYBACK'],
+          justification: 'notification',
+        })
+      );
+    });
+
     it('closes a stale offscreen document before creating a new one', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       mockBrowser.offscreen.hasDocument.mockResolvedValue(true);
 
-      await playSounds(settings);
+      await playSounds({ alias: 'Zabbix Prod', sound: true });
 
       expect(mockBrowser.offscreen.closeDocument).toHaveBeenCalled();
       expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
@@ -1541,13 +1716,12 @@ describe('background.js', () => {
     });
 
     it('still creates the document when hasDocument is unavailable (Chrome <116)', async () => {
-      const settings = makeSettings({ global: { sound: true } });
       // Feature-detect fallback: closeDocument throws when no document is open
       const origHasDocument = mockBrowser.offscreen.hasDocument;
       mockBrowser.offscreen.hasDocument = undefined;
       mockBrowser.offscreen.closeDocument.mockRejectedValue(new Error('No offscreen document'));
       try {
-        await playSounds(settings);
+        await playSounds({ alias: 'Zabbix Prod', sound: true });
 
         expect(mockBrowser.offscreen.createDocument).toHaveBeenCalled();
       } finally {
@@ -1970,7 +2144,7 @@ describe('background.js', () => {
     it('uses default 60s interval when global config is missing', async () => {
       // settings.global must be absent so settings["global"]["interval"] throws
       // and the catch block calls setAlarmState(60).
-      // But getAllTriggers() re-reads settings and accesses settings.global.notify,
+      // But getAllTriggers() re-reads settings and accesses settings["global"]["interval"],
       // so we return proper settings there.
       let callCount = 0;
       mockBrowser.storage.local.get.mockImplementation(async (key) => {

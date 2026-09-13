@@ -108,6 +108,16 @@
                 class="mb-0 pa-0"
                 :label="$i18n('showSuppressed')"
               />
+              <v-checkbox
+                v-model="server.notify"
+                class="mb-0 pa-0"
+                :label="$i18n('notify')"
+              />
+              <v-checkbox
+                v-model="server.sound"
+                class="mb-0 pa-0"
+                :label="$i18n('sound')"
+              />
               <v-select
                 v-model="server.minSeverity"
                 :items="severitySelector"
@@ -166,16 +176,6 @@
                 type="Number"
                 required
               ></v-text-field>
-              <v-checkbox
-                v-model="zabbixs.global.notify"
-                class="mb-0 pa-0"
-                :label="$i18n('notify')"
-              />
-              <v-checkbox
-                v-model="zabbixs.global.sound"
-                class="mb-0 pa-0"
-                :label="$i18n('sound')"
-              />
               <v-radio-group
                 v-model="zabbixs.global.displayName"
                 :label="$i18n('selectName')"
@@ -221,6 +221,8 @@ const defaultServer = {
   hide: false,
   maintenance: false,
   showSuppressed: false,
+  notify: true,
+  sound: true,
   hostGroups: [],
   hostGroupsList: [],
   minSeverity: 0,
@@ -235,8 +237,6 @@ const form = ref(null);
 const zabbixs = ref({
   global: {
     interval: 60,
-    notify: true,
-    sound: false,
     displayName: "host",
     formValid: true,
   },
