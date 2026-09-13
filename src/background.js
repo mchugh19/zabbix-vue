@@ -1,7 +1,7 @@
 "use strict";
 
 import { Zabbix } from './lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypto.js'
+import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
@@ -67,7 +67,6 @@ browser.runtime.onInstalled.addListener( async () => {
   log(`onInstalled()`);
 
   await migrateOldSettings();
-  await migrateCryptoFormat();
   await migrateAuthType();
   await migrateNotifySoundToServer();
   await initialize();
@@ -75,7 +74,6 @@ browser.runtime.onInstalled.addListener( async () => {
 browser.runtime.onStartup.addListener( async () => {
   log(`onStartup()`);
 
-  await migrateCryptoFormat();
   await migrateAuthType();
   await migrateNotifySoundToServer();
   await initialize();
@@ -109,37 +107,6 @@ async function migrateOldSettings() {
     }
   } else {
     //log("no ZabbixServer keys")
-  }
-}
-
-async function migrateCryptoFormat() {
-  /*
-  * Detect legacy sjcl-encrypted fields (apiToken, pass) and re-encrypt
-  * with Web Crypto API. Runs on startup so users don't need to manually
-  * open settings to trigger the migration.
-  */
-  const settings = await getSettings();
-  if (!settings || !settings.servers) {
-    return;
-  }
-
-  let needsSave = false;
-  for (const server of settings.servers) {
-    if (isLegacyFormat(server.apiToken)) {
-      server.apiToken = await decryptSettings(server.apiToken);
-      needsSave = true;
-    }
-    if (isLegacyFormat(server.pass)) {
-      server.pass = await decryptSettings(server.pass);
-      needsSave = true;
-    }
-  }
-
-  if (needsSave) {
-    log("Migrating crypto format from sjcl to Web Crypto API");
-    const encrypted = await encryptSettingKeys(settings);
-    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(encrypted)});
-    log("Crypto format migration complete");
   }
 }
 
@@ -509,30 +476,43 @@ async function getAllTriggers() {
     const server = serverSettings.alias;
     serversChecked.push(server);
 
-    // Decrypt credentials and build config object for getServerTriggers
-    const apiToken = await decryptSettings(serverSettings.apiToken);
-    const serverConfig = {
-      url: serverSettings.url,
-      user: serverSettings.user,
-      pass: await decryptSettings(serverSettings.pass),
-      apiToken: apiToken,
-      authType: AUTH_TYPES.includes(serverSettings.authType)
-        ? serverSettings.authType
-        : (apiToken ? "token" : "password"),
-      version: serverSettings.version,
-      hostGroups: serverSettings.hostGroups,
-      hide: serverSettings.hide,
-      maintenance: serverSettings.maintenance,
-      minSeverity: serverSettings.minSeverity,
-      showSuppressed: serverSettings.showSuppressed,
-    };
+    // Decrypt credentials and build config object for getServerTriggers.
+    // A stored credential in an unrecognized format must surface as a
+    // per-server error, not abort the whole poll.
+    let newTriggerData;
+    try {
+      const apiToken = await decryptSettings(serverSettings.apiToken);
+      const serverConfig = {
+        url: serverSettings.url,
+        user: serverSettings.user,
+        pass: await decryptSettings(serverSettings.pass),
+        apiToken: apiToken,
+        authType: AUTH_TYPES.includes(serverSettings.authType)
+          ? serverSettings.authType
+          : (apiToken ? "token" : "password"),
+        version: serverSettings.version,
+        hostGroups: serverSettings.hostGroups,
+        hide: serverSettings.hide,
+        maintenance: serverSettings.maintenance,
+        minSeverity: serverSettings.minSeverity,
+        showSuppressed: serverSettings.showSuppressed,
+      };
 
-    const newTriggerData = await getServerTriggers(serverConfig);
+      newTriggerData = await getServerTriggers(serverConfig);
 
-    // Zero out credentials from config immediately after use
-    serverConfig.pass = null;
-    serverConfig.apiToken = null;
-    serverConfig.user = null;
+      // Zero out credentials from config immediately after use
+      serverConfig.pass = null;
+      serverConfig.apiToken = null;
+      serverConfig.user = null;
+    } catch (err) {
+      const errorMessage = "Error decrypting stored credentials for: " + server;
+      log(errorMessage + " — " + err.message);
+      newTriggerData = {
+        "error": true,
+        "errorMessage": errorMessage,
+        "errorDetails": err.message,
+      };
+    }
 
     if ("error" in newTriggerData) {
       serverError = true;
@@ -851,7 +831,6 @@ async function handleMessage(request, sender, sendResponse) {
 export {
   getSettings,
   migrateOldSettings,
-  migrateCryptoFormat,
   migrateAuthType,
   migrateNotifySoundToServer,
   setAlarmState,

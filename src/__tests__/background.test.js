@@ -75,13 +75,6 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
 vi.mock('../lib/crypto.js', () => ({
   encryptSettingKeys: vi.fn((s) => s),
   decryptSettings: vi.fn((s) => s),
-  isLegacyFormat: vi.fn((data) => {
-    if (!data) return false;
-    try {
-      const parsed = JSON.parse(data);
-      return parsed.cipher === 'aes' && parsed.mode === 'ccm';
-    } catch { return false; }
-  }),
 }));
 
 // Mock Zabbix class — reference hoisted MockZabbix constructor
@@ -94,7 +87,6 @@ vi.mock('../lib/zabbix-promise.js', () => ({
 import {
   getSettings,
   migrateOldSettings,
-  migrateCryptoFormat,
   migrateAuthType,
   migrateNotifySoundToServer,
   setAlarmState,
@@ -120,7 +112,7 @@ import {
 } from '../background.js';
 
 import { Zabbix } from '../lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings, isLegacyFormat } from '../lib/crypto.js';
+import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -344,73 +336,6 @@ describe('background.js', () => {
       await migrateOldSettings();
 
       expect(decryptSettings).not.toHaveBeenCalled();
-    });
-  });
-
-  // ── migrateCryptoFormat ─────────────────────────────────────────────────
-
-  describe('migrateCryptoFormat()', () => {
-    it('re-encrypts servers with legacy sjcl-formatted fields', async () => {
-      const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
-      stubSettings({
-        global: { interval: 60 },
-        servers: [
-          { alias: 'Test', url: 'https://z.example.com', apiToken: legacyEncrypted, pass: legacyEncrypted },
-        ],
-      });
-
-      await migrateCryptoFormat();
-
-      // decryptSettings called for both apiToken and pass
-      expect(decryptSettings).toHaveBeenCalledTimes(2);
-      // encryptSettingKeys called to re-encrypt the whole settings
-      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
-      // saved back to storage
-      expect(mockBrowser.storage.local.set).toHaveBeenCalled();
-    });
-
-    it('does nothing when fields are already in v2 format', async () => {
-      const v2Encrypted = JSON.stringify({ v: 2, alg: 'AES-GCM', iv: 'abc', ct: 'xyz' });
-      stubSettings({
-        global: { interval: 60 },
-        servers: [
-          { alias: 'Test', url: 'https://z.example.com', apiToken: v2Encrypted, pass: v2Encrypted },
-        ],
-      });
-
-      await migrateCryptoFormat();
-
-      expect(decryptSettings).not.toHaveBeenCalled();
-      expect(encryptSettingKeys).not.toHaveBeenCalled();
-      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
-    });
-
-    it('does nothing when no settings exist', async () => {
-      stubSettings(null);
-
-      await migrateCryptoFormat();
-
-      expect(decryptSettings).not.toHaveBeenCalled();
-      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
-    });
-
-    it('handles mixed servers — only migrates legacy ones', async () => {
-      const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
-      const v2Encrypted = JSON.stringify({ v: 2, alg: 'AES-GCM', iv: 'abc', ct: 'xyz' });
-      stubSettings({
-        global: { interval: 60 },
-        servers: [
-          { alias: 'Old', apiToken: '', pass: legacyEncrypted },
-          { alias: 'New', apiToken: v2Encrypted, pass: v2Encrypted },
-        ],
-      });
-
-      await migrateCryptoFormat();
-
-      // Only the legacy pass field triggers decryption
-      expect(decryptSettings).toHaveBeenCalledTimes(1);
-      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
-      expect(mockBrowser.storage.local.set).toHaveBeenCalled();
     });
   });
 
@@ -1586,6 +1511,73 @@ describe('background.js', () => {
       // Error servers are stripped from persisted triggerResults
       expect(setCall[0].triggerResults).not.toHaveProperty('Server Fail');
       expect(setCall[0].triggerResults).toHaveProperty('Server OK');
+    });
+
+    it('undecryptable stored credential becomes a per-server error, not a poll abort', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Server Bad Crypto', url: 'https://zbx1.local',
+            user: 'a', pass: 'undecryptable-blob', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+          {
+            alias: 'Server OK', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      // decryptSettings throws on the bad blob, passes everything else through
+      decryptSettings.mockImplementation(async (s) => {
+        if (s === 'undecryptable-blob') throw new Error('Unknown encryption format');
+        return s;
+      });
+      stubZabbixCalls([
+        {
+          triggerid: '7', description: 'Disk full', priority: '4',
+          lastchange: '1717100000',
+          hosts: [{ host: 'db1', name: 'DB 1', hostid: '40', maintenance_status: '0' }],
+          lastEvent: { eventid: '400', acknowledged: '0' },
+        },
+      ]);
+
+      // Must not throw — the bad server becomes a per-server error
+      await getAllTriggers();
+
+      // Badge counts only the healthy server's trigger
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+
+      // popupTable carries the decrypt error for the bad server...
+      const sessionCall = mockBrowser.storage.session.set.mock.calls.find(
+        (c) => c[0].popupTable !== undefined
+      );
+      expect(sessionCall).toBeDefined();
+      const badServer = sessionCall[0].popupTable.servers.find(
+        (s) => s.server === 'Server Bad Crypto'
+      );
+      expect(badServer.error).toBe(true);
+      expect(badServer.errorMessage).toContain('Error decrypting stored credentials');
+      expect(badServer.errorDetails).toContain('Unknown encryption format');
+      // ...and normal trigger data for the healthy one
+      const okServer = sessionCall[0].popupTable.servers.find(
+        (s) => s.server === 'Server OK'
+      );
+      expect(okServer.error).toBeUndefined();
+      expect(okServer.triggers).toHaveLength(1);
     });
   });
 
