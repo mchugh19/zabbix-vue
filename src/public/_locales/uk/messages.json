@@ -98,5 +98,13 @@
   "noProb": {
     "message": "Немає проблем",
     "description": "Popup message"
+  },
+  "authTypePassword": {
+    "message": "Ім'я користувача та пароль",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API токен",
+    "description": "Options screen authentication type option"
   }
 }

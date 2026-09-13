@@ -90,5 +90,13 @@
   "filter": {
     "message": "필터",
     "description": "Popup label"
+  },
+  "authTypePassword": {
+    "message": "유저 이름과 비밀번호",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API 토큰",
+    "description": "Options screen authentication type option"
   }
 }

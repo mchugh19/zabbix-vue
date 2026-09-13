@@ -202,5 +202,13 @@
   "error": {
     "message": "Błąd Wtyczki",
     "description": "Błąd Wtyczki"
+  },
+  "authTypePassword": {
+    "message": "Nazwa użytkownika i hasło",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "Token API",
+    "description": "Options screen authentication type option"
   }
 }

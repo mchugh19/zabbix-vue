@@ -106,5 +106,13 @@
   "noProb": {
     "message": "No hay problemas",
     "description": "Popup message"
+  },
+  "authTypePassword": {
+    "message": "Usuario y contraseña",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "Token de API",
+    "description": "Options screen authentication type option"
   }
 }

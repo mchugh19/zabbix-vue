@@ -110,5 +110,13 @@
   "noProb": {
     "message": "无问题",
     "description": "Popup message"
+  },
+  "authTypePassword": {
+    "message": "用户名和密码",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "API token",
+    "description": "Options screen authentication type option"
   }
 }

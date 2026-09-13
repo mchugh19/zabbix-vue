@@ -202,5 +202,13 @@
   "error": {
     "message": "erro no Plugin",
     "description": "erro popup"
+  },
+  "authTypePassword": {
+    "message": "Utilizador e senha",
+    "description": "Options screen authentication type option"
+  },
+  "authTypeToken": {
+    "message": "token da API",
+    "description": "Options screen authentication type option"
   }
 }
