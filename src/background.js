@@ -5,6 +5,7 @@ import { encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypt
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
+const ALARM_NAME = "default-alarm";
 const DEBUG = false;
 const log = (...args) => DEBUG && console.log(...args);
 
@@ -21,7 +22,7 @@ const SEVERITY = Object.freeze({
 
 browser.runtime.onMessage.addListener(handleMessage);
 const handleAlarm = (alarm) => {
-  if (alarm?.name === 'default-alarm') {
+  if (alarm?.name === ALARM_NAME) {
     initialize();
   }
 };
@@ -29,6 +30,37 @@ const handleAlarm = (alarm) => {
 // Guarantee single registration (safe across MV3 restarts / HMR)
 browser.alarms.onAlarm.removeListener(handleAlarm);
 browser.alarms.onAlarm.addListener(handleAlarm);
+
+const problemsUrl = (serverUrl) => `${serverUrl}/zabbix.php?action=problem.view`;
+
+// MV3 Chrome: notifications are shown via the service worker registration,
+// so clicks arrive as notificationclick events carrying the target URL.
+function handleNotificationClick(event) {
+  event.notification.close();
+  const url = event.notification.data && event.notification.data.url;
+  if (url) {
+    event.waitUntil(clients.openWindow(url)); // eslint-disable-line no-undef
+  }
+}
+
+// Firefox: notifications go through the notifications API. The per-server
+// notification id lets us resolve the click target from settings.
+async function handleFirefoxNotificationClick(notificationId) {
+  const match = /^zabbix-vue-(?:batch-)?(.+)$/.exec(notificationId);
+  if (!match) return;
+  const settings = await getSettings();
+  const server = settings && settings["servers"] &&
+    settings["servers"].find((s) => s.alias === match[1]);
+  if (server && server.url) {
+    await browser.tabs.create({ url: problemsUrl(server.url) });
+  }
+}
+
+if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+  browser.notifications.onClicked.addListener(handleFirefoxNotificationClick);
+} else {
+  self.addEventListener("notificationclick", handleNotificationClick);
+}
 
 
 browser.runtime.onInstalled.addListener( async () => {
@@ -149,11 +181,10 @@ async function migrateAuthType() {
 
 
 async function setAlarmState(interval) {
-  const alarmName = "default-alarm";
-  const alarm = await browser.alarms.get(alarmName);
+  const alarm = await browser.alarms.get(ALARM_NAME);
 
   if (!alarm) {
-    await browser.alarms.create(alarmName, {
+    await browser.alarms.create(ALARM_NAME, {
       delayInMinutes: interval / 60,
       periodInMinutes: interval / 60,
     });
@@ -471,9 +502,9 @@ async function getAllTriggers() {
 
       if (settings["global"]["notify"]) {
         if (triggerDiff.length === 1) {
-          await sendNotify(triggerDiff[0], settings.global.displayName);
+          await sendNotify(triggerDiff[0], serverSettings, settings.global.displayName);
         } else if (triggerDiff.length > 1) {
-          await sendBatchNotify(triggerDiff, server, settings.global.displayName);
+          await sendBatchNotify(triggerDiff, serverSettings, settings.global.displayName);
         }
       }
       if (triggerDiff.length) {
@@ -514,16 +545,17 @@ async function getAllTriggers() {
   await setActiveTriggersTable(completeTriggerResults);
 }
 
-async function sendBatchNotify(messages, serverName, displayName) {
+async function sendBatchNotify(messages, server, displayName) {
   /*
    * Create a single batched notification for multiple triggers
    */
   const count = messages.length;
+  const serverName = server.alias;
   const highestSeverity = Math.max(...messages.map(m => getEffectiveSeverity(m)));
-  
+
   if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
     await browser.notifications.create(
-      "notification-batch",
+      `zabbix-vue-batch-${serverName}`,
       {
         type: "basic",
         title: `${count} new problems on ${serverName}`,
@@ -534,59 +566,85 @@ async function sendBatchNotify(messages, serverName, displayName) {
   } else {
     // MV3 chrome notification
     registration.showNotification( // eslint-disable-line no-undef
-      `${count} new problems on ${serverName}`, 
+      `${count} new problems on ${serverName}`,
       {
         body: `${messages.slice(0, 3).map(m => m.hosts[0][displayName]).join(', ')}${count > 3 ? '...' : ''}`,
         icon: icon("sev_" + highestSeverity),
+        data: { url: problemsUrl(server.url) },
       }
     )
   }
 }
 
-async function sendNotify(message, displayName) {
+async function sendNotify(message, server, displayName) {
   /*
    * Create a browser notification popup
    */
   if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
     await browser.notifications.create(
-      "notification",
+      `zabbix-vue-${server.alias}`,
       {
         type: "basic",
         title: message.hosts[0][displayName],
         message: message.description,
         iconUrl: icon("sev_" + getEffectiveSeverity(message)),
-        
+
       }
     );
   } else {
     // MV3 chrome notification
     registration.showNotification( // eslint-disable-line no-undef
-      message.hosts[0][displayName], 
+      message.hosts[0][displayName],
       {
         body: message.description,
         icon: icon("sev_" + getEffectiveSeverity(message)),
+        data: { url: problemsUrl(server.url) },
       }
     )
   }
 }
 
+// Serializes offscreen document churn: Chrome allows only one offscreen
+// document, so concurrent alerts must not interleave close/create calls.
+let soundChain = Promise.resolve();
+
 function playSounds(settings) {
-  if (settings["global"]["sound"]) {
-    if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
-      // mv2 firefox & older chrome sound support         
-      const myAudio = new Audio(
-        browser.runtime.getURL("sounds/drip.mp3")
-      );
-      myAudio.play();
-    } else {
-      // MV3 chrome sound support
-      browser.offscreen.createDocument({
-        url: browser.runtime.getURL('./sounds/audio.html'),
-        reasons: ['AUDIO_PLAYBACK'],
-        justification: 'notification',
-      });
-    }
+  soundChain = soundChain.then(() => playAlertSound(settings)).catch(log);
+  return soundChain;
+}
+
+async function playAlertSound(settings) {
+  if (!settings["global"]["sound"]) {
+    return;
   }
+  if (__BROWSER__ === "firefox") { // eslint-disable-line no-undef
+    // mv2 firefox & older chrome sound support
+    const myAudio = new Audio(
+      browser.runtime.getURL("sounds/drip.mp3")
+    );
+    myAudio.play();
+    return;
+  }
+  // MV3 chrome sound support. The offscreen document autoplays drip.mp3 on
+  // load and never closes itself, so a stale document must be closed first —
+  // otherwise createDocument throws on every alert after the first.
+  try {
+    if (typeof browser.offscreen.hasDocument === "function") {
+      if (await browser.offscreen.hasDocument()) {
+        await browser.offscreen.closeDocument();
+      }
+    } else {
+      // Chrome <116 has no hasDocument(); closeDocument throws when none open
+      await browser.offscreen.closeDocument();
+    }
+  } catch (_) { // eslint-disable-line no-unused-vars
+    // No document was open — nothing to close
+  }
+  await browser.offscreen.createDocument({
+    url: browser.runtime.getURL("./sounds/audio.html"),
+    reasons: ["AUDIO_PLAYBACK"],
+    justification: "notification",
+  });
 }
 
 async function setBrowserIcon(severity) {
@@ -722,7 +780,10 @@ async function handleMessage(request, sender, sendResponse) {
   switch (request.method) {
     case "reinitialize": {
       log("Background triggered reinialize")
-      // Sent by options to alert to config changes in order to refresh
+      // Sent by options to alert to config changes in order to refresh.
+      // Clear the poll alarm so setAlarmState() recreates it below with the
+      // (possibly changed) interval — alarms otherwise keep their old period.
+      await browser.alarms.clear(ALARM_NAME);
       await initialize();
       break;
     }
@@ -761,6 +822,10 @@ export {
   getAllTriggers,
   sendNotify,
   playSounds,
+  handleNotificationClick,
+  handleFirefoxNotificationClick,
+  problemsUrl,
+  ALARM_NAME,
   setBrowserIcon,
   setActiveTriggersTable,
   handleMessage,

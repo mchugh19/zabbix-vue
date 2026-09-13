@@ -7,6 +7,7 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
   globalThis.__BROWSER__ = 'chrome';
   globalThis.self = { addEventListener: vi.fn() };
   globalThis.registration = { showNotification: vi.fn() };
+  globalThis.clients = { openWindow: vi.fn() };
 
   const _mockZabbixInstance = {
     login: vi.fn().mockResolvedValue(),
@@ -33,6 +34,7 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
       alarms: {
         get: vi.fn(),
         create: vi.fn(),
+        clear: vi.fn(),
         onAlarm: { addListener: vi.fn(), removeListener: vi.fn() },
       },
       runtime: {
@@ -46,9 +48,17 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
         setBadgeText: vi.fn(),
         setIcon: vi.fn(),
       },
-      notifications: { create: vi.fn() },
+      notifications: {
+        create: vi.fn(),
+        onClicked: { addListener: vi.fn() },
+      },
+      tabs: { create: vi.fn() },
       i18n: { getMessage: vi.fn((key) => key) },
-      offscreen: { createDocument: vi.fn() },
+      offscreen: {
+        createDocument: vi.fn(),
+        hasDocument: vi.fn(),
+        closeDocument: vi.fn(),
+      },
     };
 
   globalThis.browser = _mockBrowser;
@@ -98,6 +108,10 @@ import {
   getAllTriggers,
   sendNotify,
   playSounds,
+  handleNotificationClick,
+  handleFirefoxNotificationClick,
+  problemsUrl,
+  ALARM_NAME,
   setBrowserIcon,
   setActiveTriggersTable,
   handleMessage,
@@ -211,6 +225,12 @@ afterEach(() => {
 });
 
 // ── Tests ───────────────────────────────────────────────────────────────────
+
+// Capture the notificationclick listener registered when background.js loaded
+// (beforeEach's clearAllMocks wipes the mock's call history, so grab it here)
+const notificationClickListener = globalThis.self.addEventListener.mock.calls.find(
+  ([event]) => event === 'notificationclick'
+)?.[1];
 
 describe('background.js', () => {
 
@@ -1420,13 +1440,14 @@ describe('background.js', () => {
         hosts: [{ name: 'web-server-01', host: 'web01' }],
       };
 
-      await sendNotify(message, 'name');
+      await sendNotify(message, { alias: 'Prod', url: 'https://zbx.local' }, 'name');
 
       expect(registration.showNotification).toHaveBeenCalledWith(
         'web-server-01',
         expect.objectContaining({
           body: 'Disk usage critical',
           icon: 'images/sev_4.png',
+          data: { url: 'https://zbx.local/zabbix.php?action=problem.view' },
         })
       );
     });
@@ -1438,7 +1459,7 @@ describe('background.js', () => {
         hosts: [{ name: 'test-host', host: 'test' }],
       };
 
-      await sendNotify(message, 'name');
+      await sendNotify(message, { alias: 'Prod', url: 'https://zbx.local' }, 'name');
 
       expect(registration.showNotification).toHaveBeenCalledWith(
         'test-host',
@@ -1453,7 +1474,7 @@ describe('background.js', () => {
         hosts: [{ name: 'Display Name', host: 'hostname' }],
       };
 
-      await sendNotify(message, 'host');
+      await sendNotify(message, { alias: 'Prod', url: 'https://zbx.local' }, 'host');
 
       expect(registration.showNotification).toHaveBeenCalledWith(
         'hostname',
@@ -1469,7 +1490,7 @@ describe('background.js', () => {
         lastEvent: { eventid: '100', acknowledged: '0', severity: '4' },
       };
 
-      await sendNotify(message, 'name');
+      await sendNotify(message, { alias: 'Prod', url: 'https://zbx.local' }, 'name');
 
       expect(registration.showNotification).toHaveBeenCalledWith(
         'web-server-01',
@@ -1483,9 +1504,10 @@ describe('background.js', () => {
   // ── playSounds ────────────────────────────────────────────────────────
 
   describe('playSounds()', () => {
-    it('creates offscreen document for Chrome when sound enabled', () => {
+    it('creates offscreen document for Chrome when sound enabled', async () => {
       const settings = makeSettings({ global: { sound: true } });
-      playSounds(settings);
+      mockBrowser.offscreen.hasDocument.mockResolvedValue(false);
+      await playSounds(settings);
 
       expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1495,11 +1517,42 @@ describe('background.js', () => {
       );
     });
 
-    it('does nothing when sound is disabled', () => {
+    it('does nothing when sound is disabled', async () => {
       const settings = makeSettings({ global: { sound: false } });
-      playSounds(settings);
+      await playSounds(settings);
 
       expect(mockBrowser.offscreen.createDocument).not.toHaveBeenCalled();
+    });
+
+    it('closes a stale offscreen document before creating a new one', async () => {
+      const settings = makeSettings({ global: { sound: true } });
+      mockBrowser.offscreen.hasDocument.mockResolvedValue(true);
+
+      await playSounds(settings);
+
+      expect(mockBrowser.offscreen.closeDocument).toHaveBeenCalled();
+      expect(mockBrowser.offscreen.createDocument).toHaveBeenCalledWith(
+        expect.objectContaining({ reasons: ['AUDIO_PLAYBACK'] })
+      );
+      // close must happen before create
+      const closeOrder = mockBrowser.offscreen.closeDocument.mock.invocationCallOrder[0];
+      const createOrder = mockBrowser.offscreen.createDocument.mock.invocationCallOrder[0];
+      expect(closeOrder).toBeLessThan(createOrder);
+    });
+
+    it('still creates the document when hasDocument is unavailable (Chrome <116)', async () => {
+      const settings = makeSettings({ global: { sound: true } });
+      // Feature-detect fallback: closeDocument throws when no document is open
+      const origHasDocument = mockBrowser.offscreen.hasDocument;
+      mockBrowser.offscreen.hasDocument = undefined;
+      mockBrowser.offscreen.closeDocument.mockRejectedValue(new Error('No offscreen document'));
+      try {
+        await playSounds(settings);
+
+        expect(mockBrowser.offscreen.createDocument).toHaveBeenCalled();
+      } finally {
+        mockBrowser.offscreen.hasDocument = origHasDocument;
+      }
     });
   });
 
@@ -1789,6 +1842,100 @@ describe('background.js', () => {
       expect(savedSettings.servers[0].sortBy).toEqual([
         { key: 'description', order: 'ASC' },
       ]);
+    });
+
+    it('clears the poll alarm on reinitialize so an interval change takes effect', async () => {
+      const settings = makeSettings({ global: { interval: 300 } });
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+      // Simulate the post-clear state: no alarm exists when setAlarmState runs
+      mockBrowser.alarms.get.mockResolvedValue(null);
+      stubZabbixCalls([]);
+
+      await handleMessage({ method: 'reinitialize' }, {}, vi.fn());
+
+      expect(mockBrowser.alarms.clear).toHaveBeenCalledWith(ALARM_NAME);
+      expect(mockBrowser.alarms.create).toHaveBeenCalledWith(ALARM_NAME, {
+        delayInMinutes: 5,
+        periodInMinutes: 5,
+      });
+    });
+  });
+
+  // ── notification click-through ─────────────────────────────────────────
+
+  describe('notification click-through', () => {
+    it('registers a notificationclick listener on the service worker', () => {
+      expect(notificationClickListener).toBe(handleNotificationClick);
+    });
+
+    it('opens the problems page when a Chrome notification is clicked', () => {
+      const event = {
+        notification: {
+          close: vi.fn(),
+          data: { url: 'https://zbx.local/zabbix.php?action=problem.view' },
+        },
+        waitUntil: vi.fn(),
+      };
+
+      handleNotificationClick(event);
+
+      expect(event.notification.close).toHaveBeenCalled();
+      expect(globalThis.clients.openWindow).toHaveBeenCalledWith(
+        'https://zbx.local/zabbix.php?action=problem.view'
+      );
+    });
+
+    it('does nothing when a clicked notification has no target url', () => {
+      const event = {
+        notification: { close: vi.fn(), data: {} },
+        waitUntil: vi.fn(),
+      };
+
+      handleNotificationClick(event);
+
+      expect(globalThis.clients.openWindow).not.toHaveBeenCalled();
+    });
+
+    it('builds the problems page url', () => {
+      expect(problemsUrl('https://zbx.local')).toBe(
+        'https://zbx.local/zabbix.php?action=problem.view'
+      );
+    });
+
+    it('opens the server problems page for a Firefox notification click', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Prod', url: 'https://zbx1.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+      stubSettings(settings);
+
+      await handleFirefoxNotificationClick('zabbix-vue-batch-Prod');
+
+      expect(mockBrowser.tabs.create).toHaveBeenCalledWith({
+        url: 'https://zbx1.local/zabbix.php?action=problem.view',
+      });
+    });
+
+    it('ignores Firefox notification clicks with unknown ids', async () => {
+      stubSettings(makeSettings());
+
+      await handleFirefoxNotificationClick('some-other-notification');
+
+      expect(mockBrowser.tabs.create).not.toHaveBeenCalled();
     });
   });
 
