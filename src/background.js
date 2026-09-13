@@ -1,7 +1,7 @@
 "use strict";
 
 import { Zabbix } from './lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypto.js'
+import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
@@ -67,7 +67,6 @@ browser.runtime.onInstalled.addListener( async () => {
   log(`onInstalled()`);
 
   await migrateOldSettings();
-  await migrateCryptoFormat();
   await migrateAuthType();
   await migrateNotifySoundToServer();
   await initialize();
@@ -75,7 +74,6 @@ browser.runtime.onInstalled.addListener( async () => {
 browser.runtime.onStartup.addListener( async () => {
   log(`onStartup()`);
 
-  await migrateCryptoFormat();
   await migrateAuthType();
   await migrateNotifySoundToServer();
   await initialize();
@@ -109,37 +107,6 @@ async function migrateOldSettings() {
     }
   } else {
     //log("no ZabbixServer keys")
-  }
-}
-
-async function migrateCryptoFormat() {
-  /*
-  * Detect legacy sjcl-encrypted fields (apiToken, pass) and re-encrypt
-  * with Web Crypto API. Runs on startup so users don't need to manually
-  * open settings to trigger the migration.
-  */
-  const settings = await getSettings();
-  if (!settings || !settings.servers) {
-    return;
-  }
-
-  let needsSave = false;
-  for (const server of settings.servers) {
-    if (isLegacyFormat(server.apiToken)) {
-      server.apiToken = await decryptSettings(server.apiToken);
-      needsSave = true;
-    }
-    if (isLegacyFormat(server.pass)) {
-      server.pass = await decryptSettings(server.pass);
-      needsSave = true;
-    }
-  }
-
-  if (needsSave) {
-    log("Migrating crypto format from sjcl to Web Crypto API");
-    const encrypted = await encryptSettingKeys(settings);
-    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(encrypted)});
-    log("Crypto format migration complete");
   }
 }
 
@@ -851,7 +818,6 @@ async function handleMessage(request, sender, sendResponse) {
 export {
   getSettings,
   migrateOldSettings,
-  migrateCryptoFormat,
   migrateAuthType,
   migrateNotifySoundToServer,
   setAlarmState,

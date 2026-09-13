@@ -1,5 +1,3 @@
-import { sjcl } from './sjcl.js';
-
 // --- Key derivation (same deterministic inputs as legacy for compatibility) ---
 const passphrase = navigator.appName + navigator.language + navigator.platform;
 const encoder = new TextEncoder();
@@ -85,21 +83,7 @@ async function decrypt(encryptedData) {
     return new TextDecoder().decode(decrypted);
   }
 
-  // Legacy format (v1): sjcl AES-CCM — fall back for migration
-  if (parsed.cipher === 'aes' && parsed.mode === 'ccm') {
-    return decryptLegacy(encryptedData);
-  }
-
   throw new Error('Unknown encryption format');
-}
-
-// --- Legacy sjcl decryption (kept for migration from v1 → v2) ---
-
-function decryptLegacy(encryptedData) {
-  const pass = navigator.appName + navigator.language + navigator.platform;
-  const salt = sjcl.codec.base64.fromBits(sjcl.hash.sha256.hash(navigator.appName));
-  const decoderRing = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(pass, salt));
-  return sjcl.decrypt(decoderRing, encryptedData);
 }
 
 // --- Base64 helpers ---
@@ -140,19 +124,3 @@ const decryptSettings = async (encryptedData) => {
 };
 
 export { encryptSettingKeys, decryptSettings };
-
-/**
- * Check if an encrypted string is in the legacy sjcl format.
- * Used by migration code to detect settings that need re-encryption.
- */
-export function isLegacyFormat(encryptedData) {
-  if (!encryptedData || encryptedData === '""' || encryptedData === '') {
-    return false;
-  }
-  try {
-    const parsed = JSON.parse(encryptedData);
-    return parsed.cipher === 'aes' && parsed.mode === 'ccm';
-  } catch {
-    return false;
-  }
-}

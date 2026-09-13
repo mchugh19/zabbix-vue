@@ -8,22 +8,8 @@ if (!navigator.appName) {
 }
 
 import { encryptSettingKeys, decryptSettings } from '../crypto.js';
-import { sjcl } from '../sjcl.js';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-/**
- * Generate a legacy sjcl-encrypted string (v1 format) the way the old
- * crypto.js used to produce them.
- */
-function legacyEncrypt(plaintext) {
-  const pass = navigator.appName + navigator.language + navigator.platform;
-  const salt = sjcl.codec.base64.fromBits(
-    sjcl.hash.sha256.hash(navigator.appName)
-  );
-  const decoderRing = sjcl.codec.hex.fromBits(sjcl.misc.pbkdf2(pass, salt));
-  return sjcl.encrypt(decoderRing, plaintext);
-}
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
@@ -115,46 +101,6 @@ describe('crypto.js — Web Crypto API', () => {
       expect(await decryptSettings(encrypted.servers[1].pass)).toBe('pass-B');
       expect(await decryptSettings(encrypted.servers[2].apiToken)).toBe('');
       expect(await decryptSettings(encrypted.servers[2].pass)).toBe('pass-C');
-    });
-  });
-
-  describe('legacy sjcl migration', () => {
-    it('decrypts a legacy sjcl-encrypted value (v1 format)', async () => {
-      const original = 'legacy-password-456';
-      const legacyCiphertext = legacyEncrypt(original);
-
-      // Verify it looks like sjcl format
-      const parsed = JSON.parse(legacyCiphertext);
-      expect(parsed.cipher).toBe('aes');
-      expect(parsed.mode).toBe('ccm');
-      expect(parsed.v).toBe(1);
-
-      // decryptSettings should transparently handle it
-      const decrypted = await decryptSettings(legacyCiphertext);
-      expect(decrypted).toBe(original);
-    });
-
-    it('re-encrypts legacy data in v2 format after roundtrip', async () => {
-      const original = 'migrate-me';
-      const legacyCiphertext = legacyEncrypt(original);
-
-      // Simulate what options.vue does: decrypt old, then re-encrypt
-      const decrypted = await decryptSettings(legacyCiphertext);
-      expect(decrypted).toBe(original);
-
-      const settings = {
-        servers: [{ apiToken: decrypted, pass: decrypted }],
-      };
-      const reEncrypted = await encryptSettingKeys(structuredClone(settings));
-
-      // Now it should be v2 format
-      const parsed = JSON.parse(reEncrypted.servers[0].apiToken);
-      expect(parsed.v).toBe(2);
-      expect(parsed.alg).toBe('AES-GCM');
-
-      // And still decrypts correctly
-      const final = await decryptSettings(reEncrypted.servers[0].apiToken);
-      expect(final).toBe(original);
     });
   });
 
