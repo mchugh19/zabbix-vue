@@ -292,10 +292,10 @@ describe('background.js', () => {
       const oldSettings = { iv: 'some-iv-data', data: 'encrypted-blob' };
       stubSettings(oldSettings);
 
-      // decryptSettings returns a JSON string
-      decryptSettings.mockReturnValue(JSON.stringify({ servers: [] }));
-      // encryptSettingKeys returns the settings object
-      encryptSettingKeys.mockReturnValue({ servers: [] });
+      // decryptSettings returns a JSON string (once: no leak into later tests)
+      decryptSettings.mockReturnValueOnce(JSON.stringify({ servers: [] }));
+      // encryptSettingKeys returns the settings object (once: no leak into later tests)
+      encryptSettingKeys.mockReturnValueOnce({ servers: [] });
 
       await migrateOldSettings();
 
