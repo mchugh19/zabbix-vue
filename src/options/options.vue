@@ -176,16 +176,6 @@
                 type="Number"
                 required
               ></v-text-field>
-              <v-checkbox
-                v-model="zabbixs.global.notify"
-                class="mb-0 pa-0"
-                :label="$i18n('notify')"
-              />
-              <v-checkbox
-                v-model="zabbixs.global.sound"
-                class="mb-0 pa-0"
-                :label="$i18n('sound')"
-              />
               <v-radio-group
                 v-model="zabbixs.global.displayName"
                 :label="$i18n('selectName')"
@@ -247,8 +237,6 @@ const form = ref(null);
 const zabbixs = ref({
   global: {
     interval: 60,
-    notify: true,
-    sound: false,
     displayName: "host",
     formValid: true,
   },

@@ -96,6 +96,7 @@ import {
   migrateOldSettings,
   migrateCryptoFormat,
   migrateAuthType,
+  migrateNotifySoundToServer,
   setAlarmState,
   initialize,
   clearPopupTableError,
@@ -128,9 +129,7 @@ function makeSettings(overrides = {}) {
   return {
     global: {
       interval: 120,
-      notify: true,
       displayName: 'name',
-      sound: false,
       ...overrides.global,
     },
     servers: overrides.servers || [
@@ -145,6 +144,8 @@ function makeSettings(overrides = {}) {
         hide: false,
         maintenance: false,
         minSeverity: 0,
+        notify: true,
+        sound: true,
         sortBy: [{ key: 'priority', order: 'DESC' }],
       },
     ],
@@ -472,6 +473,74 @@ describe('background.js', () => {
       await migrateAuthType();
 
       expect(decryptSettings).not.toHaveBeenCalled();
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── migrateNotifySoundToServer ──────────────────────────────────────────
+
+  describe('migrateNotifySoundToServer()', () => {
+    it('copies global values into servers lacking the keys and removes the global keys', async () => {
+      const settings = makeSettings({
+        global: { interval: 120, notify: false, sound: true, displayName: 'name' },
+        servers: [{ alias: 'Legacy', url: 'https://z.example.com' }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(false);
+      expect(saved.servers[0].sound).toBe(true);
+      expect(saved.global.notify).toBeUndefined();
+      expect(saved.global.sound).toBeUndefined();
+      // unrelated global keys survive
+      expect(saved.global.interval).toBe(120);
+    });
+
+    it('leaves servers with explicit per-server keys untouched', async () => {
+      const settings = makeSettings({
+        global: { interval: 120, notify: false, sound: true },
+        servers: [{ alias: 'Explicit', url: 'https://z.example.com', notify: true, sound: false }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(true);
+      expect(saved.servers[0].sound).toBe(false);
+      expect(saved.global.notify).toBeUndefined();
+      expect(saved.global.sound).toBeUndefined();
+    });
+
+    it('defaults sensibly when the global keys are absent', async () => {
+      const settings = makeSettings({
+        global: { interval: 120 },
+        servers: [{ alias: 'NoGlobal', url: 'https://z.example.com' }],
+      });
+      stubSettings(settings);
+
+      await migrateNotifySoundToServer();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.servers[0].notify).toBe(true);
+      expect(saved.servers[0].sound).toBe(false);
+    });
+
+    it('is a no-op once migrated (idempotent)', async () => {
+      stubSettings(makeSettings());
+
+      await migrateNotifySoundToServer();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateNotifySoundToServer();
+
       expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
     });
   });
@@ -1186,7 +1255,8 @@ describe('background.js', () => {
     });
 
     it('does not send notifications when notify is disabled', async () => {
-      const settings = makeSettings({ global: { notify: false } });
+      const settings = makeSettings();
+      settings.servers[0].notify = false;
 
       mockBrowser.storage.local.get.mockImplementation(async (key) => {
         if (key === ZABBIX_SERVERS_KEY) {
@@ -2074,7 +2144,7 @@ describe('background.js', () => {
     it('uses default 60s interval when global config is missing', async () => {
       // settings.global must be absent so settings["global"]["interval"] throws
       // and the catch block calls setAlarmState(60).
-      // But getAllTriggers() re-reads settings and accesses settings.global.notify,
+      // But getAllTriggers() re-reads settings and accesses settings["global"]["interval"],
       // so we return proper settings there.
       let callCount = 0;
       mockBrowser.storage.local.get.mockImplementation(async (key) => {

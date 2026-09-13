@@ -69,6 +69,7 @@ browser.runtime.onInstalled.addListener( async () => {
   await migrateOldSettings();
   await migrateCryptoFormat();
   await migrateAuthType();
+  await migrateNotifySoundToServer();
   await initialize();
 });
 browser.runtime.onStartup.addListener( async () => {
@@ -76,6 +77,7 @@ browser.runtime.onStartup.addListener( async () => {
 
   await migrateCryptoFormat();
   await migrateAuthType();
+  await migrateNotifySoundToServer();
   await initialize();
 });
 self.addEventListener("activate", (event) => {
@@ -176,6 +178,47 @@ async function migrateAuthType() {
     log("Migrating servers to explicit authType");
     await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
     log("authType migration complete");
+  }
+}
+
+async function migrateNotifySoundToServer() {
+  /*
+  * Move the global notify/sound settings onto each server.
+  * Previously these were global master switches layered on top of per-server
+  * opt-outs; now they live entirely on the server. Copies the global values
+  * into each server that lacks explicit per-server keys, then removes the
+  * global keys. Runs on install/startup; idempotent — once migrated the
+  * global keys are gone and servers already carrying the keys are untouched.
+  */
+  const settings = await getSettings();
+  if (!settings || !settings.servers) {
+    return;
+  }
+
+  const globalSettings = settings.global || {};
+  let needsSave = false;
+  for (const server of settings.servers) {
+    if (server.notify === undefined) {
+      server.notify = globalSettings.notify !== false;
+      needsSave = true;
+    }
+    if (server.sound === undefined) {
+      server.sound = globalSettings.sound === true;
+      needsSave = true;
+    }
+  }
+
+  if (globalSettings.notify !== undefined || globalSettings.sound !== undefined) {
+    delete globalSettings.notify;
+    delete globalSettings.sound;
+    needsSave = true;
+  }
+
+  if (needsSave) {
+    log("Migrating global notify/sound settings to per-server settings");
+    // Only plaintext keys are touched, so save without re-encrypting.
+    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+    log("notify/sound migration complete");
   }
 }
 
@@ -500,7 +543,7 @@ async function getAllTriggers() {
         !oldTriggers.some((old) => trigger.triggerid == old.triggerid)
       );
 
-      if (settings["global"]["notify"] && serverSettings.notify !== false) {
+      if (serverSettings.notify !== false) {
         if (triggerDiff.length === 1) {
           await sendNotify(triggerDiff[0], serverSettings, settings.global.displayName);
         } else if (triggerDiff.length > 1) {
@@ -508,7 +551,7 @@ async function getAllTriggers() {
         }
       }
       if (triggerDiff.length) {
-        playSounds(settings, serverSettings);
+        playSounds(serverSettings);
       }
     }
 
@@ -810,6 +853,7 @@ export {
   migrateOldSettings,
   migrateCryptoFormat,
   migrateAuthType,
+  migrateNotifySoundToServer,
   setAlarmState,
   initialize,
   clearPopupTableError,
