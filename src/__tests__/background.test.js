@@ -1355,6 +1355,67 @@ describe('background.js', () => {
       expect(setCall[0].triggerResults).not.toHaveProperty('Server Fail');
       expect(setCall[0].triggerResults).toHaveProperty('Server OK');
     });
+
+    it('undecryptable stored credential becomes a per-server error, not a poll abort', async () => {
+      const settings = makeSettings({
+        servers: [
+          {
+            alias: 'Server Bad Crypto', url: 'https://zbx1.local',
+            user: 'a', pass: 'undecryptable-blob', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+          {
+            alias: 'Server OK', url: 'https://zbx2.local',
+            user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
+            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            sortBy: [],
+          },
+        ],
+      });
+
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      // decryptSettings throws on the bad blob, passes everything else through
+      decryptSettings.mockImplementation(async (s) => {
+        if (s === 'undecryptable-blob') throw new Error('Unknown encryption format');
+        return s;
+      });
+      stubZabbixCalls([
+        {
+          triggerid: '7', description: 'Disk full', priority: '4',
+          lastchange: '1717100000',
+          hosts: [{ host: 'db1', name: 'DB 1', hostid: '40', maintenance_status: '0' }],
+          lastEvent: { eventid: '400', acknowledged: '0' },
+        },
+      ]);
+
+      // Must not throw — the bad server becomes a per-server error
+      await getAllTriggers();
+
+      // Badge counts only the healthy server's trigger
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+
+      // popupTable carries the decrypt error for the bad server...
+      const sessionCall = mockBrowser.storage.session.set.mock.calls.find(
+        (c) => c[0].popupTable !== undefined
+      );
+      expect(sessionCall).toBeDefined();
+      const badServer = sessionCall[0].popupTable.servers.find(
+        (s) => s.server === 'Server Bad Crypto'
+      );
+      expect(badServer.error).toBe(true);
+      expect(badServer.errorMessage).toContain('Error decrypting stored credentials');
+      expect(badServer.errorDetails).toContain('Unknown encryption format');
+    });
   });
 
   // ── sendNotify ────────────────────────────────────────────────────────

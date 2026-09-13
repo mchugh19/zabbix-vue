@@ -404,26 +404,39 @@ async function getAllTriggers() {
     const server = serverSettings.alias;
     serversChecked.push(server);
 
-    // Decrypt credentials and build config object for getServerTriggers
-    const serverConfig = {
-      url: serverSettings.url,
-      user: serverSettings.user,
-      pass: await decryptSettings(serverSettings.pass),
-      apiToken: await decryptSettings(serverSettings.apiToken),
-      version: serverSettings.version,
-      hostGroups: serverSettings.hostGroups,
-      hide: serverSettings.hide,
-      maintenance: serverSettings.maintenance,
-      minSeverity: serverSettings.minSeverity,
-      showSuppressed: serverSettings.showSuppressed,
-    };
+    // Decrypt credentials and build config object for getServerTriggers.
+    // A stored credential in an unrecognized format must surface as a
+    // per-server error, not abort the whole poll.
+    let newTriggerData;
+    try {
+      const serverConfig = {
+        url: serverSettings.url,
+        user: serverSettings.user,
+        pass: await decryptSettings(serverSettings.pass),
+        apiToken: await decryptSettings(serverSettings.apiToken),
+        version: serverSettings.version,
+        hostGroups: serverSettings.hostGroups,
+        hide: serverSettings.hide,
+        maintenance: serverSettings.maintenance,
+        minSeverity: serverSettings.minSeverity,
+        showSuppressed: serverSettings.showSuppressed,
+      };
 
-    const newTriggerData = await getServerTriggers(serverConfig);
+      newTriggerData = await getServerTriggers(serverConfig);
 
-    // Zero out credentials from config immediately after use
-    serverConfig.pass = null;
-    serverConfig.apiToken = null;
-    serverConfig.user = null;
+      // Zero out credentials from config immediately after use
+      serverConfig.pass = null;
+      serverConfig.apiToken = null;
+      serverConfig.user = null;
+    } catch (err) {
+      const errorMessage = "Error decrypting stored credentials for: " + server;
+      log(errorMessage + " — " + err.message);
+      newTriggerData = {
+        "error": true,
+        "errorMessage": errorMessage,
+        "errorDetails": err.message,
+      };
+    }
 
     if ("error" in newTriggerData) {
       serverError = true;
