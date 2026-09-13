@@ -63,6 +63,7 @@ const { mockBrowser, mockZabbixInstance, MockZabbix } = vi.hoisted(() => {
 
 // Mock crypto.js
 vi.mock('../lib/crypto.js', () => ({
+  encrypt: vi.fn(async (s) => `v2(${s})`),
   encryptSettingKeys: vi.fn((s) => s),
   decryptSettings: vi.fn((s) => s),
   isLegacyFormat: vi.fn((data) => {
@@ -104,7 +105,7 @@ import {
 } from '../background.js';
 
 import { Zabbix } from '../lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings, isLegacyFormat } from '../lib/crypto.js';
+import { encrypt, encryptSettingKeys, decryptSettings, isLegacyFormat } from '../lib/crypto.js';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -341,8 +342,9 @@ describe('background.js', () => {
 
       // decryptSettings called for both apiToken and pass
       expect(decryptSettings).toHaveBeenCalledTimes(2);
-      // encryptSettingKeys called to re-encrypt the whole settings
-      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
+      // encrypt called per legacy field (not encryptSettingKeys over everything)
+      expect(encrypt).toHaveBeenCalledTimes(2);
+      expect(encryptSettingKeys).not.toHaveBeenCalled();
       // saved back to storage
       expect(mockBrowser.storage.local.set).toHaveBeenCalled();
     });
@@ -359,6 +361,7 @@ describe('background.js', () => {
       await migrateCryptoFormat();
 
       expect(decryptSettings).not.toHaveBeenCalled();
+      expect(encrypt).not.toHaveBeenCalled();
       expect(encryptSettingKeys).not.toHaveBeenCalled();
       expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
     });
@@ -372,7 +375,7 @@ describe('background.js', () => {
       expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
     });
 
-    it('handles mixed servers — only migrates legacy ones', async () => {
+    it('handles mixed servers — only migrates legacy fields, leaves v2 untouched', async () => {
       const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
       const v2Encrypted = JSON.stringify({ v: 2, alg: 'AES-GCM', iv: 'abc', ct: 'xyz' });
       stubSettings({
@@ -385,10 +388,48 @@ describe('background.js', () => {
 
       await migrateCryptoFormat();
 
-      // Only the legacy pass field triggers decryption
+      // Only the legacy pass field triggers decryption + encryption
       expect(decryptSettings).toHaveBeenCalledTimes(1);
-      expect(encryptSettingKeys).toHaveBeenCalledTimes(1);
+      expect(encrypt).toHaveBeenCalledTimes(1);
+      expect(encryptSettingKeys).not.toHaveBeenCalled();
       expect(mockBrowser.storage.local.set).toHaveBeenCalled();
+
+      // Bug 2 regression: v2 fields must be byte-identical, not double-encrypted
+      const savedArg = mockBrowser.storage.local.set.mock.calls[0][0];
+      const saved = JSON.parse(savedArg[ZABBIX_SERVERS_KEY]);
+      const newServer = saved.servers.find((s) => s.alias === 'New');
+      expect(newServer.apiToken).toBe(v2Encrypted);
+      expect(newServer.pass).toBe(v2Encrypted);
+    });
+
+    it('does not throw when a legacy field fails to decrypt; migrates the rest', async () => {
+      const legacyEncrypted = JSON.stringify({ iv: 'abc', cipher: 'aes', mode: 'ccm', ct: 'xyz' });
+      const corruptLegacy = JSON.stringify({ iv: 'bad', cipher: 'aes', mode: 'ccm', ct: 'bad' });
+      stubSettings({
+        global: { interval: 60 },
+        servers: [
+          { alias: 'Good', apiToken: '', pass: legacyEncrypted },
+          { alias: 'Bad', apiToken: '', pass: corruptLegacy },
+        ],
+      });
+
+      // Simulate decryptSettings throwing for the corrupt blob only
+      decryptSettings.mockImplementation(async (s) => {
+        if (s === corruptLegacy) throw new Error('ccm: tag doesn\'t match');
+        return `plain(${s})`;
+      });
+
+      // Bug 1 regression: must not throw, or initialize() would never run
+      await expect(migrateCryptoFormat()).resolves.toBeUndefined();
+
+      // Good server's field was still migrated
+      expect(encrypt).toHaveBeenCalledTimes(1);
+      expect(mockBrowser.storage.local.set).toHaveBeenCalled();
+      const savedArg = mockBrowser.storage.local.set.mock.calls[0][0];
+      const saved = JSON.parse(savedArg[ZABBIX_SERVERS_KEY]);
+      const badServer = saved.servers.find((s) => s.alias === 'Bad');
+      // Corrupt legacy value left in place, not wiped
+      expect(badServer.pass).toBe(corruptLegacy);
     });
   });
 

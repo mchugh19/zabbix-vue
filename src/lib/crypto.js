@@ -139,7 +139,7 @@ const decryptSettings = async (encryptedData) => {
   return decrypt(encryptedData);
 };
 
-export { encryptSettingKeys, decryptSettings };
+export { encrypt, encryptSettingKeys, decryptSettings };
 
 /**
  * Check if an encrypted string is in the legacy sjcl format.

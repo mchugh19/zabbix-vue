@@ -1,7 +1,7 @@
 "use strict";
 
 import { Zabbix } from './lib/zabbix-promise.js';
-import { encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypto.js'
+import { encrypt, encryptSettingKeys, decryptSettings, isLegacyFormat } from './lib/crypto.js'
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
@@ -34,7 +34,11 @@ browser.alarms.onAlarm.addListener(handleAlarm);
 browser.runtime.onInstalled.addListener( async () => {
   log(`onInstalled()`);
 
-  await migrateOldSettings();
+  try {
+    await migrateOldSettings();
+  } catch (e) {
+    log(`migrateOldSettings failed: ${e.message}. Continuing to initialize.`);
+  }
   await migrateCryptoFormat();
   await initialize();
 });
@@ -81,6 +85,12 @@ async function migrateCryptoFormat() {
   * Detect legacy sjcl-encrypted fields (apiToken, pass) and re-encrypt
   * with Web Crypto API. Runs on startup so users don't need to manually
   * open settings to trigger the migration.
+  *
+  * Never throws: each field is migrated independently, so one undecryptable
+  * credential cannot block migration of the others or prevent the extension
+  * from initializing. Only fields that were actually decrypted from the
+  * legacy format are re-encrypted; already-migrated (v2) fields are left
+  * untouched to avoid double-encryption.
   */
   const settings = await getSettings();
   if (!settings || !settings.servers) {
@@ -89,20 +99,22 @@ async function migrateCryptoFormat() {
 
   let needsSave = false;
   for (const server of settings.servers) {
-    if (isLegacyFormat(server.apiToken)) {
-      server.apiToken = await decryptSettings(server.apiToken);
-      needsSave = true;
-    }
-    if (isLegacyFormat(server.pass)) {
-      server.pass = await decryptSettings(server.pass);
-      needsSave = true;
+    for (const field of ['apiToken', 'pass']) {
+      if (isLegacyFormat(server[field])) {
+        try {
+          const plaintext = await decryptSettings(server[field]);
+          server[field] = await encrypt(plaintext);
+          needsSave = true;
+        } catch (e) {
+          log(`Crypto migration failed for server "${server.alias}" field "${field}": ${e.message}. Leaving legacy value in place.`);
+        }
+      }
     }
   }
 
   if (needsSave) {
     log("Migrating crypto format from sjcl to Web Crypto API");
-    const encrypted = await encryptSettingKeys(settings);
-    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(encrypted)});
+    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
     log("Crypto format migration complete");
   }
 }
