@@ -199,6 +199,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { browser } from '../lib/browser-shim.js'; // Chrome: aliases globalThis.chrome (no-op in Firefox)
 import { mdiMagnify, mdiFlagVariant, mdiWrench, mdiEyeOff } from '@mdi/js';
 import { versionPart, ackEventUrl } from '../lib/zabbix-urls.js';
 

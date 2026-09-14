@@ -1,5 +1,6 @@
 "use strict";
 
+import { browser } from './lib/browser-shim.js'; // Chrome: aliases globalThis.chrome (no-op in Firefox)
 import { Zabbix } from './lib/zabbix-promise.js';
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
 
