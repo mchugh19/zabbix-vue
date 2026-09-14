@@ -196,6 +196,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
+import { browser } from '../lib/browser-shim.js'; // Chrome: aliases globalThis.chrome (no-op in Firefox)
 import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js';
 import { Zabbix } from '../lib/zabbix-promise.js';
 import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
