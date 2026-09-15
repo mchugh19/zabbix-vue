@@ -129,8 +129,7 @@ export class Zabbix {
 
   async _postJsonRpc(url, data, skipAuth) {
     const myHeaders = new Headers();
-    if (this.auth && !skipAuth) {
-      // API after 7.0 removes auth object
+    if (this.auth && !skipAuth && this._supportsBearerAuth()) {
       myHeaders.append("Authorization", "Bearer " + this.auth);
     }
     myHeaders.append("Content-Type", "application/json-rpc");
@@ -152,5 +151,22 @@ export class Zabbix {
     } catch {
       throw new Error("Failed to communicate with server");
     }
+  }
+
+  /**
+   * Whether the server supports Bearer token auth (Zabbix 5.4+).
+   * Older servers neither support the Authorization header nor allow it
+   * in CORS preflight (api_jsonrpc.php: Access-Control-Allow-Headers:
+   * Content-Type only), so sending it breaks all authenticated API calls.
+   * Unknown version defaults to true (required for 7.x where the body
+   * "auth" parameter was removed).
+   * @return {boolean}
+   */
+  _supportsBearerAuth() {
+    if (!this.version) {
+      return true;
+    }
+    const [major, minor] = this.version.split(".").map(Number);
+    return major > 5 || (major === 5 && minor >= 4);
   }
 }

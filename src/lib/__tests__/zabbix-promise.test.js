@@ -262,6 +262,70 @@ describe('Zabbix class', () => {
       const headers = sentHeaders(fetchSpy, 0);
       expect(headers.get('content-type')).toBe('application/json-rpc');
     });
+
+    it('does not send Bearer header on Zabbix 5.0 (pre-5.4 CORS rejects Authorization)', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk([])]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.41');
+      z.auth = 'session-token';
+      await z.call('trigger.get', {});
+
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.has('authorization')).toBe(false);
+    });
+
+    it('does not send Bearer header on Zabbix 5.2', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk([])]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.2.0');
+      z.auth = 'session-token';
+      await z.call('trigger.get', {});
+
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.has('authorization')).toBe(false);
+    });
+
+    it('sends Bearer header on Zabbix 5.4 (Bearer support added)', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk([])]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.4.0');
+      z.auth = 'session-token';
+      await z.call('trigger.get', {});
+
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.get('authorization')).toBe('Bearer session-token');
+    });
+
+    it('sends Bearer header when version is unknown (required for 7.x)', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk([])]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, null);
+      z.auth = 'session-token';
+      await z.call('trigger.get', {});
+
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.get('authorization')).toBe('Bearer session-token');
+    });
+
+    it('pre-5.4 full behavior: omits Bearer header but sends auth in body (5.0)', async () => {
+      const fetchSpy = mockFetch([jsonRpcOk([])]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.41');
+      z.auth = 'session-token';
+      await z.call('trigger.get', {});
+
+      // Header must be omitted (5.0 CORS preflight rejects Authorization)
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.has('authorization')).toBe(false);
+      // Body auth is the sole auth mechanism on pre-5.4
+      const body = sentBody(fetchSpy, 0);
+      expect(body).toHaveProperty('auth', 'session-token');
+    });
   });
 
   // ── call() — JSON-RPC request structure ───────────────────────────────────
