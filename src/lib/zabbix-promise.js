@@ -168,8 +168,20 @@ export var Zabbix = (function () {
 
         var _this3 = this;
         if (_this3.auth && !skipAuth) {
-          // API after 7.0 removes auth object
-          myHeaders.append("Authorization", "Bearer " + _this3.auth)
+          // Bearer auth requires Zabbix 5.4+. Older servers neither support it
+          // nor allow the Authorization header in CORS preflight
+          // (api_jsonrpc.php sends Access-Control-Allow-Headers: Content-Type
+          // only), so the browser blocks the request and fetch() throws.
+          // Unknown version defaults to sending the header (required for 7.x
+          // where the body "auth" parameter was removed).
+          var sendBearer = true;
+          if (_this3.version) {
+            var ver = _this3.version.split(".").map(Number);
+            sendBearer = ver[0] > 5 || (ver[0] === 5 && ver[1] >= 4);
+          }
+          if (sendBearer) {
+            myHeaders.append("Authorization", "Bearer " + _this3.auth);
+          }
         }
         myHeaders.append("Content-Type", "application/json-rpc");
 
