@@ -83,7 +83,7 @@ export var Zabbix = (function () {
             method: "apiinfo.version",
             params: [],
             id: "1"
-          }));
+          }), true);  // skip auth header: 7.4 rejects apiinfo.version with Authorization
           if (versionResponse.result) {
             console.log("ZABLIB detected server version: " + versionResponse.result);
             this.version = versionResponse.result;
@@ -163,11 +163,11 @@ export var Zabbix = (function () {
     },
     {
       key: "_postJsonRpc",
-      value: async function _postJsonRpc(url, data) {
+      value: async function _postJsonRpc(url, data, skipAuth) {
         const myHeaders = new Headers();
 
         var _this3 = this;
-        if (_this3.auth) {
+        if (_this3.auth && !skipAuth) {
           // API after 7.0 removes auth object
           myHeaders.append("Authorization", "Bearer " + _this3.auth)
         }

@@ -313,6 +313,11 @@ describe('Zabbix class', () => {
       expect(versionBody.params).toEqual([]);
       expect(versionBody).not.toHaveProperty('auth');
 
+      // Verify: apiinfo.version call does NOT include Authorization header
+      // (Zabbix 7.4 rejects apiinfo.version with an auth header)
+      const versionHeaders = sentHeaders(fetchSpy, 1);
+      expect(versionHeaders.has('Authorization')).toBe(false);
+
       // Verify: third call (retry) does NOT include auth in body
       const retryBody = sentBody(fetchSpy, 2);
       expect(retryBody.method).toBe('trigger.get');
