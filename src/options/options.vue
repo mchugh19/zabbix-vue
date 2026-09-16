@@ -2,7 +2,7 @@
   <v-app>
     <v-main>
       <v-form ref="form" v-model="zabbixs.global.formValid">
-        <v-container fluid grid-list-md class="ma-0 pa-0 px-2">
+        <v-container fluid grid-list-md class="pa-0 px-2 mx-auto" style="max-width: 800px;">
           <v-container fluid class="ma-0 pa-0">
             <v-card-title class="ma-0 pa-0">
               <p>{{ $i18n("serverSettings") }}</p>
