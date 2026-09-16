@@ -17,9 +17,7 @@
       "lastEvent": {
         "eventid": "51234",
         "acknowledged": "0",
-        "severity": "4",
-        "objectid": "13123",
-        "ns": "123456789"
+        "severity": "4"
       }
     }
   ],

@@ -13,14 +13,7 @@
           "name": "Web Server 01",
           "maintenance_status": "0"
         }
-      ],
-      "lastEvent": {
-        "eventid": "51234",
-        "acknowledged": "0",
-        "severity": "4",
-        "objectid": "13123",
-        "ns": "123456789"
-      }
+      ]
     }
   ],
   "id": 1
