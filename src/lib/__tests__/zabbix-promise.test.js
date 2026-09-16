@@ -109,43 +109,75 @@ describe('Zabbix class', () => {
       expect(fetchSpy).not.toHaveBeenCalled();
     });
 
-    it('sends "user" param for Zabbix < 6.0', async () => {
+    it('tries "username" first (5.4+), uses it when server accepts', async () => {
       const fetchSpy = mockFetch([jsonRpcOk('session-token-abc')]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.4.0');
-      await z.login();
-
-      const body = sentBody(fetchSpy, 0);
-      expect(body.method).toBe('user.login');
-      expect(body.params).toHaveProperty('user', 'admin');
-      expect(body.params).not.toHaveProperty('username');
-      expect(z.auth).toBe('session-token-abc');
-    });
-
-    it('sends "username" param for Zabbix >= 6.0', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk('session-token-def')]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '6.4.0');
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
       await z.login();
 
       const body = sentBody(fetchSpy, 0);
       expect(body.method).toBe('user.login');
       expect(body.params).toHaveProperty('username', 'admin');
       expect(body.params).not.toHaveProperty('user');
-      expect(z.auth).toBe('session-token-def');
+      expect(z.auth).toBe('session-token-abc');
+      // Capability cached
+      expect(z._loginParam).toBe('username');
     });
 
-    it('sends "username" param for Zabbix 7.x', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk('session-7x')]);
+    it('falls back to "user" when server rejects "username" (pre-5.4)', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "username"'),
+        jsonRpcOk('session-token-old'),
+      ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.4.0');
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.0');
       await z.login();
 
-      const body = sentBody(fetchSpy, 0);
-      expect(body.params).toHaveProperty('username', 'admin');
+      // First attempt used username
+      expect(sentBody(fetchSpy, 0).params).toHaveProperty('username', 'admin');
+      // Fallback used user
+      expect(sentBody(fetchSpy, 1).params).toHaveProperty('user', 'admin');
+      expect(sentBody(fetchSpy, 1).params).not.toHaveProperty('username');
+      expect(z.auth).toBe('session-token-old');
+      // Capability cached
+      expect(z._loginParam).toBe('user');
+    });
+
+    it('caches login param: does not re-probe on second login', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "username"'),
+        jsonRpcOk('session-1'),
+        jsonRpcOk('session-2'),
+      ]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.0');
+      await z.login();
+      await z.login(); // second login should use cached 'user' param
+
+      // Calls: username(fail), user(ok), user(ok) — no second username probe
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(sentBody(fetchSpy, 2).params).toHaveProperty('user', 'admin');
+    });
+
+    it('re-probes login param when version changes', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcOk('session-new'), // username works (7.0)
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "username"'),
+        jsonRpcOk('session-old'), // fallback to user (5.0)
+      ]);
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
+      await z.login();
+      expect(z._loginParam).toBe('username');
+
+      // Simulate server downgrade
+      z.version = '5.0.0';
+      await z.login();
+      expect(z._loginParam).toBe('user');
     });
 
     it('throws when login returns an error (no auth token)', async () => {
@@ -175,8 +207,8 @@ describe('Zabbix class', () => {
 
   // ── call() — auth body parameter ──────────────────────────────────────────
 
-  describe('call() auth in request body', () => {
-    it('includes "auth" in body for version < 7.0', async () => {
+  describe('call() auth transport (capability-detected)', () => {
+    it('defaults to "auth" in body (works on all versions)', async () => {
       const fetchSpy = mockFetch([jsonRpcOk([])]);
       vi.stubGlobal('fetch', fetchSpy);
 
@@ -186,70 +218,75 @@ describe('Zabbix class', () => {
 
       const body = sentBody(fetchSpy, 0);
       expect(body).toHaveProperty('auth', 'my-session-token');
+      const headers = sentHeaders(fetchSpy, 0);
+      expect(headers.get('authorization')).toBeFalsy();
     });
 
-    it('does NOT include "auth" in body for version >= 7.0', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
+    it('switches to Bearer header when server rejects body "auth" (7.2+)', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "auth"'),
+        jsonRpcOk([{ triggerid: '30' }]),
+      ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.2.0');
       z.auth = 'my-session-token';
-      await z.call('trigger.get', { limit: 10 });
+      const result = await z.call('trigger.get', {});
 
-      const body = sentBody(fetchSpy, 0);
-      expect(body).not.toHaveProperty('auth');
+      expect(sentBody(fetchSpy, 0)).toHaveProperty('auth', 'my-session-token');
+      expect(sentBody(fetchSpy, 1)).not.toHaveProperty('auth');
+      expect(sentHeaders(fetchSpy, 1).get('authorization')).toBe('Bearer my-session-token');
+      expect(result.result).toEqual([{ triggerid: '30' }]);
+      expect(z._authMode).toBe('header');
     });
 
-    it('does NOT include "auth" in body for version 7.4', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
+    it('caches auth mode: uses Bearer header directly on subsequent calls', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "auth"'),
+        jsonRpcOk([]),
+        jsonRpcOk([]),
+      ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.4.10');
-      z.auth = 'token-xyz';
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.2.0');
+      z.auth = 'tok';
+      await z.call('trigger.get', {});
       await z.call('host.get', {});
 
-      const body = sentBody(fetchSpy, 0);
-      expect(body).not.toHaveProperty('auth');
+      expect(fetchSpy).toHaveBeenCalledTimes(3);
+      expect(sentBody(fetchSpy, 2)).not.toHaveProperty('auth');
+      expect(sentHeaders(fetchSpy, 2).get('authorization')).toBe('Bearer tok');
     });
 
-    it('includes "auth" for version 5.0', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
+    it('re-probes auth mode when version changes', async () => {
+      const fetchSpy = mockFetch([
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "auth"'),
+        jsonRpcOk([]),
+        jsonRpcOk([]),
+      ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.0');
-      z.auth = 'old-token';
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.2.0');
+      z.auth = 'tok';
       await z.call('trigger.get', {});
+      expect(z._authMode).toBe('header');
 
-      const body = sentBody(fetchSpy, 0);
-      expect(body).toHaveProperty('auth', 'old-token');
-    });
-  });
-
-  // ── call() — Authorization header ─────────────────────────────────────────
-
-  describe('call() Authorization header', () => {
-    it('sends Bearer header when auth is set', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
-      z.auth = 'bearer-token-abc';
+      z.version = '6.0.0';
       await z.call('trigger.get', {});
-
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.get('authorization')).toBe('Bearer bearer-token-abc');
+      expect(sentBody(fetchSpy, 2)).toHaveProperty('auth', 'tok');
     });
 
-    it('does not send Bearer header when auth is not set', async () => {
+    it('does not send auth when not logged in', async () => {
       const fetchSpy = mockFetch([jsonRpcOk('login-result')]);
       vi.stubGlobal('fetch', fetchSpy);
 
       const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
-      // auth is undefined — e.g. during login call
       await z.call('user.login', { username: 'admin', password: 'secret' });
 
       const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.has('authorization')).toBe(false);
+      expect(headers.get('authorization')).toBeFalsy();
+      const body = sentBody(fetchSpy, 0);
+      expect(body.auth).toBeFalsy();
     });
 
     it('always sends Content-Type application/json-rpc', async () => {
@@ -257,78 +294,13 @@ describe('Zabbix class', () => {
       vi.stubGlobal('fetch', fetchSpy);
 
       const z = new Zabbix('http://z/api', 'admin', 'secret', null, '7.0.0');
-      await z.call('apiinfo.version', []);
+      z.auth = 'tok';
+      await z.call('trigger.get', {});
 
       const headers = sentHeaders(fetchSpy, 0);
       expect(headers.get('content-type')).toBe('application/json-rpc');
     });
-
-    it('does not send Bearer header on Zabbix 5.0 (pre-5.4 CORS rejects Authorization)', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.41');
-      z.auth = 'session-token';
-      await z.call('trigger.get', {});
-
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.has('authorization')).toBe(false);
-    });
-
-    it('does not send Bearer header on Zabbix 5.2', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.2.0');
-      z.auth = 'session-token';
-      await z.call('trigger.get', {});
-
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.has('authorization')).toBe(false);
-    });
-
-    it('sends Bearer header on Zabbix 5.4 (Bearer support added)', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.4.0');
-      z.auth = 'session-token';
-      await z.call('trigger.get', {});
-
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.get('authorization')).toBe('Bearer session-token');
-    });
-
-    it('sends Bearer header when version is unknown (required for 7.x)', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, null);
-      z.auth = 'session-token';
-      await z.call('trigger.get', {});
-
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.get('authorization')).toBe('Bearer session-token');
-    });
-
-    it('pre-5.4 full behavior: omits Bearer header but sends auth in body (5.0)', async () => {
-      const fetchSpy = mockFetch([jsonRpcOk([])]);
-      vi.stubGlobal('fetch', fetchSpy);
-
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '5.0.41');
-      z.auth = 'session-token';
-      await z.call('trigger.get', {});
-
-      // Header must be omitted (5.0 CORS preflight rejects Authorization)
-      const headers = sentHeaders(fetchSpy, 0);
-      expect(headers.has('authorization')).toBe(false);
-      // Body auth is the sole auth mechanism on pre-5.4
-      const body = sentBody(fetchSpy, 0);
-      expect(body).toHaveProperty('auth', 'session-token');
-    });
   });
-
-  // ── call() — JSON-RPC request structure ───────────────────────────────────
 
   describe('call() request structure', () => {
     it('sends correct JSON-RPC envelope', async () => {
@@ -361,15 +333,15 @@ describe('Zabbix class', () => {
   // the retry-on-auth-failure logic. Change describe.skip → describe once
   // that PR is merged into master.
 
-  describe('call() auth retry on version mismatch', () => {
-    it('retries without auth after detecting upgraded server version', async () => {
+  describe('call() version change detection', () => {
+    it('detects version change when auth keeps failing', async () => {
       const onVersionChange = vi.fn();
 
-      // Call 1: trigger.get → auth rejected
-      // Call 2: apiinfo.version → returns "7.4.0"
-      // Call 3: trigger.get retry → success
+      // Call 1: trigger.get with body auth → session invalid (server upgraded?)
+      // Call 2: apiinfo.version → returns "7.4.0" (different from 6.4.0)
+      // Call 3: retry trigger.get with fresh capabilities → success
       const fetchSpy = mockFetch([
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
+        jsonRpcError(-32602, 'Invalid params', 'Not authorised.'),
         jsonRpcOk('7.4.0'),
         jsonRpcOk([{ triggerid: '1', description: 'Test' }]),
       ]);
@@ -379,41 +351,14 @@ describe('Zabbix class', () => {
       z.auth = 'session-token';
       const result = await z.call('trigger.get', { limit: 10 });
 
-      // Verify: 3 fetch calls total
       expect(fetchSpy).toHaveBeenCalledTimes(3);
-
-      // Verify: first call included auth in body (version was 6.4)
-      const firstBody = sentBody(fetchSpy, 0);
-      expect(firstBody).toHaveProperty('auth', 'session-token');
-
-      // Verify: second call was apiinfo.version
-      const versionBody = sentBody(fetchSpy, 1);
-      expect(versionBody.method).toBe('apiinfo.version');
-      expect(versionBody.params).toEqual([]);
-      expect(versionBody).not.toHaveProperty('auth');
-
-      // Verify: apiinfo.version call does NOT include Authorization header
-      // (Zabbix 7.4 rejects apiinfo.version with an auth header)
-      const versionHeaders = sentHeaders(fetchSpy, 1);
-      expect(versionHeaders.has('Authorization')).toBe(false);
-
-      // Verify: third call (retry) does NOT include auth in body
-      const retryBody = sentBody(fetchSpy, 2);
-      expect(retryBody.method).toBe('trigger.get');
-      expect(retryBody).not.toHaveProperty('auth');
-
-      // Verify: onVersionChange fired with new version
-      expect(onVersionChange).toHaveBeenCalledTimes(1);
+      expect(sentBody(fetchSpy, 1).method).toBe('apiinfo.version');
       expect(onVersionChange).toHaveBeenCalledWith('7.4.0');
-
-      // Verify: version updated on instance
       expect(z.version).toBe('7.4.0');
-
-      // Verify: returned the successful response
       expect(result).toEqual(jsonRpcOk([{ triggerid: '1', description: 'Test' }]));
     });
 
-    it('does not retry when error is unrelated to auth parameter', async () => {
+    it('does not retry when error is unrelated to auth', async () => {
       const fetchSpy = mockFetch([
         jsonRpcError(-32602, 'Invalid params.', 'No permissions to referred object.'),
       ]);
@@ -423,15 +368,14 @@ describe('Zabbix class', () => {
       z.auth = 'session-token';
       const result = await z.call('trigger.get', {});
 
-      // Should only make 1 call — no retry
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       expect(result.error.data).toBe('No permissions to referred object.');
     });
 
-    it('does not retry when version detection fails', async () => {
+    it('does not retry when version is unchanged', async () => {
       const fetchSpy = mockFetch([
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
-        jsonRpcError(-32600, 'Invalid request.', 'Some other failure'),
+        jsonRpcError(-32602, 'Invalid params', 'Not authorised.'),
+        jsonRpcOk('6.4.0'), // same version — no change
       ]);
       vi.stubGlobal('fetch', fetchSpy);
 
@@ -439,56 +383,45 @@ describe('Zabbix class', () => {
       z.auth = 'session-token';
       const result = await z.call('trigger.get', {});
 
-      // 2 calls: original + apiinfo.version attempt — no third retry
+      // 2 calls: original + version check — no retry since version unchanged
       expect(fetchSpy).toHaveBeenCalledTimes(2);
-      // Returns the original error since version detection failed
-      expect(result.error.data).toContain('unexpected parameter "auth"');
+      expect(result.error.data).toBe('Not authorised.');
     });
 
-    it('does not infinite-loop — retries at most once', async () => {
-      // Even if the retry also returns the auth error, it should NOT
-      // trigger another apiinfo.version + retry cycle, because after
-      // the first detection the version is updated and the code path
-      // that adds "auth" to the body is no longer entered.
-      const onVersionChange = vi.fn();
+    it('does not infinite-loop on persistent auth failure', async () => {
       const fetchSpy = mockFetch([
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
+        jsonRpcError(-32602, 'Invalid params', 'Not authorised.'),
         jsonRpcOk('7.4.0'),
-        // Even if the retry somehow still fails with the same error,
-        // call() returns it directly — no further retry
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
+        jsonRpcError(-32602, 'Invalid params', 'Not authorised.'),
+        jsonRpcOk('7.4.0'),
       ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '6.4.0', onVersionChange);
-      z.auth = 'tok';
+      const z = new Zabbix('http://z/api', 'admin', 'secret', null, '6.4.0');
+      z.auth = 'bad-token';
       const result = await z.call('trigger.get', {});
 
-      // Exactly 3 calls: original + version check + one retry — no further
-      expect(fetchSpy).toHaveBeenCalledTimes(3);
-      expect(result.error.data).toContain('unexpected parameter "auth"');
+      // Should not loop forever — version already updated, second failure returns
+      expect(fetchSpy).toHaveBeenCalledTimes(4);
+      expect(result.error.data).toBe('Not authorised.');
     });
 
     it('works without onVersionChange callback', async () => {
       const fetchSpy = mockFetch([
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
+        jsonRpcError(-32602, 'Invalid params', 'Not authorised.'),
         jsonRpcOk('7.4.0'),
         jsonRpcOk([]),
       ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      // No onVersionChange callback
       const z = new Zabbix('http://z/api', 'admin', 'secret', null, '6.4.0');
-      z.auth = 'tok';
+      z.auth = 'session-token';
       const result = await z.call('trigger.get', {});
 
-      expect(fetchSpy).toHaveBeenCalledTimes(3);
       expect(z.version).toBe('7.4.0');
-      expect(result).toEqual(jsonRpcOk([]));
+      expect(result.result).toEqual([]);
     });
   });
-
-  // ── logout() ──────────────────────────────────────────────────────────────
 
   describe('logout()', () => {
     it('skips API call when using apiToken', async () => {
@@ -581,11 +514,12 @@ describe('Zabbix class', () => {
       expect(z.auth).toBeUndefined();
     });
 
-    it('login → call → logout with version 7.4', async () => {
+    it('login → call → logout with version 7.4 (probes transport)', async () => {
       const fetchSpy = mockFetch([
-        jsonRpcOk('session-xyz'),
-        jsonRpcOk([{ triggerid: '20', description: 'Disk' }]),
-        jsonRpcOk(true),
+        jsonRpcOk('session-xyz'),                          // login (username probe succeeds)
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "auth"'), // body auth rejected
+        jsonRpcOk([{ triggerid: '20', description: 'Disk' }]), // retry with Bearer header
+        jsonRpcOk(true),                                   // logout
       ]);
       vi.stubGlobal('fetch', fetchSpy);
 
@@ -596,39 +530,36 @@ describe('Zabbix class', () => {
       const result = await z.call('trigger.get', { limit: 5 });
       expect(result.result).toHaveLength(1);
 
-      // For 7.4, auth should NOT be in the body
-      const triggerBody = sentBody(fetchSpy, 1);
-      expect(triggerBody).not.toHaveProperty('auth');
-
-      // But Bearer header should be set
-      const headers = sentHeaders(fetchSpy, 1);
-      expect(headers.get('authorization')).toBe('Bearer session-xyz');
+      // First attempt: body auth (rejected by 7.2+)
+      expect(sentBody(fetchSpy, 1)).toHaveProperty('auth', 'session-xyz');
+      // Retry: Bearer header, no body auth
+      expect(sentBody(fetchSpy, 2)).not.toHaveProperty('auth');
+      expect(sentHeaders(fetchSpy, 2).get('authorization')).toBe('Bearer session-xyz');
+      // Capability cached
+      expect(z._authMode).toBe('header');
 
       await z.logout();
       expect(z.auth).toBeUndefined();
     });
 
-    // Requires PR #91 (fix/auth-version-auto-detect) — change it.skip → it once merged
-    it('login → call with stale version → auto-heal → logout', async () => {
-      const onVersionChange = vi.fn();
+    it('login → call with stale version → transport probe → logout', async () => {
       const fetchSpy = mockFetch([
-        jsonRpcOk('session-heal'),        // login (user.login succeeds because auth is undefined during login)
+        jsonRpcOk('session-heal'),        // login
         // trigger.get with auth in body → rejected by 7.4 server
-        jsonRpcError(-32602, 'Invalid request.', 'Invalid parameter "/": unexpected parameter "auth".'),
-        jsonRpcOk('7.4.0'),               // apiinfo.version auto-detect
-        jsonRpcOk([{ triggerid: '30' }]),  // trigger.get retry without auth in body
+        jsonRpcError(-32602, 'Invalid params', 'unexpected parameter "auth"'),
+        jsonRpcOk([{ triggerid: '30' }]),  // retry with Bearer header succeeds
         jsonRpcOk(true),                   // logout
       ]);
       vi.stubGlobal('fetch', fetchSpy);
 
-      // User has version set to 6.4 but server is actually 7.4
-      const z = new Zabbix('http://z/api', 'admin', 'pass', null, '6.4.0', onVersionChange);
+      // User has version set to 6.4 but server is actually 7.4.
+      // Capability probing handles it without version detection.
+      const z = new Zabbix('http://z/api', 'admin', 'pass', null, '6.4.0');
       await z.login();
 
       const result = await z.call('trigger.get', {});
       expect(result.result).toEqual([{ triggerid: '30' }]);
-      expect(z.version).toBe('7.4.0');
-      expect(onVersionChange).toHaveBeenCalledWith('7.4.0');
+      expect(z._authMode).toBe('header');
 
       await z.logout();
       expect(z.auth).toBeUndefined();
