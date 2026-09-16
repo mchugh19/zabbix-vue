@@ -4,8 +4,9 @@
  * Native ES2015+ class (previously Babel-transpiled ES5 output).
  * Behavior is unchanged: promise-based JSON-RPC with capability-based
  * auth handling. Server capabilities (auth transport, login parameter
- * name) are probed once, cached, and re-probed when the server version
- * changes — no version-string parsing for behavior decisions.
+ * name) are probed on first use, cached, and re-probed when a cached
+ * capability stops working — no version-string parsing for behavior
+ * decisions. The version string is informational only.
  */
 export class Zabbix {
   /**
@@ -14,10 +15,9 @@ export class Zabbix {
    * @param {string} user - Zabbix API username
    * @param {string} password - Zabbix API password
    * @param {string} apiToken - Zabbix API token (skips login/logout when set)
-   * @param {string} version - server version e.g. "7.0.19" (used for cache
-   *   invalidation; behavior is capability-detected, not version-gated)
+   * @param {string} version - server version e.g. "7.0.19" (informational only)
    * @param {function} onVersionChange - called with the detected version
-   *   when the client self-heals a stale configured version
+   *   when the client detects the server version changed
    */
   constructor(url, user, password, apiToken, version, onVersionChange) {
     this.url = url;
@@ -27,29 +27,19 @@ export class Zabbix {
     this.version = version;
     this.onVersionChange = onVersionChange;
     this.auth = undefined;
-    // Capability cache: probed once, invalidated when version changes.
+    // Capability cache: probed on first use, re-probed on failure.
+    // Never keyed by version — a stale cache entry fails fast and
+    // the probe recovers, whatever the server actually runs.
     this._authMode = null; // 'header' | 'body'
     this._loginParam = null; // 'username' | 'user'
-    this._probedVersion = null;
-  }
-
-  /**
-   * Invalidate cached capabilities if the server version changed.
-   * Called at the start of login() and call().
-   */
-  _invalidateCapabilitiesIfVersionChanged() {
-    if (this._probedVersion !== this.version) {
-      this._authMode = null;
-      this._loginParam = null;
-      this._probedVersion = this.version;
-    }
   }
 
   /**
    * Perform user.login with capability-detected parameter name.
    * Tries 'username' (5.4+) first, falls back to 'user' (pre-5.4) when
-   * the server rejects the parameter. The working param name is cached
-   * per version so subsequent logins go straight to it.
+   * the server rejects the parameter. The working param name is cached;
+   * if a cached param later fails, the cache is cleared and both are
+   * retried.
    * @return {Promise<object>} login reply
    */
   async _loginWithProbedParam() {
@@ -67,16 +57,29 @@ export class Zabbix {
     // Use cached param if we have it, else try modern first
     const firstTry = this._loginParam || "username";
     let reply = await tryLogin(firstTry);
-    let param = firstTry;
-    if (!this._loginParam && reply.error && reply.error.data &&
-        reply.error.data.includes('unexpected parameter "username"')) {
-      param = "user";
-      reply = await tryLogin(param);
+    if (reply.error && this._isUnexpectedParam(reply.error, firstTry)) {
+      // Cached param stopped working (or first probe failed) — clear cache
+      // and try the other one.
+      this._loginParam = null;
+      const fallback = firstTry === "username" ? "user" : "username";
+      reply = await tryLogin(fallback);
+      if (!reply.error) {
+        this._loginParam = fallback;
+      }
+      return reply;
     }
     if (!reply.error) {
-      this._loginParam = param;
+      this._loginParam = firstTry;
     }
     return reply;
+  }
+
+  /**
+   * Whether a JSON-RPC error is an "unexpected parameter" rejection for
+   * the given parameter name.
+   */
+  _isUnexpectedParam(error, paramName) {
+    return error.data && error.data.includes(`unexpected parameter "${paramName}"`);
   }
 
   /**
@@ -86,46 +89,50 @@ export class Zabbix {
    * @return {Promise<object>} parsed JSON-RPC response
    */
   async call(method, params) {
-    this._invalidateCapabilitiesIfVersionChanged();
     const request = {
       jsonrpc: "2.0",
       id: "1",
       method: method,
       params: params,
     };
-    // Auth transport is capability-detected, not version-gated.
-    // Default to body 'auth' (works on all versions); the probe upgrades
-    // to Bearer header when the server accepts it.
+    // Auth transport is capability-detected. Default to body 'auth'
+    // (works on all versions); switch to Bearer header when the server
+    // rejects it, and back again if the header stops working.
     const authMode = this._authMode || "body";
     if (authMode === "body") {
       request["auth"] = this.auth;
     }
     let response = await this._postJsonRpc(this.url, JSON.stringify(request), authMode === "header");
 
-    // Self-heal: if the server rejects the body 'auth' parameter (7.2+
-    // removed it), probe for Bearer header support and retry.
-    if (
-      response.error &&
-      response.error.data &&
-      response.error.data.includes('unexpected parameter "auth"')
-    ) {
-      console.log("ZABLIB auth parameter rejected — probing Bearer header support");
-      this._authMode = "header";
-      this._probedVersion = this.version;
-      delete request["auth"];
-      response = await this._postJsonRpc(this.url, JSON.stringify(request), true);
-      // If header also fails, fall back to body (server may be older than
-      // we thought) and re-probe version.
-      if (response.error) {
-        console.log("ZABLIB Bearer header rejected — falling back to body auth");
-        this._authMode = "body";
+    if (response.error) {
+      const data = response.error.data || "";
+      if (authMode === "body" && data.includes('unexpected parameter "auth"')) {
+        // 7.2+ removed the body 'auth' parameter — try Bearer header.
+        console.log("ZABLIB body auth rejected — trying Bearer header");
+        this._authMode = "header";
+        delete request["auth"];
+        response = await this._postJsonRpc(this.url, JSON.stringify(request), true);
+        if (response.error) {
+          // Header didn't work either — clear cache, caller sees the error.
+          console.log("ZABLIB Bearer header also rejected — clearing auth mode cache");
+          this._authMode = null;
+        }
+      } else if (authMode === "header" && this._isAuthError(response.error)) {
+        // Cached header mode stopped working (e.g. server downgraded) —
+        // clear cache and retry with body auth.
+        console.log("ZABLIB Bearer header failed — retrying with body auth");
+        this._authMode = null;
         request["auth"] = this.auth;
         response = await this._postJsonRpc(this.url, JSON.stringify(request), false);
+        if (!response.error) {
+          this._authMode = "body";
+        }
       }
     }
 
-    // Detect version change via apiinfo.version when auth keeps failing:
-    // the server may have been upgraded/downgraded.
+    // Keep the informational version string in sync: if auth keeps
+    // failing, the server may have been replaced/upgraded. This does not
+    // affect behavior — capabilities are failure-driven, not version-gated.
     if (response.error && this._isAuthError(response.error)) {
       const newVersion = await this._detectVersion();
       if (newVersion && newVersion !== this.version) {
@@ -134,9 +141,6 @@ export class Zabbix {
         if (this.onVersionChange) {
           this.onVersionChange(this.version);
         }
-        this._invalidateCapabilitiesIfVersionChanged();
-        // Retry with fresh capabilities
-        return this.call(method, params);
       }
     }
 
@@ -184,7 +188,6 @@ export class Zabbix {
       return;
     }
 
-    this._invalidateCapabilitiesIfVersionChanged();
     this.auth = undefined;
     // Login parameter name is capability-detected, not version-gated.
     // Tries 'username' (5.4+) first, falls back to 'user' (pre-5.4).
