@@ -189,6 +189,25 @@
         <v-btn block :disabled="!zabbixs.global.formValid" @click="save_data">
           {{ $i18n("save") }}
         </v-btn>
+        <v-row class="mt-2" dense>
+          <v-col cols="6">
+            <v-btn block variant="outlined" @click="exportSettings">
+              {{ $i18n("exportSettings") }}
+            </v-btn>
+          </v-col>
+          <v-col cols="6">
+            <v-btn block variant="outlined" @click="$refs.importFile.click()">
+              {{ $i18n("importSettings") }}
+            </v-btn>
+          </v-col>
+        </v-row>
+        <input
+          ref="importFile"
+          type="file"
+          accept=".json,application/json"
+          style="display: none"
+          @change="importSettings"
+        />
       </v-form>
     </v-main>
   </v-app>
@@ -354,6 +373,80 @@ function addServer() {
 
 function removeServer(index) {
   zabbixs.value.servers.splice(index, 1);
+}
+
+// Fields stripped from export/import: secrets (never leave the device) and
+// transient UI state (not part of the settings).
+const SECRET_FIELDS = ["pass", "apiToken"];
+const TRANSIENT_FIELDS = ["errorMsg", "visiblePass", "hostGroupsList", "version"];
+
+function sanitizeServerForExport(server) {
+  const copy = structuredClone(server);
+  for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS]) delete copy[f];
+  return copy;
+}
+
+async function exportSettings() {
+  // Read the stored (encrypted) settings so export reflects what's saved,
+  // not just what's currently in the form.
+  const stored = await browser.storage.local.get("ZabbixServers");
+  let servers = [];
+  if (stored["ZabbixServers"]) {
+    try {
+      const parsed = JSON.parse(stored["ZabbixServers"]);
+      if (Array.isArray(parsed.servers)) servers = parsed.servers;
+    } catch (_) { /* fall through with empty list */ }
+  }
+  const exportData = {
+    app: "zabbix-vue",
+    version: 1,
+    servers: servers.map(sanitizeServerForExport),
+  };
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "zabbix-vue-settings.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function importSettings(event) {
+  const file = event.target.files?.[0];
+  event.target.value = ""; // allow re-selecting the same file
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if (!data || typeof data !== "object" || !Array.isArray(data.servers)) {
+      throw new Error("invalid settings file");
+    }
+    // Never import secrets: strip them so existing credentials are preserved.
+    const imported = data.servers.map((s) => {
+      const copy = structuredClone(s);
+      for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS]) delete copy[f];
+      return { ...structuredClone(defaultServer), ...copy, pass: "", apiToken: "" };
+    });
+    // Merge by URL into the form (not saved yet): update non-credential fields
+    // on existing servers, append genuinely new ones. User reviews and clicks
+    // Save, entering credentials for new servers manually.
+    const existing = zabbixs.value.servers;
+    for (const imp of imported) {
+      if (!imp.url) continue;
+      const idx = existing.findIndex((s) => s.url === imp.url);
+      if (idx >= 0) {
+        const keepCreds = { pass: existing[idx].pass, apiToken: existing[idx].apiToken };
+        existing[idx] = { ...imp, ...keepCreds };
+      } else {
+        existing.push(imp);
+      }
+    }
+    // Trigger validation/UI refresh for the merged servers
+    for (let i = 0; i < existing.length; i++) {
+      if (existing[i].url) serverAPI(existing[i].url, i);
+    }
+  } catch (e) {
+    console.log("Settings import failed: " + e.message);
+  }
 }
 
 async function save_data() {
