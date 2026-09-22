@@ -8,7 +8,9 @@
     "prebuild": "node scripts/render-svgs.mjs",
     "build": "vite build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:dist": "node scripts/dist-smoke-test.mjs",
+    "test:dist:firefox": "TARGET=firefox npm run build && node scripts/dist-smoke-test.mjs"
   },
   "dependencies": {
     "vue": "^3.3"
