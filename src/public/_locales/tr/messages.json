@@ -1,4 +1,8 @@
 {
+  "appName": {
+    "message": "Zabbix Vue",
+    "description": "Extension name"
+  },
   "notClassified": {
     "message": "Sınıflandırılmamış",
     "description": "Zabbix severity"
