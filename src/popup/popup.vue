@@ -24,7 +24,11 @@
             class="flex-grow-0 flex-shrink-0"
             cols="3"
           >
-            <h2>{{ serverObj.server }}</h2>
+            <h2
+              class="server-name-link"
+              :title="$i18n('openDashboard')"
+              @click="openDashboard(serverIndex)"
+            >{{ serverObj.server }}</h2>
           </v-col>
           <v-col
             class="flex-grow-1 flex-shrink-0"
@@ -324,6 +328,13 @@ function hostDetails(url, version, hostid) {
   window.open(url + "/hostinventories.php?hostid=" + hostid, "_blank");
 }
 
+function openDashboard(serverIndex) {
+  const url = triggerTableData.value.servers[serverIndex].url;
+  if (url) {
+    window.open(url, "_blank");
+  }
+}
+
 function latestData(url, version, hostid) {
   if (versionPart(version, 0) >= 7) {
     window.open(
@@ -505,5 +516,12 @@ td.expanded-cell {
     padding-left: 10px;
     padding-right: 10px;
     padding-bottom: 3px;
+}
+/* Server name opens the Zabbix dashboard in a new tab */
+.server-name-link {
+    cursor: pointer;
+}
+.server-name-link:hover {
+    text-decoration: underline;
 }
 </style>
