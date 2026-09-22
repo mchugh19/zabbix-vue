@@ -179,6 +179,10 @@
     "message": "Check server configuration in extension options",
     "description": "Configuration error message"
   },
+  "openDashboard": {
+    "message": "Open Zabbix dashboard",
+    "description": "Tooltip for clickable server name in popup"
+  },
   "headerSystem": {
     "message": "System",
     "description": "Popup headers"
