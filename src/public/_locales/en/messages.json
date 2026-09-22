@@ -147,6 +147,14 @@
     "message": "Save",
     "description": "Options screen button"
   },
+  "exportSettings": {
+    "message": "Export settings",
+    "description": "Options screen button: download settings as JSON (no secrets)"
+  },
+  "importSettings": {
+    "message": "Import settings",
+    "description": "Options screen button: restore settings from JSON file"
+  },
   "addServer": {
     "message": "ADD SERVER",
     "description": "Options screen button"

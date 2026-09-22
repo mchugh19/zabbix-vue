@@ -2,8 +2,11 @@
  * Zabbix API client.
  *
  * Native ES2015+ class (previously Babel-transpiled ES5 output).
- * Behavior is unchanged: promise-based JSON-RPC with version-aware
- * auth handling and stale-version self-healing.
+ * Behavior is unchanged: promise-based JSON-RPC with capability-based
+ * auth handling. Server capabilities (auth transport, login parameter
+ * name) are probed on first use, cached, and re-probed when a cached
+ * capability stops working — no version-string parsing for behavior
+ * decisions. The version string is informational only.
  */
 export class Zabbix {
   /**
@@ -12,9 +15,9 @@ export class Zabbix {
    * @param {string} user - Zabbix API username
    * @param {string} password - Zabbix API password
    * @param {string} apiToken - Zabbix API token (skips login/logout when set)
-   * @param {string} version - server version e.g. "7.0.19"
+   * @param {string} version - server version e.g. "7.0.19" (informational only)
    * @param {function} onVersionChange - called with the detected version
-   *   when the client self-heals a stale configured version
+   *   when the client detects the server version changed
    */
   constructor(url, user, password, apiToken, version, onVersionChange) {
     this.url = url;
@@ -24,6 +27,59 @@ export class Zabbix {
     this.version = version;
     this.onVersionChange = onVersionChange;
     this.auth = undefined;
+    // Capability cache: probed on first use, re-probed on failure.
+    // Never keyed by version — a stale cache entry fails fast and
+    // the probe recovers, whatever the server actually runs.
+    this._authMode = null; // 'header' | 'body'
+    this._loginParam = null; // 'username' | 'user'
+  }
+
+  /**
+   * Perform user.login with capability-detected parameter name.
+   * Tries 'username' (5.4+) first, falls back to 'user' (pre-5.4) when
+   * the server rejects the parameter. The working param name is cached;
+   * if a cached param later fails, the cache is cleared and both are
+   * retried.
+   * @return {Promise<object>} login reply
+   */
+  async _loginWithProbedParam() {
+    const tryLogin = (paramName) =>
+      this._postJsonRpc(
+        this.url,
+        JSON.stringify({
+          jsonrpc: "2.0",
+          method: "user.login",
+          params: { [paramName]: this.user, password: this.password },
+          id: "1",
+        }),
+        false // do not send auth header: user.login is public
+      );
+    // Use cached param if we have it, else try modern first
+    const firstTry = this._loginParam || "username";
+    let reply = await tryLogin(firstTry);
+    if (reply.error && this._isUnexpectedParam(reply.error, firstTry)) {
+      // Cached param stopped working (or first probe failed) — clear cache
+      // and try the other one.
+      this._loginParam = null;
+      const fallback = firstTry === "username" ? "user" : "username";
+      reply = await tryLogin(fallback);
+      if (!reply.error) {
+        this._loginParam = fallback;
+      }
+      return reply;
+    }
+    if (!reply.error) {
+      this._loginParam = firstTry;
+    }
+    return reply;
+  }
+
+  /**
+   * Whether a JSON-RPC error is an "unexpected parameter" rejection for
+   * the given parameter name.
+   */
+  _isUnexpectedParam(error, paramName) {
+    return error.data && error.data.includes(`unexpected parameter "${paramName}"`);
   }
 
   /**
@@ -39,22 +95,72 @@ export class Zabbix {
       method: method,
       params: params,
     };
-    if (this.version) {
-      const [major] = this.version.split(".").map(Number);
-      if (major < 7) {
+    // Auth transport is capability-detected. Default to body 'auth'
+    // (works on all versions); switch to Bearer header when the server
+    // rejects it, and back again if the header stops working.
+    const authMode = this._authMode || "body";
+    if (authMode === "body") {
+      request["auth"] = this.auth;
+    }
+    let response = await this._postJsonRpc(this.url, JSON.stringify(request), authMode === "header");
+
+    if (response.error) {
+      const data = response.error.data || "";
+      if (authMode === "body" && data.includes('unexpected parameter "auth"')) {
+        // 7.2+ removed the body 'auth' parameter — try Bearer header.
+        console.log("ZABLIB body auth rejected — trying Bearer header");
+        this._authMode = "header";
+        delete request["auth"];
+        response = await this._postJsonRpc(this.url, JSON.stringify(request), true);
+        if (response.error) {
+          // Header didn't work either — clear cache, caller sees the error.
+          console.log("ZABLIB Bearer header also rejected — clearing auth mode cache");
+          this._authMode = null;
+        }
+      } else if (authMode === "header" && this._isAuthError(response.error)) {
+        // Cached header mode stopped working (e.g. server downgraded) —
+        // clear cache and retry with body auth.
+        console.log("ZABLIB Bearer header failed — retrying with body auth");
+        this._authMode = null;
         request["auth"] = this.auth;
+        response = await this._postJsonRpc(this.url, JSON.stringify(request), false);
+        if (!response.error) {
+          this._authMode = "body";
+        }
       }
     }
-    let response = await this._postJsonRpc(this.url, JSON.stringify(request));
 
-    // Self-heal when server was upgraded but extension version config is stale.
-    // Zabbix 7.2+ removed the "auth" body parameter and rejects it outright.
-    if (
-      response.error &&
-      response.error.data &&
-      response.error.data.includes('unexpected parameter "auth"')
-    ) {
-      console.log("ZABLIB auth parameter rejected — auto-detecting server version");
+    // Keep the informational version string in sync: if auth keeps
+    // failing, the server may have been replaced/upgraded. This does not
+    // affect behavior — capabilities are failure-driven, not version-gated.
+    if (response.error && this._isAuthError(response.error)) {
+      const newVersion = await this._detectVersion();
+      if (newVersion && newVersion !== this.version) {
+        console.log("ZABLIB server version changed: " + this.version + " -> " + newVersion);
+        this.version = newVersion;
+        if (this.onVersionChange) {
+          this.onVersionChange(this.version);
+        }
+      }
+    }
+
+    return response;
+  }
+
+  /**
+   * Whether a JSON-RPC error looks like an authentication failure.
+   */
+  _isAuthError(error) {
+    const msg = (error.data || error.message || "").toLowerCase();
+    return msg.includes("not authorised") || msg.includes("not authorized") || msg.includes("session terminated");
+  }
+
+  /**
+   * Query the server version via the public apiinfo.version method.
+   * @return {Promise<string|null>} version string or null on failure
+   */
+  async _detectVersion() {
+    try {
       const versionResponse = await this._postJsonRpc(
         this.url,
         JSON.stringify({
@@ -63,21 +169,12 @@ export class Zabbix {
           params: [],
           id: "1",
         }),
-        true // skip auth header: 7.4 rejects apiinfo.version with Authorization
+        false // do not send auth header: apiinfo.version is public
       );
-      if (versionResponse.result) {
-        console.log("ZABLIB detected server version: " + versionResponse.result);
-        this.version = versionResponse.result;
-        if (this.onVersionChange) {
-          this.onVersionChange(this.version);
-        }
-        // Retry without auth in body
-        delete request["auth"];
-        response = await this._postJsonRpc(this.url, JSON.stringify(request));
-      }
+      return versionResponse.result || null;
+    } catch {
+      return null;
     }
-
-    return response;
   }
 
   /**
@@ -91,18 +188,10 @@ export class Zabbix {
       return;
     }
 
-    const params = {
-      password: this.password,
-    };
     this.auth = undefined;
-    const [major] = this.version.split(".").map(Number);
-    // API pre 6.0 needs user, 6.0+ username
-    if (major < 6) {
-      params["user"] = this.user;
-    } else {
-      params["username"] = this.user;
-    }
-    const reply = await this.call("user.login", params);
+    // Login parameter name is capability-detected, not version-gated.
+    // Tries 'username' (5.4+) first, falls back to 'user' (pre-5.4).
+    const reply = await this._loginWithProbedParam();
     this.auth = reply.result;
     if (this.auth === undefined) {
       throw new Error(JSON.stringify(reply.error));
@@ -127,9 +216,9 @@ export class Zabbix {
     return reply;
   }
 
-  async _postJsonRpc(url, data, skipAuth) {
+  async _postJsonRpc(url, data, useBearerHeader) {
     const myHeaders = new Headers();
-    if (this.auth && !skipAuth && this._supportsBearerAuth()) {
+    if (this.auth && useBearerHeader) {
       myHeaders.append("Authorization", "Bearer " + this.auth);
     }
     myHeaders.append("Content-Type", "application/json-rpc");
@@ -153,20 +242,4 @@ export class Zabbix {
     }
   }
 
-  /**
-   * Whether the server supports Bearer token auth (Zabbix 5.4+).
-   * Older servers neither support the Authorization header nor allow it
-   * in CORS preflight (api_jsonrpc.php: Access-Control-Allow-Headers:
-   * Content-Type only), so sending it breaks all authenticated API calls.
-   * Unknown version defaults to true (required for 7.x where the body
-   * "auth" parameter was removed).
-   * @return {boolean}
-   */
-  _supportsBearerAuth() {
-    if (!this.version) {
-      return true;
-    }
-    const [major, minor] = this.version.split(".").map(Number);
-    return major > 5 || (major === 5 && minor >= 4);
-  }
 }
