@@ -1,0 +1,20 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "triggerid": "13123",
+      "description": "High CPU load on Web Server 01",
+      "priority": "4",
+      "lastchange": "1726400000",
+      "hosts": [
+        {
+          "hostid": "10105",
+          "host": "web-server-01",
+          "name": "Web Server 01",
+          "maintenance_status": "0"
+        }
+      ]
+    }
+  ],
+  "id": 1
+}

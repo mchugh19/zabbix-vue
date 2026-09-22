@@ -9,6 +9,7 @@
     "build": "vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "generate:fixtures": "node scripts/generate-api-fixtures.mjs",
     "test:dist": "node scripts/dist-smoke-test.mjs",
     "test:dist:firefox": "TARGET=firefox npm run build && node scripts/dist-smoke-test.mjs"
   },

@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "groupid": "4",
+      "name": "Linux servers"
+    }
+  ],
+  "id": 1
+}
