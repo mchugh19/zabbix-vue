@@ -3,6 +3,7 @@
 import { browser } from './lib/browser-shim.js'; // Chrome: aliases globalThis.chrome (no-op in Firefox)
 import { Zabbix } from './lib/zabbix-promise.js';
 import { encryptSettingKeys, decryptSettings } from './lib/crypto.js'
+import { initI18n, refreshI18n, t as i18n } from './lib/i18n.js';
 
 const icon = (name) => `images/${name}.png`
 const ZABBIX_SERVERS_KEY = "ZabbixServers";
@@ -691,6 +692,9 @@ async function setActiveTriggersTable(triggerResults) {
    * Generate object for display in popup window
    */
 
+  // Honor the user's language preference for the table headers
+  await initI18n();
+
   //log('getActiveTriggersTable activated. Current triggerResults: ' + JSON.stringify(triggerResults))
   if (!triggerResults) {
     const stored = await browser.storage.local.get('triggerResults');
@@ -709,18 +713,18 @@ async function setActiveTriggersTable(triggerResults) {
 
   let topSeverity = SEVERITY.NONE;
   const popupHeaders = [
-    { title: browser.i18n.getMessage("headerSystem"),
+    { title: i18n("headerSystem"),
       sortable: true,
       value: "system" },
     {
-      title: browser.i18n.getMessage("headerDescription"),
+      title: i18n("headerDescription"),
       sortable: true,
       value: "description",
     },
-    { title: browser.i18n.getMessage("headerPriority"),
+    { title: i18n("headerPriority"),
       sortable: true,
       value: "priority" },
-    { title: browser.i18n.getMessage("headerAge"),
+    { title: i18n("headerAge"),
       sortable: true,
       value: "age" },
   ];
@@ -808,6 +812,9 @@ async function handleMessage(request, sender, sendResponse) {
       // Clear the poll alarm so setAlarmState() recreates it below with the
       // (possibly changed) interval — alarms otherwise keep their old period.
       await browser.alarms.clear(ALARM_NAME);
+      // Language preference may have changed: drop cached catalogs so the
+      // next poll renders headers in the newly selected locale.
+      await refreshI18n();
       await initialize();
       break;
     }

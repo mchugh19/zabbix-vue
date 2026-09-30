@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import options from "./options.vue";
-import i18n from "vue-plugin-webextension-i18n";
+import { initI18n, t } from '../lib/i18n.js';
 import "vuetify/styles";
 import { createVuetify } from 'vuetify';
 import {
@@ -47,12 +47,17 @@ const vuetify = createVuetify({
   },
 });
 
+// Load the user's language preference before rendering so every $i18n()
+// call in the component resolves against the selected locale.
+await initI18n();
+
 // Create Vue application
 const app = createApp(options);
 
-// Use Vuetify and i18n plugins
+// Use Vuetify; $i18n is our runtime lookup (honors the language preference),
+// replacing the vue-plugin-webextension-i18n binding to chrome.i18n.
 app.use(vuetify);
-app.use(i18n);
+app.config.globalProperties.$i18n = t;
 
 // Mount the app
 app.mount('body');

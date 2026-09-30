@@ -183,6 +183,13 @@
                 <v-radio :label="$i18n('displayHost')" value="host" />
                 <v-radio :label="$i18n('displayName')" value="name" />
               </v-radio-group>
+              <v-select
+                v-model="zabbixs.global.language"
+                :label="$i18n('language')"
+                :items="languageItems"
+                item-title="title"
+                item-value="value"
+              />
             </v-card>
           </v-container>
         </v-container>
@@ -219,8 +226,7 @@ import { browser } from '../lib/browser-shim.js'; // Chrome: aliases globalThis.
 import { mdiClose, mdiEye, mdiEyeOff, mdiReload } from '@mdi/js';
 import { Zabbix } from '../lib/zabbix-promise.js';
 import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
-
-const i18n = browser.i18n.getMessage;
+import { t as i18n, AVAILABLE_LOCALES, DEFAULT_LANGUAGE, normalizeLanguagePreference } from '../lib/i18n.js';
 
 const severitySelector = [
   { name: i18n("notClassified"), priority: 0 },
@@ -258,6 +264,7 @@ const zabbixs = ref({
   global: {
     interval: 60,
     displayName: "host",
+    language: DEFAULT_LANGUAGE,
     formValid: true,
   },
   servers: [
@@ -276,6 +283,11 @@ const authTypeItems = [
   { value: "guest", title: i18n("authTypeGuest") },
 ];
 
+const languageItems = [
+  { value: DEFAULT_LANGUAGE, title: i18n("languageDefault") },
+  ...AVAILABLE_LOCALES.map((l) => ({ value: l.code, title: l.name })),
+];
+
 let debounceTimeout = null;
 
 // Lifecycle
@@ -284,6 +296,9 @@ onMounted(async () => {
   if (Object.keys(zabbix_data).length > 0) {
     zabbix_data = zabbix_data["ZabbixServers"];
     zabbix_data = JSON.parse(zabbix_data);
+    zabbix_data.global = zabbix_data.global || {};
+    // Stored settings predate the language option, or hold a removed locale
+    zabbix_data.global.language = normalizeLanguagePreference(zabbix_data.global.language);
     for (let serverIndex in zabbix_data["servers"]) {
       zabbix_data.servers[serverIndex].apiToken = await decryptSettings(zabbix_data.servers[serverIndex].apiToken);
       zabbix_data.servers[serverIndex].pass = await decryptSettings(zabbix_data.servers[serverIndex].pass);

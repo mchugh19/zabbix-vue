@@ -167,6 +167,14 @@
     "message": "Valid URL is required",
     "description": "Options screen validation message"
   },
+  "language": {
+    "message": "Language",
+    "description": "Label for the UI language dropdown in options"
+  },
+  "languageDefault": {
+    "message": "Browser default",
+    "description": "Dropdown option: follow the browser UI language"
+  },
   "lessSeconds": {
     "message": "Don't check more frequently than every 10 seconds",
     "description": "Options screen validation message"

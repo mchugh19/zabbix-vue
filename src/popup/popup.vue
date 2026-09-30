@@ -204,6 +204,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { browser } from '../lib/browser-shim.js'; // Chrome: aliases globalThis.chrome (no-op in Firefox)
+import { t } from '../lib/i18n.js';
 import { mdiMagnify, mdiFlagVariant, mdiWrench, mdiEyeOff } from '@mdi/js';
 import { versionPart, ackEventUrl } from '../lib/zabbix-urls.js';
 
@@ -229,7 +230,7 @@ async function getPopupData() {
   // Default to no servers defined
   let tableResults = {
     error: true,
-    errorMessage: browser.i18n.getMessage("noServers")
+    errorMessage: t("noServers")
   }
 
   let popupResults = await browser.storage.session.get("popupTable")
@@ -269,12 +270,12 @@ function priority_class(value) {
 
 function priority_name_filter(value) {
   const PRIORITY_NAMES = {
-    [SEVERITY.NOT_CLASSIFIED]: browser.i18n.getMessage("notClassified"),
-    [SEVERITY.INFORMATION]: browser.i18n.getMessage("information"),
-    [SEVERITY.WARNING]: browser.i18n.getMessage("warning"),
-    [SEVERITY.AVERAGE]: browser.i18n.getMessage("average"),
-    [SEVERITY.HIGH]: browser.i18n.getMessage("high"),
-    [SEVERITY.DISASTER]: browser.i18n.getMessage("disaster"),
+    [SEVERITY.NOT_CLASSIFIED]: t("notClassified"),
+    [SEVERITY.INFORMATION]: t("information"),
+    [SEVERITY.WARNING]: t("warning"),
+    [SEVERITY.AVERAGE]: t("average"),
+    [SEVERITY.HIGH]: t("high"),
+    [SEVERITY.DISASTER]: t("disaster"),
   };
   return PRIORITY_NAMES[value];
 }
