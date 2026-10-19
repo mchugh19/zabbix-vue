@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "Abrir num novo separador",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "Mostrar todos os servidores numa única tabela",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Monitor Zabbix problemas no seu browser"

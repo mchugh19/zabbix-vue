@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "Yeni sekmede aç",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "Tüm sunucuları tek bir tabloda göster",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Extension name"

@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "新しいタブで開く",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "すべてのサーバーを1つの表に表示",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Extension name"

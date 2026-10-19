@@ -70,6 +70,8 @@ browser.runtime.onInstalled.addListener( async () => {
   await migrateOldSettings();
   await migrateAuthType();
   await migrateNotifySoundToServer();
+  await migrateMinSeverityToGlobal();
+  await migrateHideFiltersToGlobal();
   await initialize();
 });
 browser.runtime.onStartup.addListener( async () => {
@@ -77,6 +79,8 @@ browser.runtime.onStartup.addListener( async () => {
 
   await migrateAuthType();
   await migrateNotifySoundToServer();
+  await migrateMinSeverityToGlobal();
+  await migrateHideFiltersToGlobal();
   await initialize();
 });
 self.addEventListener("activate", (event) => {
@@ -190,6 +194,81 @@ async function migrateNotifySoundToServer() {
   }
 }
 
+async function migrateMinSeverityToGlobal() {
+  /*
+  * Move the per-server minSeverity setting to a single global one.
+  * Uses the lowest per-server value so no previously shown problem gets
+  * hidden, then removes the per-server keys. Runs on install/startup;
+  * idempotent — once migrated no server carries the key anymore.
+  */
+  const settings = await getSettings();
+  if (!settings || !settings.servers) {
+    return;
+  }
+
+  settings.global = settings.global || {};
+  const serverValues = settings.servers
+    .map((server) => server.minSeverity)
+    .filter((value) => value !== undefined && value !== null)
+    .map(Number);
+
+  if (serverValues.length === 0) {
+    return;
+  }
+
+  if (settings.global.minSeverity === undefined) {
+    settings.global.minSeverity = Math.min(...serverValues);
+  }
+  for (const server of settings.servers) {
+    delete server.minSeverity;
+  }
+
+  log("Migrating per-server minSeverity to global setting");
+  // Only plaintext keys are touched, so save without re-encrypting.
+  await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+  log("minSeverity migration complete");
+}
+
+async function migrateHideFiltersToGlobal() {
+  /*
+  * Move the per-server hide (acknowledged) and maintenance settings to the
+  * global hideAcknowledged / hideMaintenance toggles shown in the popup.
+  * A filter is only enabled globally when every server had it on, so no
+  * previously shown problem gets hidden. Runs on install/startup;
+  * idempotent — once migrated no server carries the keys anymore.
+  */
+  const settings = await getSettings();
+  if (!settings || !settings.servers) {
+    return;
+  }
+
+  const legacy = { hide: "hideAcknowledged", maintenance: "hideMaintenance" };
+  settings.global = settings.global || {};
+  let needsSave = false;
+  for (const [serverKey, globalKey] of Object.entries(legacy)) {
+    const serverValues = settings.servers
+      .map((server) => server[serverKey])
+      .filter((value) => value !== undefined);
+    if (serverValues.length === 0) {
+      continue;
+    }
+    if (settings.global[globalKey] === undefined) {
+      settings.global[globalKey] = settings.servers.every((server) => server[serverKey] === true);
+    }
+    for (const server of settings.servers) {
+      delete server[serverKey];
+    }
+    needsSave = true;
+  }
+
+  if (needsSave) {
+    log("Migrating per-server hide/maintenance settings to global toggles");
+    // Only plaintext keys are touched, so save without re-encrypting.
+    await browser.storage.local.set({[ZABBIX_SERVERS_KEY]: JSON.stringify(settings)});
+    log("hide/maintenance migration complete");
+  }
+}
+
 
 async function setAlarmState(interval) {
   const alarm = await browser.alarms.get(ALARM_NAME);
@@ -250,7 +329,7 @@ function buildTriggerRequest(serverConfig) {
   /*
    * Build the trigger.get request object from server configuration
    */
-  const { hostGroups, hide, maintenance, minSeverity } = serverConfig;
+  const { hostGroups } = serverConfig;
 
   const request = {
     expandDescription: 1,
@@ -258,7 +337,6 @@ function buildTriggerRequest(serverConfig) {
     selectHosts: ["host", "name", "hostid", "maintenance_status"],
     selectLastEvent: ["eventid", "acknowledged", "severity"],
     monitored: 1,
-    min_severity: minSeverity,
     active: 1,
     filter: {
       // Value: 0 = OK | 1 = PROBLEM | 2 = UNKNOWN
@@ -270,18 +348,36 @@ function buildTriggerRequest(serverConfig) {
     sortorder: "DESC",
   };
 
-  if (hide) {
-    // Don't show acknowledged
-    request.withLastEventUnacknowledged = 1;
-  }
-  if (maintenance) {
-    request.maintenance = false;
-  }
+  // Severity, acknowledged and in-maintenance problems are always fetched and
+  // filtered locally (isTriggerHidden) so the popup filters apply without a
+  // re-poll.
   if (hostGroups.length > 0) {
     request.groupids = hostGroups;
   }
 
   return request;
+}
+
+function isTriggerHidden(trigger, globalSettings) {
+  /*
+   * Whether the popup filters (global minSeverity, hideAcknowledged and
+   * hideMaintenance) hide this trigger. Hidden triggers don't count towards
+   * the badge/icon and don't notify.
+   */
+  const filters = globalSettings || {};
+  if (Number(getEffectiveSeverity(trigger)) < Number(filters.minSeverity || 0)) {
+    return true;
+  }
+  if (filters.hideAcknowledged && Number(trigger.lastEvent?.acknowledged)) {
+    return true;
+  }
+  if (
+    filters.hideMaintenance &&
+    (trigger.hosts || []).some((host) => Number(host.maintenance_status))
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function getEffectiveSeverity(trigger) {
@@ -374,7 +470,7 @@ async function getServerTriggers(serverConfig) {
    * Return data from zabbix trigger.get call to a specific server
    *
    * serverConfig: { url, user, pass, apiToken, authType, version, hostGroups,
-   *                 hide, maintenance, minSeverity, showSuppressed }
+   *                 showSuppressed }
    */
   await clearPopupTableError();
 
@@ -450,10 +546,8 @@ async function getAllTriggers() {
    * Loop over each server found in settings
    *   Get trigger results
    * 	Get diff of new results from previous and send browser notifications
-   * Update browser badge color and count
-   * Call setActiveTriggersTable function to update popup dataset
+   * Call setActiveTriggersTable function to update popup dataset, badge and icon
    */
-  let triggerCount = 0;
   let settings = await getSettings();
   if (
     !settings ||
@@ -473,7 +567,6 @@ async function getAllTriggers() {
   
   let serversChecked = [];
   for (const serverSettings of settings["servers"]) {
-    let serverError = false;
     const server = serverSettings.alias;
     serversChecked.push(server);
 
@@ -493,9 +586,6 @@ async function getAllTriggers() {
           : (apiToken ? "token" : "password"),
         version: serverSettings.version,
         hostGroups: serverSettings.hostGroups,
-        hide: serverSettings.hide,
-        maintenance: serverSettings.maintenance,
-        minSeverity: serverSettings.minSeverity,
         showSuppressed: serverSettings.showSuppressed,
       };
 
@@ -515,12 +605,12 @@ async function getAllTriggers() {
       };
     }
 
-    if ("error" in newTriggerData) {
-      serverError = true;
-    } else {
-      // Find triggers that are new since last poll
-      const oldTriggers = triggerResults[server] || [];
-      const triggerDiff = newTriggerData.filter((trigger) =>
+    if (!("error" in newTriggerData)) {
+      // Find visible triggers that are new since last poll. Comparing visible
+      // sets means a problem that gets un-acknowledged notifies again.
+      const visible = (t) => !isTriggerHidden(t, settings.global);
+      const oldTriggers = (triggerResults[server] || []).filter(visible);
+      const triggerDiff = newTriggerData.filter(visible).filter((trigger) =>
         !oldTriggers.some((old) => trigger.triggerid == old.triggerid)
       );
 
@@ -537,9 +627,6 @@ async function getAllTriggers() {
     }
 
     triggerResults[server] = newTriggerData;
-    if (!serverError) {
-      triggerCount += triggerResults[server].length;
-    }
   }
 
   // Remove trigger.get data for old servers
@@ -558,13 +645,6 @@ async function getAllTriggers() {
     }
   }
   await browser.storage.local.set({"triggerResults": triggerResults});
-
-  if (triggerCount > 0) {
-    browser.action.setBadgeBackgroundColor({ color: "#888888" });
-    browser.action.setBadgeText({ text: triggerCount.toString() });
-  } else {
-    browser.action.setBadgeText({ text: "" });
-  }
 
   await setActiveTriggersTable(completeTriggerResults);
 }
@@ -729,7 +809,15 @@ async function setActiveTriggersTable(triggerResults) {
     "servers": [],
     "headers": popupHeaders,
     "loaded": false,
+    // Show every server's triggers in a single table (with a server column)
+    "combined": settings.global.combineServers === true,
+    "combinedSortBy": settings.global.combinedSortBy || [{ key: "priority", order: "desc" }],
+    // Popup toggles; rows are filtered in the popup so they apply instantly
+    "hideAcknowledged": settings.global.hideAcknowledged === true,
+    "hideMaintenance": settings.global.hideMaintenance === true,
+    "minSeverity": Number(settings.global.minSeverity || 0),
   };
+  let triggerCount = 0;
   let servers = Object.keys(triggerResults);
   for (var i = 0; i < servers.length; i++) {
     // Iterate over each configured server, generate trigger list
@@ -756,10 +844,13 @@ async function setActiveTriggersTable(triggerResults) {
       );
       for (var t = 0; t < triggerResults[server].length; t++) {
         const priority = getEffectiveSeverity(triggerResults[server][t]);
-        // Set priority number if higher than current
-        // Used to set browser icon
-        if (priority > topSeverity) {
-          topSeverity = priority;
+        if (!isTriggerHidden(triggerResults[server][t], settings.global)) {
+          // Set priority number if higher than current
+          // Used to set browser icon and badge count
+          triggerCount++;
+          if (priority > topSeverity) {
+            topSeverity = priority;
+          }
         }
         triggerTable.push({
           system: triggerResults[server][t]["hosts"][0][settings.global.displayName],
@@ -770,7 +861,10 @@ async function setActiveTriggersTable(triggerResults) {
           hostid: triggerResults[server][t]["hosts"][0]["hostid"],
           eventid: triggerResults[server][t]["lastEvent"]["eventid"],
           acknowledged: Number(triggerResults[server][t]["lastEvent"]["acknowledged"]),
-          maintenance_status: Number(triggerResults[server][t]["hosts"][0]["maintenance_status"]),
+          // Any of the trigger's hosts in maintenance (same rule as isTriggerHidden)
+          maintenance_status: Number(
+            triggerResults[server][t]["hosts"].some((host) => Number(host.maintenance_status))
+          ),
           suppressed: Boolean(triggerResults[server][t]["suppressed"]),
         });
       }
@@ -790,6 +884,13 @@ async function setActiveTriggersTable(triggerResults) {
   }
 
   await browser.storage.session.set({"popupTable": popupTable})
+
+  if (triggerCount > 0) {
+    browser.action.setBadgeBackgroundColor({ color: "#888888" });
+    browser.action.setBadgeText({ text: triggerCount.toString() });
+  } else {
+    browser.action.setBadgeText({ text: "" });
+  }
 
   if (hasError) {
     await setBrowserIcon("unconfigured");
@@ -811,6 +912,18 @@ async function handleMessage(request, sender, sendResponse) {
       await initialize();
       break;
     }
+    case "setFilters": {
+      // Message sent by popup when a filter toggle changes
+      const settings = await getSettings();
+      settings.global = settings.global || {};
+      settings.global.hideAcknowledged = request.hideAcknowledged === true;
+      settings.global.hideMaintenance = request.hideMaintenance === true;
+      settings.global.minSeverity = Number(request.minSeverity) || 0;
+
+      await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
+      await setActiveTriggersTable();
+      break;
+    }
     case "submitPagination": {
       // Message sent by popup to save header sorting
       const settings = await getSettings();
@@ -818,7 +931,12 @@ async function handleMessage(request, sender, sendResponse) {
         "key": request.sortBy,
         "order": request.descending
       }]
-      settings.servers[request.index]["sortBy"] = newSort;
+      if (request.index === -1) {
+        // Combined (all servers) table keeps its own sort order
+        settings.global["combinedSortBy"] = newSort;
+      } else {
+        settings.servers[request.index]["sortBy"] = newSort;
+      }
 
       await browser.storage.local.set({"ZabbixServers": JSON.stringify(settings)});
       await setActiveTriggersTable();
@@ -834,12 +952,15 @@ export {
   migrateOldSettings,
   migrateAuthType,
   migrateNotifySoundToServer,
+  migrateMinSeverityToGlobal,
+  migrateHideFiltersToGlobal,
   setAlarmState,
   initialize,
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  isTriggerHidden,
   getSuppressedTriggerIds,
   filterSuppressedTriggers,
   getServerTriggers,

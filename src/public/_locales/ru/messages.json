@@ -1,4 +1,8 @@
 {
+  "openInTab": {
+    "message": "Открыть в новой вкладке",
+    "description": "Popup button tooltip"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Уведомления о проблемах из заббикса в браузере"
@@ -97,6 +101,10 @@
   },
   "notify": {
     "message": "Показывать всплывающие уведомления",
+    "description": "Options screen label"
+  },
+  "combineServers": {
+    "message": "Показывать все серверы в одной таблице",
     "description": "Options screen label"
   },
   "selectName": {

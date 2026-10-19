@@ -94,16 +94,6 @@
               </div>
 
               <v-checkbox
-                v-model="server.hide"
-                class="mb-0 pa-0"
-                :label="$i18n('hideEvents')"
-              />
-              <v-checkbox
-                v-model="server.maintenance"
-                class="mb-0 pa-0"
-                :label="$i18n('ignoreHosts')"
-              />
-              <v-checkbox
                 v-model="server.showSuppressed"
                 class="mb-0 pa-0"
                 :label="$i18n('showSuppressed')"
@@ -117,13 +107,6 @@
                 v-model="server.sound"
                 class="mb-0 pa-0"
                 :label="$i18n('sound')"
-              />
-              <v-select
-                v-model="server.minSeverity"
-                :items="severitySelector"
-                :label="$i18n('minSev')"
-                item-title="name"
-                item-value="priority"
               />
               <v-container class="mb-0 pa-0">
                 <v-col>
@@ -183,6 +166,11 @@
                 <v-radio :label="$i18n('displayHost')" value="host" />
                 <v-radio :label="$i18n('displayName')" value="name" />
               </v-radio-group>
+              <v-checkbox
+                v-model="zabbixs.global.combineServers"
+                class="mb-0 pa-0"
+                :label="$i18n('combineServers')"
+              />
             </v-card>
           </v-container>
         </v-container>
@@ -222,15 +210,6 @@ import { encryptSettingKeys, decryptSettings } from '../lib/crypto.js';
 
 const i18n = browser.i18n.getMessage;
 
-const severitySelector = [
-  { name: i18n("notClassified"), priority: 0 },
-  { name: i18n("information"), priority: 1 },
-  { name: i18n("warning"), priority: 2 },
-  { name: i18n("average"), priority: 3 },
-  { name: i18n("high"), priority: 4 },
-  { name: i18n("disaster"), priority: 5 },
-];
-
 const defaultServer = {
   alias: "New Server",
   url: "",
@@ -238,14 +217,11 @@ const defaultServer = {
   user: "",
   pass: "",
   apiToken: "",
-  hide: false,
-  maintenance: false,
   showSuppressed: false,
   notify: true,
   sound: true,
   hostGroups: [],
   hostGroupsList: [],
-  minSeverity: 0,
   visiblePass: false,
   errorMsg: "",
   sortBy: [{ key: 'priority', order: 'desc' }],
@@ -258,6 +234,10 @@ const zabbixs = ref({
   global: {
     interval: 60,
     displayName: "host",
+    minSeverity: 0,
+    combineServers: false,
+    hideAcknowledged: false,
+    hideMaintenance: false,
     formValid: true,
   },
   servers: [
@@ -298,6 +278,27 @@ onMounted(async () => {
       }
       zabbix_data.servers[serverIndex].visiblePass = false;
       zabbix_data.servers[serverIndex].hostGroupsList = [];
+    }
+    // Fallback for settings that missed the background migration:
+    // minSeverity moved from per-server to global, keep the lowest value
+    zabbix_data.global = zabbix_data.global || {};
+    if (zabbix_data.global.minSeverity === undefined) {
+      const serverValues = zabbix_data.servers
+        .map((s) => s.minSeverity)
+        .filter((v) => v !== undefined && v !== null)
+        .map(Number);
+      zabbix_data.global.minSeverity = serverValues.length ? Math.min(...serverValues) : 0;
+    }
+    // Same for hide/maintenance, now global toggles in the popup: only
+    // enabled when every server had it on
+    for (const [serverKey, globalKey] of [["hide", "hideAcknowledged"], ["maintenance", "hideMaintenance"]]) {
+      if (zabbix_data.global[globalKey] === undefined) {
+        zabbix_data.global[globalKey] = zabbix_data.servers.length > 0 &&
+          zabbix_data.servers.every((s) => s[serverKey] === true);
+      }
+    }
+    for (const server of zabbix_data.servers) {
+      for (const f of LEGACY_FIELDS) delete server[f];
     }
     zabbixs.value = zabbix_data;
   }
@@ -376,13 +377,21 @@ function removeServer(index) {
 }
 
 // Fields stripped from export/import: secrets (never leave the device) and
-// transient UI state (not part of the settings).
-const SECRET_FIELDS = ["pass", "apiToken"];
+// transient UI state (not part of the settings). The API token is exported
+// in plain text on purpose, so a server can be moved without re-entering it.
+const SECRET_FIELDS = ["pass"];
 const TRANSIENT_FIELDS = ["errorMsg", "visiblePass", "hostGroupsList", "version"];
+// Per-server fields that moved to the global settings
+const LEGACY_FIELDS = ["minSeverity", "hide", "maintenance"];
 
-function sanitizeServerForExport(server) {
+async function sanitizeServerForExport(server) {
   const copy = structuredClone(server);
-  for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS]) delete copy[f];
+  for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS, ...LEGACY_FIELDS]) delete copy[f];
+  try {
+    copy.apiToken = copy.apiToken ? await decryptSettings(copy.apiToken) : "";
+  } catch (_) { // eslint-disable-line no-unused-vars
+    copy.apiToken = "";
+  }
   return copy;
 }
 
@@ -400,7 +409,7 @@ async function exportSettings() {
   const exportData = {
     app: "zabbix-vue",
     version: 1,
-    servers: servers.map(sanitizeServerForExport),
+    servers: await Promise.all(servers.map(sanitizeServerForExport)),
   };
   const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
@@ -420,21 +429,27 @@ async function importSettings(event) {
     if (!data || typeof data !== "object" || !Array.isArray(data.servers)) {
       throw new Error("invalid settings file");
     }
-    // Never import secrets: strip them so existing credentials are preserved.
+    // Never import passwords: strip them so existing ones are preserved.
+    // An API token from the file is taken as-is (plain text, encrypted on Save).
     const imported = data.servers.map((s) => {
       const copy = structuredClone(s);
-      for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS]) delete copy[f];
-      return { ...structuredClone(defaultServer), ...copy, pass: "", apiToken: "" };
+      for (const f of [...SECRET_FIELDS, ...TRANSIENT_FIELDS, ...LEGACY_FIELDS]) delete copy[f];
+      const apiToken = typeof copy.apiToken === "string" ? copy.apiToken : "";
+      return { ...structuredClone(defaultServer), ...copy, pass: "", apiToken };
     });
     // Merge by URL into the form (not saved yet): update non-credential fields
     // on existing servers, append genuinely new ones. User reviews and clicks
-    // Save, entering credentials for new servers manually.
+    // Save, entering passwords for new servers manually.
     const existing = zabbixs.value.servers;
     for (const imp of imported) {
       if (!imp.url) continue;
       const idx = existing.findIndex((s) => s.url === imp.url);
       if (idx >= 0) {
-        const keepCreds = { pass: existing[idx].pass, apiToken: existing[idx].apiToken };
+        const keepCreds = {
+          pass: existing[idx].pass,
+          // An imported token wins; otherwise keep the one already configured
+          apiToken: imp.apiToken || existing[idx].apiToken,
+        };
         existing[idx] = { ...imp, ...keepCreds };
       } else {
         existing.push(imp);

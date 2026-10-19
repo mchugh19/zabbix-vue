@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "Ouvrir dans un nouvel onglet",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "Afficher tous les serveurs dans un seul tableau",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Extension name"

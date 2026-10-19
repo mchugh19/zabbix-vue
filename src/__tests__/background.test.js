@@ -89,12 +89,15 @@ import {
   migrateOldSettings,
   migrateAuthType,
   migrateNotifySoundToServer,
+  migrateMinSeverityToGlobal,
+  migrateHideFiltersToGlobal,
   setAlarmState,
   initialize,
   clearPopupTableError,
   buildTriggerRequest,
   makeVersionPersister,
   getEffectiveSeverity,
+  isTriggerHidden,
   getSuppressedTriggerIds,
   filterSuppressedTriggers,
   getServerTriggers,
@@ -122,6 +125,7 @@ function makeSettings(overrides = {}) {
     global: {
       interval: 120,
       displayName: 'name',
+      minSeverity: 0,
       ...overrides.global,
     },
     servers: overrides.servers || [
@@ -133,9 +137,6 @@ function makeSettings(overrides = {}) {
         version: '7.0.0',
         apiToken: '',
         hostGroups: [],
-        hide: false,
-        maintenance: false,
-        minSeverity: 0,
         notify: true,
         sound: true,
         sortBy: [{ key: 'priority', order: 'DESC' }],
@@ -470,6 +471,146 @@ describe('background.js', () => {
     });
   });
 
+  // ── migrateMinSeverityToGlobal ──────────────────────────────────────
+
+  describe('migrateMinSeverityToGlobal()', () => {
+    it('moves the lowest per-server value to global and removes the server keys', async () => {
+      const settings = makeSettings({
+        global: { interval: 120 },
+        servers: [
+          { alias: 'A', url: 'https://a.example.com', minSeverity: 3 },
+          { alias: 'B', url: 'https://b.example.com', minSeverity: '1' },
+        ],
+      });
+      delete settings.global.minSeverity;
+      stubSettings(settings);
+
+      await migrateMinSeverityToGlobal();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.global.minSeverity).toBe(1);
+      expect(saved.global.interval).toBe(120);
+      expect(saved.servers[0].minSeverity).toBeUndefined();
+      expect(saved.servers[1].minSeverity).toBeUndefined();
+    });
+
+    it('keeps an existing global value and still strips the server keys', async () => {
+      const settings = makeSettings({
+        global: { minSeverity: 4 },
+        servers: [{ alias: 'A', url: 'https://a.example.com', minSeverity: 2 }],
+      });
+      stubSettings(settings);
+
+      await migrateMinSeverityToGlobal();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.global.minSeverity).toBe(4);
+      expect(saved.servers[0].minSeverity).toBeUndefined();
+    });
+
+    it('is a no-op once migrated (idempotent)', async () => {
+      stubSettings(makeSettings());
+
+      await migrateMinSeverityToGlobal();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateMinSeverityToGlobal();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── migrateHideFiltersToGlobal ──────────────────────────────────────
+
+  describe('migrateHideFiltersToGlobal()', () => {
+    it('enables a global toggle only when every server had it on', async () => {
+      const settings = makeSettings({
+        servers: [
+          { alias: 'A', url: 'https://a.example.com', hide: true, maintenance: true },
+          { alias: 'B', url: 'https://b.example.com', hide: true, maintenance: false },
+        ],
+      });
+      stubSettings(settings);
+
+      await migrateHideFiltersToGlobal();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.global.hideAcknowledged).toBe(true);
+      expect(saved.global.hideMaintenance).toBe(false);
+      for (const server of saved.servers) {
+        expect(server.hide).toBeUndefined();
+        expect(server.maintenance).toBeUndefined();
+      }
+    });
+
+    it('keeps existing global toggles and still strips the server keys', async () => {
+      const settings = makeSettings({
+        global: { hideAcknowledged: false, hideMaintenance: true },
+        servers: [{ alias: 'A', url: 'https://a.example.com', hide: true, maintenance: false }],
+      });
+      stubSettings(settings);
+
+      await migrateHideFiltersToGlobal();
+
+      const saved = JSON.parse(mockBrowser.storage.local.set.mock.calls[0][0][ZABBIX_SERVERS_KEY]);
+      expect(saved.global.hideAcknowledged).toBe(false);
+      expect(saved.global.hideMaintenance).toBe(true);
+      expect(saved.servers[0].hide).toBeUndefined();
+    });
+
+    it('is a no-op once migrated (idempotent)', async () => {
+      stubSettings(makeSettings());
+
+      await migrateHideFiltersToGlobal();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when no settings exist', async () => {
+      stubSettings(null);
+
+      await migrateHideFiltersToGlobal();
+
+      expect(mockBrowser.storage.local.set).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── isTriggerHidden ──────────────────────────────────────────────────
+
+  describe('isTriggerHidden()', () => {
+    const trigger = (acknowledged, ...maintenance) => ({
+      lastEvent: { acknowledged },
+      hosts: maintenance.map((m) => ({ maintenance_status: m })),
+    });
+
+    it('shows everything when no filter is on', () => {
+      expect(isTriggerHidden(trigger('1', '1'), {})).toBe(false);
+      expect(isTriggerHidden(trigger('1', '1'), undefined)).toBe(false);
+    });
+
+    it('hides acknowledged triggers with hideAcknowledged', () => {
+      expect(isTriggerHidden(trigger('1', '0'), { hideAcknowledged: true })).toBe(true);
+      expect(isTriggerHidden(trigger('0', '0'), { hideAcknowledged: true })).toBe(false);
+    });
+
+    it('hides triggers below minSeverity, using the last event severity', () => {
+      const t = { priority: '4', lastEvent: { acknowledged: '0', severity: '2' }, hosts: [] };
+      expect(isTriggerHidden(t, { minSeverity: 3 })).toBe(true);
+      expect(isTriggerHidden(t, { minSeverity: 2 })).toBe(false);
+      expect(isTriggerHidden({ priority: '4', hosts: [] }, { minSeverity: 4 })).toBe(false);
+    });
+
+    it('hides triggers with any host in maintenance with hideMaintenance', () => {
+      expect(isTriggerHidden(trigger('0', '0', '1'), { hideMaintenance: true })).toBe(true);
+      expect(isTriggerHidden(trigger('0', '0', '0'), { hideMaintenance: true })).toBe(false);
+    });
+  });
+
   // ── clearPopupTableError ─────────────────────────────────────────────
 
   describe('clearPopupTableError()', () => {
@@ -495,12 +636,12 @@ describe('background.js', () => {
   // ── buildTriggerRequest ─────────────────────────────────────────────
 
   describe('buildTriggerRequest()', () => {
-    it('builds base request with minSeverity', () => {
+    it('builds base request without server-side severity filtering', () => {
       const req = buildTriggerRequest({
-        hostGroups: [], hide: false, maintenance: false, minSeverity: 3,
+        hostGroups: [], minSeverity: 3,
       });
 
-      expect(req.min_severity).toBe(3);
+      expect(req).not.toHaveProperty('min_severity');
       expect(req.expandDescription).toBe(1);
       expect(req).not.toHaveProperty('withLastEventUnacknowledged');
       expect(req).not.toHaveProperty('groupids');
@@ -508,31 +649,22 @@ describe('background.js', () => {
 
     it('requests severity in selectLastEvent', () => {
       const req = buildTriggerRequest({
-        hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+        hostGroups: [], minSeverity: 0,
       });
 
       expect(req.selectLastEvent).toContain('severity');
     });
 
-    it('sets withLastEventUnacknowledged when hide is true', () => {
-      const req = buildTriggerRequest({
-        hostGroups: [], hide: true, maintenance: false, minSeverity: 0,
-      });
+    it('never filters acknowledged or maintenance server-side', () => {
+      const req = buildTriggerRequest({ hostGroups: [], minSeverity: 0 });
 
-      expect(req.withLastEventUnacknowledged).toBe(1);
-    });
-
-    it('sets maintenance=false when maintenance is true', () => {
-      const req = buildTriggerRequest({
-        hostGroups: [], hide: false, maintenance: true, minSeverity: 0,
-      });
-
-      expect(req.maintenance).toBe(false);
+      expect(req).not.toHaveProperty('withLastEventUnacknowledged');
+      expect(req).not.toHaveProperty('maintenance');
     });
 
     it('sets groupids when hostGroups are provided', () => {
       const req = buildTriggerRequest({
-        hostGroups: ['1', '5', '10'], hide: false, maintenance: false, minSeverity: 0,
+        hostGroups: ['1', '5', '10'], minSeverity: 0,
       });
 
       expect(req.groupids).toEqual(['1', '5', '10']);
@@ -714,8 +846,6 @@ describe('background.js', () => {
       apiToken: '',
       version: '7.0.0',
       hostGroups: [],
-      hide: false,
-      maintenance: false,
       minSeverity: 0,
     };
 
@@ -740,7 +870,6 @@ describe('background.js', () => {
           expandDescription: 1,
           skipDependent: 1,
           active: 1,
-          min_severity: 0,
         })
       );
       expect(mockZabbixInstance.logout).toHaveBeenCalled();
@@ -873,28 +1002,6 @@ describe('background.js', () => {
       expect(result.errorDetails).toBe('Network timeout');
     });
 
-    it('sets withLastEventUnacknowledged when hide is true', async () => {
-      mockZabbixInstance.call.mockResolvedValue({ result: [] });
-
-      await getServerTriggers({ ...defaultConfig, hide: true });
-
-      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
-        'trigger.get',
-        expect.objectContaining({ withLastEventUnacknowledged: 1 })
-      );
-    });
-
-    it('sets maintenance=false when maintenance is true', async () => {
-      mockZabbixInstance.call.mockResolvedValue({ result: [] });
-
-      await getServerTriggers({ ...defaultConfig, maintenance: true });
-
-      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
-        'trigger.get',
-        expect.objectContaining({ maintenance: false })
-      );
-    });
-
     it('sets groupids when hostGroups are provided', async () => {
       mockZabbixInstance.call.mockResolvedValue({ result: [] });
 
@@ -913,17 +1020,6 @@ describe('background.js', () => {
 
       const callArgs = mockZabbixInstance.call.mock.calls[0][1];
       expect(callArgs).not.toHaveProperty('groupids');
-    });
-
-    it('passes min_severity from minSeverity', async () => {
-      mockZabbixInstance.call.mockResolvedValue({ result: [] });
-
-      await getServerTriggers({ ...defaultConfig, minSeverity: 3 });
-
-      expect(mockZabbixInstance.call).toHaveBeenCalledWith(
-        'trigger.get',
-        expect.objectContaining({ min_severity: 3 })
-      );
     });
 
     it('clears existing error in popupTable', async () => {
@@ -984,6 +1080,41 @@ describe('background.js', () => {
       // Badge should show count of 1
       expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
       expect(mockBrowser.action.setBadgeBackgroundColor).toHaveBeenCalledWith({ color: '#888888' });
+    });
+
+    it('filters on the global minSeverity locally, not in trigger.get', async () => {
+      const settings = makeSettings({ global: { minSeverity: 4 } });
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+      stubZabbixCalls([
+        {
+          triggerid: '1', description: 'Low', priority: '2', lastchange: '1',
+          hosts: [{ host: 'a', name: 'A', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '0' },
+        },
+        {
+          triggerid: '2', description: 'High', priority: '4', lastchange: '1',
+          hosts: [{ host: 'b', name: 'B', hostid: '11', maintenance_status: '0' }],
+          lastEvent: { eventid: '101', acknowledged: '0' },
+        },
+      ]);
+
+      await getAllTriggers();
+
+      const triggerCall = mockZabbixInstance.call.mock.calls.find((c) => c[0] === 'trigger.get');
+      expect(triggerCall[1]).not.toHaveProperty('min_severity');
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+      expect(registration.showNotification).toHaveBeenCalledTimes(1);
+      const popupTable = mockBrowser.storage.session.set.mock.calls.at(-1)[0].popupTable;
+      expect(popupTable.minSeverity).toBe(4);
+      expect(popupTable.servers[0].triggers).toHaveLength(2);
     });
 
     it('clears badge when no triggers found', async () => {
@@ -1047,6 +1178,44 @@ describe('background.js', () => {
       );
     });
 
+    it('skips notifications and badge count for hidden triggers', async () => {
+      const settings = makeSettings({ global: { hideAcknowledged: true } });
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: { 'Zabbix Prod': [] } };
+        }
+        return {};
+      });
+      stubZabbixCalls([
+        {
+          triggerid: '1', description: 'Acked', priority: '4', lastchange: '1',
+          hosts: [{ host: 'a', name: 'A', hostid: '10', maintenance_status: '0' }],
+          lastEvent: { eventid: '100', acknowledged: '1' },
+        },
+        {
+          triggerid: '2', description: 'Open', priority: '2', lastchange: '1',
+          hosts: [{ host: 'b', name: 'B', hostid: '11', maintenance_status: '0' }],
+          lastEvent: { eventid: '101', acknowledged: '0' },
+        },
+      ]);
+
+      await getAllTriggers();
+
+      expect(registration.showNotification).toHaveBeenCalledTimes(1);
+      expect(registration.showNotification).toHaveBeenCalledWith(
+        'B',
+        expect.objectContaining({ body: 'Open' })
+      );
+      expect(mockBrowser.action.setBadgeText).toHaveBeenCalledWith({ text: '1' });
+      // Hidden rows still go to the popup so the toggle applies instantly
+      const popupTable = mockBrowser.storage.session.set.mock.calls.at(-1)[0].popupTable;
+      expect(popupTable.hideAcknowledged).toBe(true);
+      expect(popupTable.servers[0].triggers).toHaveLength(2);
+    });
+
     it('batches notification when multiple new triggers arrive on one server', async () => {
       const settings = makeSettings();
       const oldTriggers = [
@@ -1102,13 +1271,13 @@ describe('background.js', () => {
           {
             alias: 'Prod', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
           {
             alias: 'Staging', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
@@ -1214,13 +1383,13 @@ describe('background.js', () => {
           {
             alias: 'Prod', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             notify: true, sortBy: [],
           },
           {
             alias: 'Staging', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             notify: false, sortBy: [],
           },
         ],
@@ -1334,13 +1503,13 @@ describe('background.js', () => {
           {
             alias: 'Server OK', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
           {
             alias: 'Server Fail', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
@@ -1383,13 +1552,13 @@ describe('background.js', () => {
           {
             alias: 'Prod', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
           {
             alias: 'Staging', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
@@ -1455,13 +1624,13 @@ describe('background.js', () => {
           {
             alias: 'Server Fail', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
           {
             alias: 'Server OK', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
@@ -1519,13 +1688,13 @@ describe('background.js', () => {
           {
             alias: 'Server Bad Crypto', url: 'https://zbx1.local',
             user: 'a', pass: 'undecryptable-blob', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
           {
             alias: 'Server OK', url: 'https://zbx2.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
@@ -2010,6 +2179,59 @@ describe('background.js', () => {
       ]);
     });
 
+    it('saves the combined table sort order on the global settings', async () => {
+      const settings = makeSettings();
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      await handleMessage(
+        { method: 'submitPagination', sortBy: 'server', descending: 'asc', index: -1 },
+        {},
+        vi.fn()
+      );
+
+      const settingsCall = mockBrowser.storage.local.set.mock.calls.find(
+        (c) => c[0].ZabbixServers !== undefined
+      );
+      const savedSettings = JSON.parse(settingsCall[0].ZabbixServers);
+      expect(savedSettings.global.combinedSortBy).toEqual([{ key: 'server', order: 'asc' }]);
+      expect(savedSettings.servers[0].sortBy).toEqual(settings.servers[0].sortBy);
+    });
+
+    it('saves popup filter toggles on the global settings', async () => {
+      const settings = makeSettings();
+      mockBrowser.storage.local.get.mockImplementation(async (key) => {
+        if (key === ZABBIX_SERVERS_KEY) {
+          return { [ZABBIX_SERVERS_KEY]: JSON.stringify(settings) };
+        }
+        if (key === 'triggerResults') {
+          return { triggerResults: {} };
+        }
+        return {};
+      });
+
+      await handleMessage(
+        { method: 'setFilters', minSeverity: 3, hideAcknowledged: true, hideMaintenance: false },
+        {},
+        vi.fn()
+      );
+
+      const settingsCall = mockBrowser.storage.local.set.mock.calls.find(
+        (c) => c[0].ZabbixServers !== undefined
+      );
+      const savedSettings = JSON.parse(settingsCall[0].ZabbixServers);
+      expect(savedSettings.global.hideAcknowledged).toBe(true);
+      expect(savedSettings.global.hideMaintenance).toBe(false);
+      expect(savedSettings.global.minSeverity).toBe(3);
+    });
+
     it('clears the poll alarm on reinitialize so an interval change takes effect', async () => {
       const settings = makeSettings({ global: { interval: 300 } });
       mockBrowser.storage.local.get.mockImplementation(async (key) => {
@@ -2082,7 +2304,7 @@ describe('background.js', () => {
           {
             alias: 'Prod', url: 'https://zbx1.local',
             user: 'a', pass: 'b', version: '7.0.0', apiToken: '',
-            hostGroups: [], hide: false, maintenance: false, minSeverity: 0,
+            hostGroups: [], minSeverity: 0,
             sortBy: [],
           },
         ],
