@@ -5,18 +5,20 @@ const BASE = 'https://zabbix.example.com';
 const EVENTID = '6379027563';
 
 describe('ackEventUrl', () => {
-  it('uses popup= on Zabbix 7.4 and later', () => {
-    for (const v of ['7.4.0', '7.4.1', '8.0.0']) {
+  it('uses popup= on Zabbix 7.2 and later', () => {
+    // 7.2.14 is the exact version from the issue #136 report where
+    // ACK EVENT was broken by the popup_action parameter name.
+    for (const v of ['7.2.0', '7.2.14', '7.4.0', '7.4.1', '8.0.0']) {
       expect(ackEventUrl(BASE, v, EVENTID)).toBe(
         BASE + '/zabbix.php?action=popup&popup=acknowledge.edit&eventids%5B%5D=' + EVENTID
       );
     }
   });
 
-  it('uses popup_action= on Zabbix 5.x through 7.2', () => {
+  it('uses popup_action= on Zabbix 5.x through 7.0', () => {
     // 7.0.19 is the exact version from the issue #22 report where
     // ACK EVENT was broken by the wrong parameter name.
-    for (const v of ['5.0.0', '5.4.12', '6.0.30', '6.4.15', '7.0.0', '7.0.19', '7.2.0']) {
+    for (const v of ['5.0.0', '5.4.12', '6.0.30', '6.4.15', '7.0.0', '7.0.19']) {
       expect(ackEventUrl(BASE, v, EVENTID)).toBe(
         BASE + '/zabbix.php?action=popup&popup_action=acknowledge.edit&eventids%5B%5D=' + EVENTID
       );
