@@ -16,11 +16,12 @@ export function versionPart(version, index) {
  * Build the "acknowledge event" popup URL for a Zabbix server version.
  *
  * The popup controller's expected parameter changed across Zabbix releases:
- *  - 5.x through 7.2 require `popup_action=acknowledge.edit`
+ *  - 5.x through 7.0 require `popup_action=acknowledge.edit`
  *    (verified against Zabbix 7.0 source: CControllerPopup::checkInput
  *    requires `popup_action`; sending `popup=` fails validation)
- *  - 7.4+ requires `popup=acknowledge.edit`
- *    (verified against Zabbix 7.4 source)
+ *  - 7.2+ requires `popup=acknowledge.edit`
+ *    (verified against Zabbix 7.2.0 and 7.4 sources: checkInput
+ *    requires `popup`; the controller contains no `popup_action`)
  *
  * @param {string} url - Zabbix frontend base URL
  * @param {string} version - server version, e.g. "7.0.19"
@@ -31,7 +32,7 @@ export function ackEventUrl(url, version, eventid) {
   const encoded = "eventids%5B%5D=" + eventid;
   if (
     versionPart(version, 0) > 7 ||
-    (versionPart(version, 0) === 7 && versionPart(version, 1) >= 4)
+    (versionPart(version, 0) === 7 && versionPart(version, 1) >= 2)
   ) {
     return url + "/zabbix.php?action=popup&popup=acknowledge.edit&" + encoded;
   } else if (versionPart(version, 0) >= 5) {
