@@ -10,10 +10,23 @@ const target = process.env.TARGET || "chrome";
 function generateManifest() {
   const manifestFile = readJsonFile("src/manifest.json");
   const pkg = readJsonFile("package.json");
-  return {
+  const manifest = {
     version: pkg.version,
     ...manifestFile,
   };
+  if (process.env.DEV) {
+    // Debug build: own name and gecko id so it can be loaded next to the
+    // released extension instead of replacing it
+    manifest.name = "Zabbix-Vue (dev)";
+    manifest["{{firefox}}.browser_specific_settings"] = {
+      ...manifest["{{firefox}}.browser_specific_settings"],
+      gecko: {
+        ...manifest["{{firefox}}.browser_specific_settings"].gecko,
+        id: "zabbix-vue-dev@localhost",
+      },
+    };
+  }
+  return manifest;
 }
 
 

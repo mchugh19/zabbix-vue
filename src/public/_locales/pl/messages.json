@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "Otwórz w nowej karcie",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "Pokaż wszystkie serwery w jednej tabeli",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Monitoruje problemy Zabbixa z poziomy przegladarki internetowej"

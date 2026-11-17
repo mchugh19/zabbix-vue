@@ -1,4 +1,12 @@
 {
+  "openInTab": {
+    "message": "在新标签页中打开",
+    "description": "Popup button tooltip"
+  },
+  "combineServers": {
+    "message": "在一个表格中显示所有服务器",
+    "description": "Options screen label"
+  },
   "appName": {
     "message": "Zabbix Vue",
     "description": "Extension name"
