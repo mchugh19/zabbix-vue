@@ -388,7 +388,7 @@ async function getServerTriggers(serverConfig) {
     url + "/api_jsonrpc.php",
     isGuest ? "guest" : user,
     isGuest ? "" : pass,
-    isGuest ? "" : apiToken,
+    isGuest || authType === "password" ? "" : apiToken,
     version,
     makeVersionPersister(url)
   );
