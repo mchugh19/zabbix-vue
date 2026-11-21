@@ -1,12 +1,8 @@
 /**
  * Zabbix API client.
  *
- * Native ES2015+ class (previously Babel-transpiled ES5 output).
- * Behavior is unchanged: promise-based JSON-RPC with capability-based
- * auth handling. Server capabilities (auth transport, login parameter
- * name) are probed on first use, cached, and re-probed when a cached
- * capability stops working — no version-string parsing for behavior
- * decisions. The version string is informational only.
+ * Authenticated requests prefer the Bearer header. The client checks
+ * the live server version before trying legacy body auth.
  */
 export class Zabbix {
   /**
@@ -27,10 +23,7 @@ export class Zabbix {
     this.version = version;
     this.onVersionChange = onVersionChange;
     this.auth = undefined;
-    // Capability cache: probed on first use, re-probed on failure.
-    // Never keyed by version — a stale cache entry fails fast and
-    // the probe recovers, whatever the server actually runs.
-    this._authMode = null; // 'header' | 'body'
+    this._useBodyAuth = false;
     this._loginParam = null; // 'username' | 'user'
   }
 
@@ -95,44 +88,22 @@ export class Zabbix {
       method: method,
       params: params,
     };
-    // Auth transport is capability-detected. Default to body 'auth'
-    // (works on all versions); switch to Bearer header when the server
-    // rejects it, and back again if the header stops working.
-    const authMode = this._authMode || "body";
-    if (authMode === "body") {
-      request["auth"] = this.auth;
-    }
-    let response = await this._postJsonRpc(this.url, JSON.stringify(request), authMode === "header");
-
-    if (response.error) {
-      const data = response.error.data || "";
-      if (authMode === "body" && data.includes('unexpected parameter "auth"')) {
-        // 7.2+ removed the body 'auth' parameter — try Bearer header.
-        console.log("ZABLIB body auth rejected — trying Bearer header");
-        this._authMode = "header";
-        delete request["auth"];
-        response = await this._postJsonRpc(this.url, JSON.stringify(request), true);
-        if (response.error) {
-          // Header didn't work either — clear cache, caller sees the error.
-          console.log("ZABLIB Bearer header also rejected — clearing auth mode cache");
-          this._authMode = null;
-        }
-      } else if (authMode === "header" && this._isAuthError(response.error)) {
-        // Cached header mode stopped working (e.g. server downgraded) —
-        // clear cache and retry with body auth.
-        console.log("ZABLIB Bearer header failed — retrying with body auth");
-        this._authMode = null;
-        request["auth"] = this.auth;
-        response = await this._postJsonRpc(this.url, JSON.stringify(request), false);
-        if (!response.error) {
-          this._authMode = "body";
-        }
-      }
+    if (method === "user.login" || method === "apiinfo.version") {
+      return this._postJsonRpc(this.url, JSON.stringify(request), false);
     }
 
-    // Keep the informational version string in sync: if auth keeps
-    // failing, the server may have been replaced/upgraded. This does not
-    // affect behavior — capabilities are failure-driven, not version-gated.
+    const postWithBodyAuth = () =>
+      this._postJsonRpc(this.url, JSON.stringify({ ...request, auth: this.auth }), false);
+    const usedBodyAuth = this._useBodyAuth && Boolean(this.auth);
+    let response = usedBodyAuth
+      ? await postWithBodyAuth()
+      : await this._postJsonRpc(this.url, JSON.stringify(request), true);
+
+    if (usedBodyAuth && response.error && this._isUnexpectedParam(response.error, "auth")) {
+      this._useBodyAuth = false;
+      return this.call(method, params);
+    }
+
     if (response.error && this._isAuthError(response.error)) {
       const newVersion = await this._detectVersion();
       if (newVersion && newVersion !== this.version) {
@@ -140,6 +111,17 @@ export class Zabbix {
         this.version = newVersion;
         if (this.onVersionChange) {
           this.onVersionChange(this.version);
+        }
+      }
+
+      // Use the live version here because the saved version can be stale.
+      // Zabbix 7.2 removed the JSON-RPC auth field.
+      const [major, minor] = newVersion?.split(".").map(Number) ?? [];
+      if (!usedBodyAuth && this.auth && (major < 7 || (major === 7 && minor < 2))) {
+        const fallback = await postWithBodyAuth();
+        if (!fallback.error) {
+          this._useBodyAuth = true;
+          response = fallback;
         }
       }
     }
