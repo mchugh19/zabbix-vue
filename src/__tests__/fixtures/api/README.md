@@ -75,12 +75,13 @@ changelog evidence (no affecting change in the 5.4 line).
 
 ## Auth transport
 
-| Method | 2.0–5.2 | 5.4–6.4 | 7.0+ |
+| Method | 2.0–6.2 | 6.4–7.0 | 7.2+ |
 |--------|---------|---------|------|
-| Session ID in body (`auth` param) | ✓ | ✓ | ✓ (deprecated) |
-| Bearer token in `Authorization` header | ✗ | ✓ | ✓ (preferred) |
+| Session ID in body (`auth` param) | ✓ | ✓ (deprecated) | ✗ |
+| Bearer token in `Authorization` header | ✗ | ✓ | ✓ |
 
-zabbix-vue sends the Bearer header on 5.4+ (PR #126), body `auth` on older.
+zabbix-vue tries the Bearer header first. If a legacy server does not
+accept it, it falls back to body `auth` and caches the working transport.
 
 ## Notes for fixture consumers (e.g. the dist smoke test)
 

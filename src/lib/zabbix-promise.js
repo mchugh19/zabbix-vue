@@ -95,19 +95,31 @@ export class Zabbix {
       method: method,
       params: params,
     };
-    // Auth transport is capability-detected. Default to body 'auth'
-    // (works on all versions); switch to Bearer header when the server
-    // rejects it, and back again if the header stops working.
-    const authMode = this._authMode || "body";
+    // Auth transport is capability-detected. Default to the Bearer
+    // header (preferred since 6.4 and the only transport from 7.2,
+    // which removed the body 'auth' parameter); fall back to body
+    // 'auth' when a legacy server does not accept the header, and
+    // back again if a cached body mode is later rejected.
+    const authMode = this._authMode || "header";
     if (authMode === "body") {
       request["auth"] = this.auth;
     }
     let response = await this._postJsonRpc(this.url, JSON.stringify(request), authMode === "header");
 
     if (response.error) {
-      const data = response.error.data || "";
-      if (authMode === "body" && data.includes('unexpected parameter "auth"')) {
-        // 7.2+ removed the body 'auth' parameter — try Bearer header.
+      if (authMode === "header" && this.auth && this._isAuthError(response.error)) {
+        // Legacy servers ignore the Authorization header, so the call
+        // arrives unauthenticated — retry with body auth. Cache body
+        // mode only when the retry succeeds: an expired session
+        // produces the same error and must not flip the cache.
+        console.log("ZABLIB Bearer header not accepted — retrying with body auth");
+        request["auth"] = this.auth;
+        response = await this._postJsonRpc(this.url, JSON.stringify(request), false);
+        if (!response.error) {
+          this._authMode = "body";
+        }
+      } else if (authMode === "body" && this._isUnexpectedParam(response.error, "auth")) {
+        // 7.2+ removed the body 'auth' parameter — switch to the header.
         console.log("ZABLIB body auth rejected — trying Bearer header");
         this._authMode = "header";
         delete request["auth"];
@@ -116,16 +128,6 @@ export class Zabbix {
           // Header didn't work either — clear cache, caller sees the error.
           console.log("ZABLIB Bearer header also rejected — clearing auth mode cache");
           this._authMode = null;
-        }
-      } else if (authMode === "header" && this._isAuthError(response.error)) {
-        // Cached header mode stopped working (e.g. server downgraded) —
-        // clear cache and retry with body auth.
-        console.log("ZABLIB Bearer header failed — retrying with body auth");
-        this._authMode = null;
-        request["auth"] = this.auth;
-        response = await this._postJsonRpc(this.url, JSON.stringify(request), false);
-        if (!response.error) {
-          this._authMode = "body";
         }
       }
     }
