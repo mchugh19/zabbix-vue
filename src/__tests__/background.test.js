@@ -761,10 +761,10 @@ describe('background.js', () => {
       );
     });
 
-    it('passes through stored credentials when authType is password', async () => {
+    it('ignores a stored API token when authType is password', async () => {
       stubZabbixCalls([]);
 
-      await getServerTriggers({ ...defaultConfig, authType: 'password' });
+      await getServerTriggers({ ...defaultConfig, authType: 'password', apiToken: 'old-token' });
 
       expect(Zabbix).toHaveBeenCalledWith(
         'https://zabbix.example.com/api_jsonrpc.php',

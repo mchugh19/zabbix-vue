@@ -142,16 +142,7 @@
                     <v-btn
                       class="reloadHostGroups"
                       :icon="mdiReload"
-                      @click="
-                        refreshGroups(
-                          server.url,
-                          server.user,
-                          server.pass,
-                          server.apiToken,
-                          server.version,
-                          index
-                        )
-                      "
+                      @click="refreshGroups(server, index)"
                     />
                   </v-row>
                 </v-col>
@@ -504,18 +495,19 @@ async function save_data() {
   }
 }
 
-function refreshGroups(server, user, pass, apiToken, version, index) {
+function refreshGroups({ url, user, pass, apiToken, authType, version }, index) {
   /*
    * Connect to Zabbix server using provided credentials
    * Perform hostgroup.get lookup and populate the hostgroup list
    */
 
   zabbixs.value["servers"][index]["errorMsg"] = "";
+  const isGuest = authType === "guest";
   const zabbix = new Zabbix(
-    server + "/api_jsonrpc.php",
-    user,
-    pass,
-    apiToken,
+    url + "/api_jsonrpc.php",
+    isGuest ? "guest" : user,
+    isGuest ? "" : pass,
+    authType === "token" ? apiToken : "",
     version
   );
   zabbix
