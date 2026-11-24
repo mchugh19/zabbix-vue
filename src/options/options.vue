@@ -496,7 +496,15 @@ async function save_data() {
     const ZabbixServers = await encryptSettingKeys(zabbixs.value);
     await browser.storage.local.set({"ZabbixServers": JSON.stringify(ZabbixServers)});
     console.log("Options calling reinitialize");
-    browser.runtime.sendMessage({ method: "reinitialize" });
+    // Await delivery before closing the window: an un-awaited sendMessage
+    // followed immediately by window.close() can lose the message (seen in
+    // Firefox), leaving the background on the old settings until the next
+    // alarm tick.
+    try {
+      await browser.runtime.sendMessage({ method: "reinitialize" });
+    } catch (e) {
+      console.log("Reinitialize message failed: " + e);
+    }
     
     window.close();
   } else {
